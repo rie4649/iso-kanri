@@ -53,16 +53,19 @@
   .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: #8b8b9e; margin-bottom: 6px; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .cal-cell {
-    aspect-ratio: 1; border-radius: 10px; background: #fff; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; cursor: pointer; position: relative; border: 1px solid #ececf3;
-    font-size: 13px; color: #1a1a2e;
+    min-height: 68px; border-radius: 10px; background: #fff; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start; cursor: pointer; position: relative; border: 1px solid #ececf3;
+    font-size: 13px; color: #1a1a2e; padding: 4px 3px; overflow: hidden;
   }
   .cal-cell.other-month { background: #f7f7fa; color: #c3c3d1; }
   .cal-cell.today { border: 2px solid #4338ca; font-weight: 800; }
   .cal-cell.has-events { background: #eef0ff; }
-  .cal-cell .dot-row { display: flex; gap: 2px; margin-top: 3px; }
-  .cal-cell .dot { width: 5px; height: 5px; border-radius: 50%; background: #4338ca; }
-  .cal-cell .more { font-size: 9px; color: #4338ca; margin-top: 2px; }
+  .cal-cell .day-num { flex-shrink: 0; }
+  .cal-cell .cal-event-title {
+    font-size: 9px; line-height: 1.3; width: 100%; text-align: left; padding: 1px 3px; border-radius: 3px;
+    margin-top: 2px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cal-cell .more { font-size: 9px; color: #4338ca; margin-top: 1px; }
 
   /* 一覧 */
   .toolbar-row { display: flex; gap: 8px; margin: 12px 0; align-items: center; }
@@ -556,16 +559,16 @@ function renderCalendar() {
     if (c.otherMonth) classes.push("other-month");
     if (isToday) classes.push("today");
     if (events.length) classes.push("has-events");
-    const dots = events.slice(0,3).map(ev => {
+    const titleLines = events.slice(0,2).map(ev => {
       const mark = findMark(ev.mark);
       const color = mark ? mark.color : "#4338ca";
-      return `<span class="dot" style="background:${escapeHtml(color)};"></span>`;
+      return `<div class="cal-event-title" style="background:${escapeHtml(color)};">${escapeHtml(ev.title)}</div>`;
     }).join("");
     return `
       <div class="${classes.join(' ')}" onclick="openDayModal('${c.key}')">
-        <div>${c.day}</div>
-        ${events.length ? `<div class="dot-row">${dots}</div>` : ""}
-        ${events.length > 3 ? `<div class="more">+${events.length-3}</div>` : ""}
+        <div class="day-num">${c.day}</div>
+        ${titleLines}
+        ${events.length > 2 ? `<div class="more">+${events.length-2}件</div>` : ""}
       </div>
     `;
   }).join("");
