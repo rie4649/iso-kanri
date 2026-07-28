@@ -199,6 +199,7 @@
     <div class="main-tab" data-section="list">📋 年間記録</div>
     <div class="main-tab" data-section="waterTest">🧪 水質検査</div>
     <div class="main-tab" data-section="noiseCheck">🔊 騒音チェック</div>
+    <div class="main-tab" data-section="recycle">♻️ 資源再生</div>
     <div class="main-tab" data-section="master">⚙️ マスター管理</div>
   </div>
 </header>
@@ -251,6 +252,17 @@
   <div class="year-filter-tabs" id="noiseCheckYearTabs"></div>
   <div class="list" id="noiseCheckListContainer"><div class="loading">読み込み中...</div></div>
   <button class="fab" id="addNoiseCheckBtn" style="background:#ea580c;">＋</button>
+</div>
+
+<!-- ================= 資源再生セクション ================= -->
+<div class="section" id="section-recycle">
+  <div class="toolbar-row">
+    <div class="search-box"><input type="text" id="recycleSearchInput" placeholder="年度で検索（例：2024）"></div>
+    <button class="jpeg-btn" id="jpegBtnRecycle">🖨️ JPEG</button>
+  </div>
+  <div class="list" id="recycleListContainer"><div class="loading">読み込み中...</div></div>
+  <div id="recycleAvgSection"></div>
+  <button class="fab" id="addRecycleBtn" style="background:#16a34a;">＋</button>
 </div>
 
 <!-- ================= マスター管理セクション ================= -->
@@ -395,6 +407,37 @@
   </div>
 </div>
 
+<!-- 資源再生 追加/編集モーダル -->
+<div class="modal-overlay" id="recycleModalOverlay">
+  <div class="modal">
+    <h2 id="recycleModalTitle">資源再生実績を追加</h2>
+    <form id="recycleForm">
+      <input type="hidden" id="recycleEditId">
+      <div class="field">
+        <label>年度</label>
+        <input type="text" id="recycleYear" placeholder="例：2024-2025" required>
+      </div>
+      <div class="field">
+        <label>原料量（kg）</label>
+        <input type="number" step="0.01" id="recycleRawKg" placeholder="例：1034140" required>
+      </div>
+      <div class="field">
+        <label>ブリケット化量（kg）</label>
+        <input type="number" step="0.01" id="recycleBriquetteKg" placeholder="例：721480" required>
+      </div>
+      <div class="field">
+        <label>備考</label>
+        <textarea id="recycleNotes" placeholder="メモ"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="recycleCancelBtn">キャンセル</button>
+        <button type="button" class="btn-cancel btn-delete-inline" id="recycleDeleteBtnInModal" style="display:none;">削除</button>
+        <button type="submit" class="btn-save" style="background:#16a34a;">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -412,12 +455,14 @@ const MARK_COLLECTION = "eventMarks";
 const WATERTEST_COLLECTION = "waterTests";
 const WATERTEST_ITEM_COLLECTION = "waterTestItems";
 const NOISECHECK_COLLECTION = "noiseChecks";
+const RECYCLE_COLLECTION = "recycleRecords";
 
 let allEvents = [];
 let allMarks = [];
 let allWaterTests = [];
 let allWaterItems = [];
 let allNoiseChecks = [];
+let allRecycleRecords = [];
 let currentEventSearch = "";
 let currentYearFilter = "all";
 let currentMarkFilter = "all";
@@ -425,6 +470,7 @@ let currentWaterTestSearch = "";
 let currentWaterTestYear = "all";
 let currentNoiseCheckSearch = "";
 let currentNoiseCheckYear = "all";
+let currentRecycleSearch = "";
 let viewYear, viewMonth; // 0-indexed month
 let selectedDayKey = null;
 
@@ -449,6 +495,7 @@ document.querySelectorAll(".main-tab").forEach(tab => {
     else if (tab.dataset.section === "calendar") renderCalendar();
     else if (tab.dataset.section === "waterTest") renderWaterTestList();
     else if (tab.dataset.section === "noiseCheck") renderNoiseCheckList();
+    else if (tab.dataset.section === "recycle") renderRecycleList();
   });
 });
 
@@ -1083,6 +1130,157 @@ document.getElementById("jpegBtnNoiseCheck").addEventListener("click", () => {
   exportTableAsJpeg("騒音チェック記録", ["検査日","検査場所","dB","判定"], rows, "騒音チェック記録");
 });
 
+// ================= 資源再生 =================
+function subscribeRecycleRecords() {
+  db.collection(RECYCLE_COLLECTION).onSnapshot(snapshot => {
+    allRecycleRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderRecycleList();
+  }, err => {
+    document.getElementById("recycleListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
+  });
+}
+
+const recycleOverlay = document.getElementById("recycleModalOverlay");
+const recycleFormEl = document.getElementById("recycleForm");
+
+document.getElementById("addRecycleBtn").addEventListener("click", () => {
+  recycleFormEl.reset();
+  document.getElementById("recycleEditId").value = "";
+  document.getElementById("recycleModalTitle").textContent = "資源再生実績を追加";
+  document.getElementById("recycleDeleteBtnInModal").style.display = "none";
+  recycleOverlay.classList.add("open");
+});
+document.getElementById("recycleCancelBtn").addEventListener("click", () => recycleOverlay.classList.remove("open"));
+recycleOverlay.addEventListener("click", (e) => { if (e.target === recycleOverlay) recycleOverlay.classList.remove("open"); });
+
+window.openEditRecycle = function(id) {
+  const r = allRecycleRecords.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById("recycleEditId").value = id;
+  document.getElementById("recycleYear").value = r.year || "";
+  document.getElementById("recycleRawKg").value = r.rawKg !== undefined ? r.rawKg : "";
+  document.getElementById("recycleBriquetteKg").value = r.briquetteKg !== undefined ? r.briquetteKg : "";
+  document.getElementById("recycleNotes").value = r.notes || "";
+  document.getElementById("recycleModalTitle").textContent = "資源再生実績を編集";
+  document.getElementById("recycleDeleteBtnInModal").style.display = "block";
+  recycleOverlay.classList.add("open");
+};
+document.getElementById("recycleDeleteBtnInModal").addEventListener("click", () => {
+  const id = document.getElementById("recycleEditId").value;
+  if (!id) return;
+  if (!confirm("この資源再生実績を削除しますか？")) return;
+  db.collection(RECYCLE_COLLECTION).doc(id).delete();
+  recycleOverlay.classList.remove("open");
+});
+window.deleteRecycle = function(id) {
+  if (!confirm("この資源再生実績を削除しますか？")) return;
+  db.collection(RECYCLE_COLLECTION).doc(id).delete();
+};
+
+recycleFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("recycleEditId").value;
+  const data = {
+    year: document.getElementById("recycleYear").value.trim(),
+    rawKg: Number(document.getElementById("recycleRawKg").value) || 0,
+    briquetteKg: Number(document.getElementById("recycleBriquetteKg").value) || 0,
+    notes: document.getElementById("recycleNotes").value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (id) {
+      await db.collection(RECYCLE_COLLECTION).doc(id).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(RECYCLE_COLLECTION).add(data);
+    }
+    recycleOverlay.classList.remove("open");
+  } catch (err) { alert("保存エラー: " + err.message); }
+});
+
+function recycleRate(r) {
+  if (!r.rawKg) return null;
+  return (r.briquetteKg / r.rawKg) * 100;
+}
+
+function renderRecycleList() {
+  const container = document.getElementById("recycleListContainer");
+  let filtered = allRecycleRecords;
+  if (currentRecycleSearch.trim()) {
+    const q = currentRecycleSearch.trim().toLowerCase();
+    filtered = filtered.filter(r => (r.year||"").toLowerCase().includes(q));
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する資源再生実績がありません</div>'; return; }
+
+  const sortedAsc = [...filtered].sort((a,b) => (a.year||"").localeCompare(b.year||""));
+  const sortedDesc = [...sortedAsc].reverse();
+
+  container.innerHTML = sortedDesc.map((r, idx) => {
+    const rate = recycleRate(r);
+    // 前年度との比較(降順リストなので次の要素が前年度)
+    const prev = sortedDesc[idx+1];
+    const prevRate = prev ? recycleRate(prev) : null;
+    let trendHtml = "";
+    if (rate !== null && prevRate !== null) {
+      const diff = rate - prevRate;
+      const arrow = diff > 0.05 ? "▲" : diff < -0.05 ? "▼" : "→";
+      const color = diff > 0.05 ? "#15803d" : diff < -0.05 ? "#b91c1c" : "#8b8b9e";
+      trendHtml = `<span style="color:${color};font-weight:700;margin-left:8px;">${arrow} 前年度比 ${diff>=0?"+":""}${diff.toFixed(1)}pt</span>`;
+    }
+    return `
+      <div class="event-card" style="border-left-color:#16a34a;">
+        <div class="event-date">${escapeHtml(r.year || "-")}年度</div>
+        <div class="event-title">再生率 ${rate !== null ? rate.toFixed(1) + "%" : "-"} ${trendHtml}</div>
+        <div class="water-test-card-items">
+          <div class="water-test-item-line"><span>原料量</span><span>${Number(r.rawKg||0).toLocaleString()} kg</span></div>
+          <div class="water-test-item-line"><span>ブリケット化量</span><span>${Number(r.briquetteKg||0).toLocaleString()} kg</span></div>
+        </div>
+        ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
+        <div class="event-actions">
+          <button class="btn-edit" onclick="openEditRecycle('${r.id}')">編集</button>
+          <button class="btn-delete" onclick="deleteRecycle('${r.id}')">削除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // 3年移動平均
+  const avgSection = document.getElementById("recycleAvgSection");
+  if (sortedAsc.length >= 3) {
+    const avgRows = [];
+    for (let i = 0; i <= sortedAsc.length - 3; i++) {
+      const windowItems = sortedAsc.slice(i, i+3);
+      const rates = windowItems.map(recycleRate).filter(v => v !== null);
+      const avg = rates.length ? rates.reduce((a,b)=>a+b,0) / rates.length : null;
+      avgRows.push({ range: `${windowItems[0].year} 〜 ${windowItems[2].year}`, avg });
+    }
+    avgSection.innerHTML = `
+      <div class="year-group-label">3年度平均再生率</div>
+      <div class="event-card" style="border-left-color:#16a34a;">
+        ${avgRows.map(a => `
+          <div class="water-test-item-line"><span>${escapeHtml(a.range)}</span><span>${a.avg !== null ? a.avg.toFixed(1) + "%" : "-"}</span></div>
+        `).join("")}
+      </div>
+    `;
+  } else {
+    avgSection.innerHTML = "";
+  }
+}
+document.getElementById("recycleSearchInput").addEventListener("input", (e) => { currentRecycleSearch = e.target.value; renderRecycleList(); });
+document.getElementById("jpegBtnRecycle").addEventListener("click", () => {
+  let list = [...allRecycleRecords];
+  if (currentRecycleSearch.trim()) {
+    const q = currentRecycleSearch.trim().toLowerCase();
+    list = list.filter(r => (r.year||"").toLowerCase().includes(q));
+  }
+  list.sort((a,b) => (b.year||"").localeCompare(a.year||""));
+  const rows = list.map(r => {
+    const rate = recycleRate(r);
+    return [escapeHtml(r.year||"-"), Number(r.rawKg||0).toLocaleString(), Number(r.briquetteKg||0).toLocaleString(), rate!==null?rate.toFixed(1)+"%":"-"];
+  });
+  exportTableAsJpeg("資源再生リサイクル実績", ["年度","原料量(kg)","ブリケット化量(kg)","再生率"], rows, "資源再生リサイクル実績");
+});
+
 // ---- 出来事追加/編集モーダル ----
 const eventOverlay = document.getElementById("eventModalOverlay");
 const eventFormEl = document.getElementById("eventForm");
@@ -1220,6 +1418,7 @@ subscribeMarks();
 subscribeWaterTests();
 subscribeWaterItems();
 subscribeNoiseChecks();
+subscribeRecycleRecords();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
