@@ -202,7 +202,7 @@
     <div class="main-tab" data-section="list">📋 年間記録</div>
     <div class="main-tab" data-section="waterTest">🧪 水質検査</div>
     <div class="main-tab" data-section="noiseCheck">🔊 騒音チェック</div>
-    <div class="main-tab" data-section="recycle">♻️ 資源再生</div>
+    <div class="main-tab" data-section="metal">🔩 金属拾い出し</div>
     <div class="main-tab" data-section="master">⚙️ マスター管理</div>
   </div>
 </header>
@@ -262,15 +262,14 @@
   <button class="fab" id="addNoiseCheckBtn" style="background:#ea580c;">＋</button>
 </div>
 
-<!-- ================= 資源再生セクション ================= -->
-<div class="section" id="section-recycle">
+<!-- ================= 金属拾い出しセクション ================= -->
+<div class="section" id="section-metal">
   <div class="toolbar-row">
-    <div class="search-box"><input type="text" id="recycleSearchInput" placeholder="年度で検索（例：2024）"></div>
-    <button class="jpeg-btn" id="jpegBtnRecycle">🖨️ JPEG</button>
+    <div class="search-box"><input type="text" id="metalSearchInput" placeholder="年度で検索（例：2024）"></div>
+    <button class="jpeg-btn" id="jpegBtnMetal">🖨️ JPEG</button>
   </div>
-  <div class="list" id="recycleListContainer"><div class="loading">読み込み中...</div></div>
-  <div id="recycleAvgSection"></div>
-  <button class="fab" id="addRecycleBtn" style="background:#16a34a;">＋</button>
+  <div class="list" id="metalListContainer"><div class="loading">読み込み中...</div></div>
+  <button class="fab" id="addMetalBtn" style="background:#78716c;">＋</button>
 </div>
 
 <!-- ================= マスター管理セクション ================= -->
@@ -278,6 +277,7 @@
   <div class="master-sub-tabs">
     <div class="master-sub-tab active" data-master="mark">🏷️ 出来事マーク</div>
     <div class="master-sub-tab" data-master="waterItem">🧪 検査項目</div>
+    <div class="master-sub-tab" data-master="metalItem">🔩 金属品目</div>
   </div>
 
   <div class="master-panel active" id="masterPanel-mark">
@@ -303,6 +303,21 @@
         <input type="text" id="newWaterItem" placeholder="例：pH、濁度、残留塩素">
       </div>
       <button type="button" class="submit-btn" id="addWaterItemBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="master-panel" id="masterPanel-metalItem">
+    <div id="metalItemList" style="margin-top:14px;"></div>
+    <div class="add-master-form">
+      <div class="field">
+        <label>品目名</label>
+        <input type="text" id="newMetalItemName" placeholder="例：鉄くず、アルミ、銅線">
+      </div>
+      <div class="field">
+        <label>単価（円/kg）</label>
+        <input type="number" step="0.01" id="newMetalItemPrice" placeholder="例：25">
+      </div>
+      <button type="button" class="submit-btn" id="addMetalItemBtn">追加</button>
     </div>
   </div>
 </div>
@@ -415,32 +430,29 @@
   </div>
 </div>
 
-<!-- 資源再生 追加/編集モーダル -->
-<div class="modal-overlay" id="recycleModalOverlay">
+<!-- 金属拾い出し 追加/編集モーダル -->
+<div class="modal-overlay" id="metalModalOverlay">
   <div class="modal">
-    <h2 id="recycleModalTitle">資源再生実績を追加</h2>
-    <form id="recycleForm">
-      <input type="hidden" id="recycleEditId">
+    <h2 id="metalModalTitle">拾い出し記録を追加</h2>
+    <form id="metalForm">
+      <input type="hidden" id="metalEditId">
       <div class="field">
-        <label>年度</label>
-        <input type="text" id="recycleYear" placeholder="例：2024-2025" required>
+        <label>年月</label>
+        <input type="month" id="metalYearMonth" required>
       </div>
       <div class="field">
-        <label>原料量（kg）</label>
-        <input type="number" step="0.01" id="recycleRawKg" placeholder="例：1034140" required>
-      </div>
-      <div class="field">
-        <label>ブリケット化量（kg）</label>
-        <input type="number" step="0.01" id="recycleBriquetteKg" placeholder="例：721480" required>
+        <label>品目</label>
+        <div id="metalItemsContainer"></div>
+        <button type="button" class="jpeg-btn" style="width:100%;margin-top:8px;" id="addMetalItemRowBtn">＋ 品目を追加</button>
       </div>
       <div class="field">
         <label>備考</label>
-        <textarea id="recycleNotes" placeholder="メモ"></textarea>
+        <textarea id="metalNotes" placeholder="メモ"></textarea>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-cancel" id="recycleCancelBtn">キャンセル</button>
-        <button type="button" class="btn-cancel btn-delete-inline" id="recycleDeleteBtnInModal" style="display:none;">削除</button>
-        <button type="submit" class="btn-save" style="background:#16a34a;">保存</button>
+        <button type="button" class="btn-cancel" id="metalCancelBtn">キャンセル</button>
+        <button type="button" class="btn-cancel btn-delete-inline" id="metalDeleteBtnInModal" style="display:none;">削除</button>
+        <button type="submit" class="btn-save" style="background:#78716c;">保存</button>
       </div>
     </form>
   </div>
@@ -463,14 +475,16 @@ const MARK_COLLECTION = "eventMarks";
 const WATERTEST_COLLECTION = "waterTests";
 const WATERTEST_ITEM_COLLECTION = "waterTestItems";
 const NOISECHECK_COLLECTION = "noiseChecks";
-const RECYCLE_COLLECTION = "recycleRecords";
+const METAL_ITEM_COLLECTION = "metalItems";
+const METAL_RECORD_COLLECTION = "metalRecords";
 
 let allEvents = [];
 let allMarks = [];
 let allWaterTests = [];
 let allWaterItems = [];
 let allNoiseChecks = [];
-let allRecycleRecords = [];
+let allMetalItems = [];
+let allMetalRecords = [];
 let currentEventSearch = "";
 let currentYearFilter = "all";
 let currentMarkFilter = "all";
@@ -478,7 +492,7 @@ let currentWaterTestSearch = "";
 let currentWaterTestYear = "all";
 let currentNoiseCheckSearch = "";
 let currentNoiseCheckYear = "all";
-let currentRecycleSearch = "";
+let currentMetalSearch = "";
 let viewYear, viewMonth; // 0-indexed month
 let selectedDayKey = null;
 
@@ -503,7 +517,7 @@ document.querySelectorAll(".main-tab").forEach(tab => {
     else if (tab.dataset.section === "calendar") renderCalendar();
     else if (tab.dataset.section === "waterTest") renderWaterTestList();
     else if (tab.dataset.section === "noiseCheck") renderNoiseCheckList();
-    else if (tab.dataset.section === "recycle") renderRecycleList();
+    else if (tab.dataset.section === "metal") renderMetalList();
   });
 });
 
@@ -811,6 +825,219 @@ document.getElementById("addWaterItemBtn").addEventListener("click", async () =>
   if (!name) { alert("検査項目名を入力してください"); return; }
   await db.collection(WATERTEST_ITEM_COLLECTION).add({ name });
   document.getElementById("newWaterItem").value = "";
+});
+
+// ---- 金属品目マスター ----
+function subscribeMetalItems() {
+  db.collection(METAL_ITEM_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+    allMetalItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderMetalItemList();
+    renderMetalList();
+  });
+}
+function renderMetalItemList() {
+  const el = document.getElementById("metalItemList");
+  if (!allMetalItems.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ品目が登録されていません</div>'; return; }
+  el.innerHTML = allMetalItems.map(item => `
+    <div class="master-item">
+      <div class="master-item-info"><span>${escapeHtml(item.name)}（${item.unitPrice||0}円/kg）</span></div>
+      <div class="master-item-actions"><button onclick="deleteMetalItem('${item.id}')">削除</button></div>
+    </div>
+  `).join("");
+}
+window.deleteMetalItem = function(id) {
+  if (!confirm("この品目を削除しますか？")) return;
+  db.collection(METAL_ITEM_COLLECTION).doc(id).delete();
+};
+document.getElementById("addMetalItemBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newMetalItemName").value.trim();
+  const unitPrice = Number(document.getElementById("newMetalItemPrice").value) || 0;
+  if (!name) { alert("品目名を入力してください"); return; }
+  await db.collection(METAL_ITEM_COLLECTION).add({ name, unitPrice });
+  document.getElementById("newMetalItemName").value = "";
+  document.getElementById("newMetalItemPrice").value = "";
+});
+
+// ================= 金属拾い出し =================
+function subscribeMetalRecords() {
+  db.collection(METAL_RECORD_COLLECTION).onSnapshot(snapshot => {
+    allMetalRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderMetalList();
+  }, err => {
+    document.getElementById("metalListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
+  });
+}
+
+function addMetalItemRow(prefill) {
+  const container = document.getElementById("metalItemsContainer");
+  const row = document.createElement("div");
+  row.className = "water-item-row";
+  const options = allMetalItems.map(i => `<option value="${escapeHtml(i.name)}" data-price="${i.unitPrice||0}">${escapeHtml(i.name)}</option>`).join("");
+  row.innerHTML = `
+    <div class="field">
+      <label>品目</label>
+      <select class="metal-item-name">
+        <option value="">選択</option>
+        ${options}
+      </select>
+    </div>
+    <div class="field">
+      <label>数量(kg)</label>
+      <input type="number" step="0.1" class="metal-item-qty" placeholder="例：120">
+    </div>
+    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove()">✕</button>
+  `;
+  container.appendChild(row);
+  if (prefill) {
+    row.querySelector(".metal-item-name").value = prefill.name || "";
+    row.querySelector(".metal-item-qty").value = prefill.quantity || "";
+  }
+}
+document.getElementById("addMetalItemRowBtn").addEventListener("click", () => addMetalItemRow());
+
+function collectMetalItems() {
+  return Array.from(document.querySelectorAll("#metalItemsContainer .water-item-row")).map(row => {
+    const nameSelect = row.querySelector(".metal-item-name");
+    const name = nameSelect.value;
+    const qty = Number(row.querySelector(".metal-item-qty").value) || 0;
+    const selectedOption = nameSelect.options[nameSelect.selectedIndex];
+    const unitPrice = selectedOption ? Number(selectedOption.dataset.price || 0) : 0;
+    return { name, quantity: qty, unitPrice, amount: qty * unitPrice };
+  }).filter(it => it.name);
+}
+
+const metalOverlay = document.getElementById("metalModalOverlay");
+const metalFormEl = document.getElementById("metalForm");
+
+document.getElementById("addMetalBtn").addEventListener("click", () => {
+  metalFormEl.reset();
+  document.getElementById("metalEditId").value = "";
+  document.getElementById("metalModalTitle").textContent = "拾い出し記録を追加";
+  document.getElementById("metalDeleteBtnInModal").style.display = "none";
+  document.getElementById("metalItemsContainer").innerHTML = "";
+  addMetalItemRow();
+  metalOverlay.classList.add("open");
+});
+document.getElementById("metalCancelBtn").addEventListener("click", () => metalOverlay.classList.remove("open"));
+metalOverlay.addEventListener("click", (e) => { if (e.target === metalOverlay) metalOverlay.classList.remove("open"); });
+
+window.openEditMetal = function(id) {
+  const r = allMetalRecords.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById("metalEditId").value = id;
+  document.getElementById("metalYearMonth").value = r.yearMonth || "";
+  document.getElementById("metalNotes").value = r.notes || "";
+  document.getElementById("metalItemsContainer").innerHTML = "";
+  (r.items && r.items.length ? r.items : [{}]).forEach(it => addMetalItemRow(it));
+  document.getElementById("metalModalTitle").textContent = "拾い出し記録を編集";
+  document.getElementById("metalDeleteBtnInModal").style.display = "block";
+  metalOverlay.classList.add("open");
+};
+document.getElementById("metalDeleteBtnInModal").addEventListener("click", () => {
+  const id = document.getElementById("metalEditId").value;
+  if (!id) return;
+  if (!confirm("この記録を削除しますか？")) return;
+  db.collection(METAL_RECORD_COLLECTION).doc(id).delete();
+  metalOverlay.classList.remove("open");
+});
+window.deleteMetal = function(id) {
+  if (!confirm("この記録を削除しますか？")) return;
+  db.collection(METAL_RECORD_COLLECTION).doc(id).delete();
+};
+
+metalFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("metalEditId").value;
+  const items = collectMetalItems();
+  const data = {
+    yearMonth: document.getElementById("metalYearMonth").value,
+    items,
+    total: items.reduce((sum, it) => sum + it.amount, 0),
+    notes: document.getElementById("metalNotes").value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (id) {
+      await db.collection(METAL_RECORD_COLLECTION).doc(id).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(METAL_RECORD_COLLECTION).add(data);
+    }
+    metalOverlay.classList.remove("open");
+  } catch (err) { alert("保存エラー: " + err.message); }
+});
+
+// 8月始まり年度(FY)の判定: yearMonth "YYYY-MM" を渡すと "YYYY-YYYY+1" を返す
+function metalFiscalYear(yearMonth) {
+  if (!yearMonth) return "未設定";
+  const [y, m] = yearMonth.split("-").map(Number);
+  return (m >= 8) ? `${y}-${y+1}` : `${y-1}-${y}`;
+}
+
+function renderMetalList() {
+  const container = document.getElementById("metalListContainer");
+  let filtered = allMetalRecords;
+  if (currentMetalSearch.trim()) {
+    const q = currentMetalSearch.trim();
+    filtered = filtered.filter(r => metalFiscalYear(r.yearMonth).includes(q));
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する記録がありません</div>'; return; }
+
+  const groups = {};
+  filtered.forEach(r => {
+    const fy = metalFiscalYear(r.yearMonth);
+    if (!groups[fy]) groups[fy] = [];
+    groups[fy].push(r);
+  });
+  const fys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  container.innerHTML = fys.map(fy => {
+    const records = groups[fy].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
+    let h1 = 0, h2 = 0; // 上半期(8-1月)/下半期(2-7月)
+    records.forEach(r => {
+      const m = Number((r.yearMonth||"").split("-")[1]);
+      if (m >= 8 || m <= 1) h1 += (r.total||0); else h2 += (r.total||0);
+    });
+    const annualTotal = h1 + h2;
+    const rowsHtml = records.map(r => {
+      const itemsText = (r.items||[]).map(it => `${it.name} ${it.quantity}kg`).join("・");
+      return `
+        <div class="event-card" style="border-left-color:#78716c;">
+          <div class="event-date">${r.yearMonth || "-"}</div>
+          <div class="event-title">${Number(r.total||0).toLocaleString()} 円</div>
+          ${itemsText ? `<div class="event-notes">${escapeHtml(itemsText)}</div>` : ""}
+          ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
+          <div class="event-actions">
+            <button class="btn-edit" onclick="openEditMetal('${r.id}')">編集</button>
+            <button class="btn-delete" onclick="deleteMetal('${r.id}')">削除</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+    return `
+      <div class="year-group-label">${fy}年度</div>
+      <div class="event-card" style="border-left-color:#78716c;background:#f7f7f5;">
+        <div class="water-test-item-line"><span>上半期計（8〜1月）</span><span>${h1.toLocaleString()} 円</span></div>
+        <div class="water-test-item-line"><span>下半期計（2〜7月）</span><span>${h2.toLocaleString()} 円</span></div>
+        <div class="water-test-item-line" style="font-weight:800;"><span>年間合計</span><span>${annualTotal.toLocaleString()} 円</span></div>
+      </div>
+      ${rowsHtml}
+    `;
+  }).join("");
+}
+document.getElementById("metalSearchInput").addEventListener("input", (e) => { currentMetalSearch = e.target.value; renderMetalList(); });
+document.getElementById("jpegBtnMetal").addEventListener("click", () => {
+  let list = [...allMetalRecords];
+  if (currentMetalSearch.trim()) {
+    const q = currentMetalSearch.trim();
+    list = list.filter(r => metalFiscalYear(r.yearMonth).includes(q));
+  }
+  list.sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
+  const rows = list.map(r => {
+    const itemsText = (r.items||[]).map(it => `${it.name}(${it.quantity}kg)`).join("・");
+    return [metalFiscalYear(r.yearMonth), r.yearMonth||"-", escapeHtml(itemsText), Number(r.total||0).toLocaleString()+"円"];
+  });
+  exportTableAsJpeg("金属拾い出し実績", ["年度","年月","品目内訳","金額"], rows, "金属拾い出し実績");
 });
 
 // ---- 検査項目の行(フォーム内で動的に追加/削除) ----
@@ -1157,157 +1384,6 @@ document.getElementById("jpegBtnNoiseCheck").addEventListener("click", () => {
   exportTableAsJpeg("騒音チェック記録", ["検査日","検査場所","dB","判定"], rows, "騒音チェック記録");
 });
 
-// ================= 資源再生 =================
-function subscribeRecycleRecords() {
-  db.collection(RECYCLE_COLLECTION).onSnapshot(snapshot => {
-    allRecycleRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRecycleList();
-  }, err => {
-    document.getElementById("recycleListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
-  });
-}
-
-const recycleOverlay = document.getElementById("recycleModalOverlay");
-const recycleFormEl = document.getElementById("recycleForm");
-
-document.getElementById("addRecycleBtn").addEventListener("click", () => {
-  recycleFormEl.reset();
-  document.getElementById("recycleEditId").value = "";
-  document.getElementById("recycleModalTitle").textContent = "資源再生実績を追加";
-  document.getElementById("recycleDeleteBtnInModal").style.display = "none";
-  recycleOverlay.classList.add("open");
-});
-document.getElementById("recycleCancelBtn").addEventListener("click", () => recycleOverlay.classList.remove("open"));
-recycleOverlay.addEventListener("click", (e) => { if (e.target === recycleOverlay) recycleOverlay.classList.remove("open"); });
-
-window.openEditRecycle = function(id) {
-  const r = allRecycleRecords.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById("recycleEditId").value = id;
-  document.getElementById("recycleYear").value = r.year || "";
-  document.getElementById("recycleRawKg").value = r.rawKg !== undefined ? r.rawKg : "";
-  document.getElementById("recycleBriquetteKg").value = r.briquetteKg !== undefined ? r.briquetteKg : "";
-  document.getElementById("recycleNotes").value = r.notes || "";
-  document.getElementById("recycleModalTitle").textContent = "資源再生実績を編集";
-  document.getElementById("recycleDeleteBtnInModal").style.display = "block";
-  recycleOverlay.classList.add("open");
-};
-document.getElementById("recycleDeleteBtnInModal").addEventListener("click", () => {
-  const id = document.getElementById("recycleEditId").value;
-  if (!id) return;
-  if (!confirm("この資源再生実績を削除しますか？")) return;
-  db.collection(RECYCLE_COLLECTION).doc(id).delete();
-  recycleOverlay.classList.remove("open");
-});
-window.deleteRecycle = function(id) {
-  if (!confirm("この資源再生実績を削除しますか？")) return;
-  db.collection(RECYCLE_COLLECTION).doc(id).delete();
-};
-
-recycleFormEl.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const id = document.getElementById("recycleEditId").value;
-  const data = {
-    year: document.getElementById("recycleYear").value.trim(),
-    rawKg: Number(document.getElementById("recycleRawKg").value) || 0,
-    briquetteKg: Number(document.getElementById("recycleBriquetteKg").value) || 0,
-    notes: document.getElementById("recycleNotes").value.trim(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  try {
-    if (id) {
-      await db.collection(RECYCLE_COLLECTION).doc(id).update(data);
-    } else {
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection(RECYCLE_COLLECTION).add(data);
-    }
-    recycleOverlay.classList.remove("open");
-  } catch (err) { alert("保存エラー: " + err.message); }
-});
-
-function recycleRate(r) {
-  if (!r.rawKg) return null;
-  return (r.briquetteKg / r.rawKg) * 100;
-}
-
-function renderRecycleList() {
-  const container = document.getElementById("recycleListContainer");
-  let filtered = allRecycleRecords;
-  if (currentRecycleSearch.trim()) {
-    const q = currentRecycleSearch.trim().toLowerCase();
-    filtered = filtered.filter(r => (r.year||"").toLowerCase().includes(q));
-  }
-  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する資源再生実績がありません</div>'; return; }
-
-  const sortedAsc = [...filtered].sort((a,b) => (a.year||"").localeCompare(b.year||""));
-  const sortedDesc = [...sortedAsc].reverse();
-
-  container.innerHTML = sortedDesc.map((r, idx) => {
-    const rate = recycleRate(r);
-    // 前年度との比較(降順リストなので次の要素が前年度)
-    const prev = sortedDesc[idx+1];
-    const prevRate = prev ? recycleRate(prev) : null;
-    let trendHtml = "";
-    if (rate !== null && prevRate !== null) {
-      const diff = rate - prevRate;
-      const arrow = diff > 0.05 ? "▲" : diff < -0.05 ? "▼" : "→";
-      const color = diff > 0.05 ? "#15803d" : diff < -0.05 ? "#b91c1c" : "#8b8b9e";
-      trendHtml = `<span style="color:${color};font-weight:700;margin-left:8px;">${arrow} 前年度比 ${diff>=0?"+":""}${diff.toFixed(1)}pt</span>`;
-    }
-    return `
-      <div class="event-card" style="border-left-color:#16a34a;">
-        <div class="event-date">${escapeHtml(r.year || "-")}年度</div>
-        <div class="event-title">再生率 ${rate !== null ? rate.toFixed(1) + "%" : "-"} ${trendHtml}</div>
-        <div class="water-test-card-items">
-          <div class="water-test-item-line"><span>原料量</span><span>${Number(r.rawKg||0).toLocaleString()} kg</span></div>
-          <div class="water-test-item-line"><span>ブリケット化量</span><span>${Number(r.briquetteKg||0).toLocaleString()} kg</span></div>
-        </div>
-        ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
-        <div class="event-actions">
-          <button class="btn-edit" onclick="openEditRecycle('${r.id}')">編集</button>
-          <button class="btn-delete" onclick="deleteRecycle('${r.id}')">削除</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  // 3年移動平均
-  const avgSection = document.getElementById("recycleAvgSection");
-  if (sortedAsc.length >= 3) {
-    const avgRows = [];
-    for (let i = 0; i <= sortedAsc.length - 3; i++) {
-      const windowItems = sortedAsc.slice(i, i+3);
-      const rates = windowItems.map(recycleRate).filter(v => v !== null);
-      const avg = rates.length ? rates.reduce((a,b)=>a+b,0) / rates.length : null;
-      avgRows.push({ range: `${windowItems[0].year} 〜 ${windowItems[2].year}`, avg });
-    }
-    avgSection.innerHTML = `
-      <div class="year-group-label">3年度平均再生率</div>
-      <div class="event-card" style="border-left-color:#16a34a;">
-        ${avgRows.map(a => `
-          <div class="water-test-item-line"><span>${escapeHtml(a.range)}</span><span>${a.avg !== null ? a.avg.toFixed(1) + "%" : "-"}</span></div>
-        `).join("")}
-      </div>
-    `;
-  } else {
-    avgSection.innerHTML = "";
-  }
-}
-document.getElementById("recycleSearchInput").addEventListener("input", (e) => { currentRecycleSearch = e.target.value; renderRecycleList(); });
-document.getElementById("jpegBtnRecycle").addEventListener("click", () => {
-  let list = [...allRecycleRecords];
-  if (currentRecycleSearch.trim()) {
-    const q = currentRecycleSearch.trim().toLowerCase();
-    list = list.filter(r => (r.year||"").toLowerCase().includes(q));
-  }
-  list.sort((a,b) => (b.year||"").localeCompare(a.year||""));
-  const rows = list.map(r => {
-    const rate = recycleRate(r);
-    return [escapeHtml(r.year||"-"), Number(r.rawKg||0).toLocaleString(), Number(r.briquetteKg||0).toLocaleString(), rate!==null?rate.toFixed(1)+"%":"-"];
-  });
-  exportTableAsJpeg("資源再生リサイクル実績", ["年度","原料量(kg)","ブリケット化量(kg)","再生率"], rows, "資源再生リサイクル実績");
-});
-
 // ---- 出来事追加/編集モーダル ----
 const eventOverlay = document.getElementById("eventModalOverlay");
 const eventFormEl = document.getElementById("eventForm");
@@ -1445,7 +1521,8 @@ subscribeMarks();
 subscribeWaterTests();
 subscribeWaterItems();
 subscribeNoiseChecks();
-subscribeRecycleRecords();
+subscribeMetalItems();
+subscribeMetalRecords();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
