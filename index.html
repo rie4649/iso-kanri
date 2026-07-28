@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#4338ca">
+<meta name="translate" content="no">
+<meta http-equiv="Content-Language" content="ja">
+<title>ISO管理</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #f2f2f7; color: #1a1a2e; padding-bottom: 100px;
+  }
+  header {
+    background: linear-gradient(135deg, #4338ca, #312e81); color: #fff; padding: 20px 16px 0;
+    position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  .install-btn {
+    background: rgba(255,255,255,0.15); border: none; color: #fff; font-size: 12px; font-weight: 700;
+    padding: 8px 12px; border-radius: 10px; cursor: pointer; white-space: nowrap;
+  }
+  .main-tabs { display: flex; gap: 8px; padding-bottom: 12px; }
+  .main-tab {
+    flex: 1; text-align: center; padding: 10px; border-radius: 10px 10px 0 0;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
+  .main-tab.active { background: #f2f2f7; color: #4338ca; }
+  .section { display: none; padding: 0 16px; }
+  .section.active { display: block; }
+
+  /* カレンダー */
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between; padding: 16px 0 10px;
+  }
+  .cal-nav button {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid #d9d9e3; background: #fff;
+    font-size: 16px; color: #4338ca; cursor: pointer;
+  }
+  .cal-nav .cal-title { font-size: 17px; font-weight: 800; color: #1a1a2e; }
+  .cal-today-btn {
+    font-size: 12px; color: #4338ca; background: #eef0ff; border: none; border-radius: 8px;
+    padding: 6px 10px; cursor: pointer; font-weight: 700;
+  }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: #8b8b9e; margin-bottom: 6px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-cell {
+    aspect-ratio: 1; border-radius: 10px; background: #fff; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; cursor: pointer; position: relative; border: 1px solid #ececf3;
+    font-size: 13px; color: #1a1a2e;
+  }
+  .cal-cell.other-month { background: #f7f7fa; color: #c3c3d1; }
+  .cal-cell.today { border: 2px solid #4338ca; font-weight: 800; }
+  .cal-cell.has-events { background: #eef0ff; }
+  .cal-cell .dot-row { display: flex; gap: 2px; margin-top: 3px; }
+  .cal-cell .dot { width: 5px; height: 5px; border-radius: 50%; background: #4338ca; }
+  .cal-cell .more { font-size: 9px; color: #4338ca; margin-top: 2px; }
+
+  /* 一覧 */
+  .toolbar-row { display: flex; gap: 8px; margin: 12px 0; align-items: center; }
+  .toolbar-row .search-box { margin: 0; flex: 1; }
+  .search-box input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d9d9e3; font-size: 14px; background: #fff; }
+  .jpeg-btn {
+    flex-shrink: 0; background: #fff; border: 1px solid #d9d9e3; border-radius: 10px;
+    padding: 0 14px; height: 40px; font-size: 13px; font-weight: 600; color: #4338ca; cursor: pointer;
+  }
+  .year-filter-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; }
+  .year-filter-tab {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid #d9d9e3;
+    font-size: 13px; white-space: nowrap; cursor: pointer; color: #52526b;
+  }
+  .year-filter-tab.active { background: #4338ca; color: #fff; border-color: #4338ca; }
+
+  .list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
+  .year-group-label { font-size: 13px; font-weight: 800; color: #4338ca; margin: 14px 0 4px; }
+  .event-card {
+    background: #fff; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border-left: 5px solid #4338ca;
+  }
+  .event-date { font-size: 11.5px; color: #8b8b9e; font-weight: 700; }
+  .event-title { font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .event-notes { font-size: 12.5px; color: #52526b; margin-top: 6px; white-space: pre-wrap; }
+  .event-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .event-actions button { flex: 1; padding: 7px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; }
+  .btn-edit { background: #eef0ff; color: #4338ca; }
+  .btn-delete { background: #fee2e2; color: #b91c1c; }
+
+  .empty-state { text-align: center; color: #9a9ab0; padding: 50px 20px; font-size: 14px; }
+
+  .fab {
+    position: fixed; right: 20px; bottom: 24px; width: 56px; height: 56px; border-radius: 50%;
+    background: #4338ca; color: #fff; font-size: 28px; border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25); cursor: pointer; z-index: 30;
+  }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 50; align-items: flex-end; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; width: 100%; max-width: 640px; margin: 0 auto; max-height: 92vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 20px 18px 30px; }
+  .modal h2 { font-size: 17px; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; color: #55556b; margin-bottom: 4px; font-weight: 600; }
+  .field input, .field textarea {
+    width: 100%; padding: 10px; border: 1px solid #d9d9e3; border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff;
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 10px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-cancel { background: #eee; color: #555; }
+  .btn-save { background: #4338ca; color: #fff; }
+  .btn-delete-inline { background: #fee2e2; color: #b91c1c; }
+
+  .day-events-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .day-event-item {
+    background: #f7f7fb; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+  }
+  .day-event-item .title { font-size: 13.5px; font-weight: 700; }
+  .day-event-item .notes { font-size: 12px; color: #7a7a8e; margin-top: 3px; white-space: pre-wrap; }
+  .day-event-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .day-event-item-actions button {
+    border: none; border-radius: 6px; padding: 5px 8px; font-size: 11px; cursor: pointer;
+  }
+  .loading { text-align: center; padding: 40px; color: #9a9ab0; }
+
+  .master-item {
+    display: flex; justify-content: space-between; align-items: center; background: #fff;
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .master-item-info { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+  .mark-swatch { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  .master-item-actions button {
+    border: none; border-radius: 6px; padding: 5px 9px; font-size: 12px; cursor: pointer; background: #fee2e2; color: #b91c1c;
+  }
+  .add-master-form { background: #fff; border: 1px dashed #d9d9e3; border-radius: 10px; padding: 12px; margin-top: 12px; }
+  .add-master-form .field { margin-bottom: 10px; }
+  .add-master-form button.submit-btn {
+    width: 100%; padding: 10px; border: none; border-radius: 8px; background: #4338ca; color: #fff;
+    font-weight: 700; font-size: 13.5px; cursor: pointer;
+  }
+  .mark-badge {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px; color: #fff; display: inline-block; margin-top: 4px;
+  }
+
+  .master-sub-tabs { display: flex; gap: 8px; padding-top: 16px; }
+  .master-sub-tab {
+    flex: 1; text-align: center; padding: 9px; border-radius: 8px; background: #fff; border: 1px solid #d9d9e3;
+    color: #55556b; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .master-sub-tab.active { background: #4338ca; color: #fff; border-color: #4338ca; }
+  .master-panel { display: none; }
+  .master-panel.active { display: block; }
+
+  .water-item-row {
+    display: flex; gap: 6px; align-items: flex-end; margin-bottom: 8px; background: #f7f7fb; border-radius: 10px; padding: 10px;
+  }
+  .water-item-row .field { margin-bottom: 0; flex: 1; }
+  .water-item-row select, .water-item-row input { padding: 8px; font-size: 13px; }
+  .water-item-remove-btn {
+    flex-shrink: 0; width: 32px; height: 36px; border: none; border-radius: 8px; background: #fee2e2; color: #b91c1c; cursor: pointer; font-size: 13px;
+  }
+  .water-judgement-pass { color: #15803d; font-weight: 700; }
+  .water-judgement-fail { color: #b91c1c; font-weight: 700; }
+  .water-test-card-items { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e0e0ec; display: flex; flex-direction: column; gap: 4px; }
+  .water-test-item-line { font-size: 12.5px; color: #45455a; display: flex; justify-content: space-between; }
+
+  .noise-judge-good { background: #dcfce7; color: #15803d; }
+  .noise-judge-warn { background: #fef9c3; color: #a16207; }
+  .noise-judge-bad { background: #fee2e2; color: #b91c1c; }
+  .noise-db-value { font-size: 22px; font-weight: 800; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>🗓️ ISO管理</h1>
+    <button class="install-btn" id="installBtn" style="display:none;">📲 アプリを追加</button>
+  </div>
+  <div class="main-tabs">
+    <div class="main-tab active" data-section="calendar">📅 カレンダー</div>
+    <div class="main-tab" data-section="list">📋 年間記録</div>
+    <div class="main-tab" data-section="waterTest">🧪 水質検査</div>
+    <div class="main-tab" data-section="noiseCheck">🔊 騒音チェック</div>
+    <div class="main-tab" data-section="master">⚙️ マスター管理</div>
+  </div>
+</header>
+
+<!-- ================= カレンダーセクション ================= -->
+<div class="section active" id="section-calendar">
+  <div class="cal-nav">
+    <button id="calPrevBtn">◀</button>
+    <div style="text-align:center;">
+      <div class="cal-title" id="calTitle">-</div>
+      <button class="cal-today-btn" id="calTodayBtn">今日</button>
+    </div>
+    <button id="calNextBtn">▶</button>
+  </div>
+  <div class="cal-weekdays">
+    <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+</div>
+
+<!-- ================= 年間記録セクション ================= -->
+<div class="section" id="section-list">
+  <div class="toolbar-row">
+    <div class="search-box"><input type="text" id="eventSearchInput" placeholder="タイトル・内容で検索"></div>
+    <button class="jpeg-btn" id="jpegBtnEvents">🖨️ JPEG</button>
+  </div>
+  <div class="year-filter-tabs" id="yearFilterTabs"></div>
+  <div class="year-filter-tabs" id="markFilterTabs"></div>
+  <div class="list" id="eventListContainer"><div class="loading">読み込み中...</div></div>
+</div>
+
+<!-- ================= 水質検査セクション ================= -->
+<div class="section" id="section-waterTest">
+  <div class="toolbar-row">
+    <div class="search-box"><input type="text" id="waterTestSearchInput" placeholder="検査場所で検索"></div>
+    <button class="jpeg-btn" id="jpegBtnWaterTest">🖨️ JPEG</button>
+  </div>
+  <div class="year-filter-tabs" id="waterTestYearTabs"></div>
+  <div class="list" id="waterTestListContainer"><div class="loading">読み込み中...</div></div>
+  <button class="fab" id="addWaterTestBtn" style="background:#0d9488;">＋</button>
+</div>
+
+<!-- ================= 騒音チェックセクション ================= -->
+<div class="section" id="section-noiseCheck">
+  <div class="year-group-label" style="margin-top:14px;">規制基準：70dB以下＝○　70〜80dB＝△　80dB超＝✕</div>
+  <div class="toolbar-row">
+    <div class="search-box"><input type="text" id="noiseCheckSearchInput" placeholder="検査場所で検索"></div>
+    <button class="jpeg-btn" id="jpegBtnNoiseCheck">🖨️ JPEG</button>
+  </div>
+  <div class="year-filter-tabs" id="noiseCheckYearTabs"></div>
+  <div class="list" id="noiseCheckListContainer"><div class="loading">読み込み中...</div></div>
+  <button class="fab" id="addNoiseCheckBtn" style="background:#ea580c;">＋</button>
+</div>
+
+<!-- ================= マスター管理セクション ================= -->
+<div class="section" id="section-master">
+  <div class="master-sub-tabs">
+    <div class="master-sub-tab active" data-master="mark">🏷️ 出来事マーク</div>
+    <div class="master-sub-tab" data-master="waterItem">🧪 検査項目</div>
+  </div>
+
+  <div class="master-panel active" id="masterPanel-mark">
+    <div id="eventMarkList" style="margin-top:14px;"></div>
+    <div class="add-master-form">
+      <div class="field">
+        <label>マーク名</label>
+        <input type="text" id="newMarkName" placeholder="例：水質検査">
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:10px;">
+        <label style="margin-bottom:0;">色</label>
+        <input type="color" id="newMarkColor" value="#4338ca" style="width:50px;height:38px;padding:2px;border:1px solid #d9d9e3;border-radius:8px;">
+      </div>
+      <button type="button" class="submit-btn" id="addMarkBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="master-panel" id="masterPanel-waterItem">
+    <div id="waterItemList" style="margin-top:14px;"></div>
+    <div class="add-master-form">
+      <div class="field">
+        <label>検査項目名</label>
+        <input type="text" id="newWaterItem" placeholder="例：pH、濁度、残留塩素">
+      </div>
+      <button type="button" class="submit-btn" id="addWaterItemBtn">追加</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="addBtn">＋</button>
+
+<!-- 出来事 追加/編集モーダル -->
+<div class="modal-overlay" id="eventModalOverlay">
+  <div class="modal">
+    <h2 id="eventModalTitle">出来事を追加</h2>
+    <form id="eventForm">
+      <input type="hidden" id="editId">
+      <div class="field">
+        <label>日付</label>
+        <input type="date" id="eventDate" required>
+      </div>
+      <div class="field">
+        <label>マーク（任意）</label>
+        <select id="eventMark"><option value="">未分類</option></select>
+      </div>
+      <div class="field">
+        <label>タイトル</label>
+        <input type="text" id="eventTitle" placeholder="出来事のタイトル" required>
+      </div>
+      <div class="field">
+        <label>内容・メモ</label>
+        <textarea id="eventNotes" placeholder="詳しい内容"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="eventCancelBtn">キャンセル</button>
+        <button type="button" class="btn-cancel btn-delete-inline" id="eventDeleteBtnInModal" style="display:none;">削除</button>
+        <button type="submit" class="btn-save">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 日付タップ時: その日の出来事一覧モーダル -->
+<div class="modal-overlay" id="dayModalOverlay">
+  <div class="modal">
+    <h2 id="dayModalTitle">-</h2>
+    <div class="day-events-list" id="dayEventsList"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" id="dayModalCloseBtn">閉じる</button>
+      <button type="button" class="btn-save" id="dayModalAddBtn">この日に追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 水質検査 追加/編集モーダル -->
+<div class="modal-overlay" id="waterTestModalOverlay">
+  <div class="modal">
+    <h2 id="waterTestModalTitle">水質検査を追加</h2>
+    <form id="waterTestForm">
+      <input type="hidden" id="waterTestEditId">
+      <div class="field">
+        <label>検査日</label>
+        <input type="date" id="waterTestDate" required>
+      </div>
+      <div class="field">
+        <label>検査場所</label>
+        <input type="text" id="waterTestLocation" placeholder="検査場所">
+      </div>
+      <div class="field">
+        <label>検査項目</label>
+        <div id="waterTestItemsContainer"></div>
+        <button type="button" class="jpeg-btn" style="width:100%;margin-top:8px;" id="addWaterTestItemRowBtn">＋ 項目を追加</button>
+      </div>
+      <div class="field">
+        <label>備考</label>
+        <textarea id="waterTestNotes" placeholder="メモ"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="waterTestCancelBtn">キャンセル</button>
+        <button type="button" class="btn-cancel btn-delete-inline" id="waterTestDeleteBtnInModal" style="display:none;">削除</button>
+        <button type="submit" class="btn-save" style="background:#0d9488;">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 騒音チェック 追加/編集モーダル -->
+<div class="modal-overlay" id="noiseCheckModalOverlay">
+  <div class="modal">
+    <h2 id="noiseCheckModalTitle">騒音チェックを追加</h2>
+    <form id="noiseCheckForm">
+      <input type="hidden" id="noiseCheckEditId">
+      <div class="field">
+        <label>検査日</label>
+        <input type="date" id="noiseCheckDate" required>
+      </div>
+      <div class="field">
+        <label>検査場所</label>
+        <input type="text" id="noiseCheckLocation" placeholder="例：関根商店圧縮機前">
+      </div>
+      <div class="field">
+        <label>測定値（dB）</label>
+        <input type="number" step="0.1" id="noiseCheckDb" placeholder="例：64.2" required>
+      </div>
+      <div class="field">
+        <label>備考</label>
+        <textarea id="noiseCheckNotes" placeholder="メモ"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="noiseCheckCancelBtn">キャンセル</button>
+        <button type="button" class="btn-cancel btn-delete-inline" id="noiseCheckDeleteBtnInModal" style="display:none;">削除</button>
+        <button type="submit" class="btn-save" style="background:#ea580c;">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  databaseURL: "https://sekine-store-default-rtdb.firebaseio.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const EVENT_COLLECTION = "isoEvents";
+const MARK_COLLECTION = "eventMarks";
+const WATERTEST_COLLECTION = "waterTests";
+const WATERTEST_ITEM_COLLECTION = "waterTestItems";
+const NOISECHECK_COLLECTION = "noiseChecks";
+
+let allEvents = [];
+let allMarks = [];
+let allWaterTests = [];
+let allWaterItems = [];
+let allNoiseChecks = [];
+let currentEventSearch = "";
+let currentYearFilter = "all";
+let currentMarkFilter = "all";
+let currentWaterTestSearch = "";
+let currentWaterTestYear = "all";
+let currentNoiseCheckSearch = "";
+let currentNoiseCheckYear = "all";
+let viewYear, viewMonth; // 0-indexed month
+let selectedDayKey = null;
+
+function escapeHtml(str) {
+  if (!str && str !== 0) return "";
+  return String(str).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function pad2(n) { return String(n).padStart(2, "0"); }
+function dateKey(y, m, d) { return `${y}-${pad2(m+1)}-${pad2(d)}`; }
+
+const today = new Date();
+viewYear = today.getFullYear();
+viewMonth = today.getMonth();
+
+document.querySelectorAll(".main-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".main-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    document.getElementById("section-" + tab.dataset.section).classList.add("active");
+    if (tab.dataset.section === "list") renderEventList();
+    else if (tab.dataset.section === "calendar") renderCalendar();
+    else if (tab.dataset.section === "waterTest") renderWaterTestList();
+    else if (tab.dataset.section === "noiseCheck") renderNoiseCheckList();
+  });
+});
+
+// ---- マスター管理 サブタブ ----
+document.querySelectorAll(".master-sub-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".master-sub-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    document.querySelectorAll(".master-panel").forEach(p => p.classList.remove("active"));
+    document.getElementById("masterPanel-" + tab.dataset.master).classList.add("active");
+  });
+});
+
+// ================= カレンダー =================
+function renderCalendar() {
+  document.getElementById("calTitle").textContent = `${viewYear}年 ${viewMonth+1}月`;
+  const grid = document.getElementById("calGrid");
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+  const eventsByDate = {};
+  allEvents.forEach(ev => {
+    if (!ev.date) return;
+    if (!eventsByDate[ev.date]) eventsByDate[ev.date] = [];
+    eventsByDate[ev.date].push(ev);
+  });
+
+  const cells = [];
+  // 前月の埋め
+  for (let i = 0; i < startWeekday; i++) {
+    const d = daysInPrevMonth - startWeekday + 1 + i;
+    const pm = viewMonth === 0 ? 11 : viewMonth - 1;
+    const py = viewMonth === 0 ? viewYear - 1 : viewYear;
+    cells.push({ day: d, key: dateKey(py, pm, d), otherMonth: true });
+  }
+  // 当月
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, key: dateKey(viewYear, viewMonth, d), otherMonth: false });
+  }
+  // 翌月の埋め(6週分揃える)
+  while (cells.length % 7 !== 0 || cells.length < 42) {
+    const nextIdx = cells.length - (startWeekday + daysInMonth) + 1;
+    const nm = viewMonth === 11 ? 0 : viewMonth + 1;
+    const ny = viewMonth === 11 ? viewYear + 1 : viewYear;
+    cells.push({ day: nextIdx, key: dateKey(ny, nm, nextIdx), otherMonth: true });
+    if (cells.length >= 42) break;
+  }
+
+  const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+  grid.innerHTML = cells.map(c => {
+    const events = eventsByDate[c.key] || [];
+    const isToday = c.key === todayKey;
+    const classes = ["cal-cell"];
+    if (c.otherMonth) classes.push("other-month");
+    if (isToday) classes.push("today");
+    if (events.length) classes.push("has-events");
+    const dots = events.slice(0,3).map(ev => {
+      const mark = findMark(ev.mark);
+      const color = mark ? mark.color : "#4338ca";
+      return `<span class="dot" style="background:${escapeHtml(color)};"></span>`;
+    }).join("");
+    return `
+      <div class="${classes.join(' ')}" onclick="openDayModal('${c.key}')">
+        <div>${c.day}</div>
+        ${events.length ? `<div class="dot-row">${dots}</div>` : ""}
+        ${events.length > 3 ? `<div class="more">+${events.length-3}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+document.getElementById("calPrevBtn").addEventListener("click", () => {
+  viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  renderCalendar();
+});
+document.getElementById("calNextBtn").addEventListener("click", () => {
+  viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  renderCalendar();
+});
+document.getElementById("calTodayBtn").addEventListener("click", () => {
+  viewYear = today.getFullYear(); viewMonth = today.getMonth();
+  renderCalendar();
+});
+
+// ---- 日付タップ時のモーダル ----
+const dayModalOverlay = document.getElementById("dayModalOverlay");
+window.openDayModal = function(key) {
+  selectedDayKey = key;
+  const [y,m,d] = key.split("-");
+  document.getElementById("dayModalTitle").textContent = `${y}年${m}月${d}日の出来事`;
+  renderDayEventsList();
+  dayModalOverlay.classList.add("open");
+};
+function renderDayEventsList() {
+  const events = allEvents.filter(ev => ev.date === selectedDayKey);
+  const el = document.getElementById("dayEventsList");
+  el.innerHTML = events.length ? events.map(ev => {
+    const mark = findMark(ev.mark);
+    return `
+    <div class="day-event-item">
+      <div>
+        ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
+        <div class="title">${escapeHtml(ev.title)}</div>
+        ${ev.notes ? `<div class="notes">${escapeHtml(ev.notes)}</div>` : ""}
+      </div>
+      <div class="day-event-item-actions">
+        <button style="background:#eef0ff;color:#4338ca;" onclick="openEditFromDay('${ev.id}')">編集</button>
+        <button style="background:#fee2e2;color:#b91c1c;" onclick="deleteEvent('${ev.id}')">削除</button>
+      </div>
+    </div>
+  `;
+  }).join("") : `<div class="empty-state" style="padding:14px;">この日の出来事はまだありません</div>`;
+}
+document.getElementById("dayModalCloseBtn").addEventListener("click", () => dayModalOverlay.classList.remove("open"));
+dayModalOverlay.addEventListener("click", (e) => { if (e.target === dayModalOverlay) dayModalOverlay.classList.remove("open"); });
+document.getElementById("dayModalAddBtn").addEventListener("click", () => {
+  dayModalOverlay.classList.remove("open");
+  openAddEventModal(selectedDayKey);
+});
+window.openEditFromDay = function(id) {
+  dayModalOverlay.classList.remove("open");
+  openEditEvent(id);
+};
+
+// ================= 出来事一覧 =================
+function renderYearFilterTabs() {
+  const years = Array.from(new Set(allEvents.map(ev => (ev.date||"").slice(0,4)).filter(Boolean))).sort((a,b) => b.localeCompare(a));
+  const el = document.getElementById("yearFilterTabs");
+  el.innerHTML = `<div class="year-filter-tab ${currentYearFilter==='all'?'active':''}" onclick="setYearFilter('all')">すべて</div>` +
+    years.map(y => `<div class="year-filter-tab ${currentYearFilter===y?'active':''}" onclick="setYearFilter('${y}')">${y}年</div>`).join("");
+}
+window.setYearFilter = function(y) {
+  currentYearFilter = y;
+  renderYearFilterTabs();
+  renderEventList();
+};
+
+function renderMarkFilterTabs() {
+  const el = document.getElementById("markFilterTabs");
+  if (!allMarks.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="year-filter-tab ${currentMarkFilter==='all'?'active':''}" onclick="setMarkFilter('all')">マーク: すべて</div>` +
+    allMarks.map(m => `<div class="year-filter-tab ${currentMarkFilter===m.name?'active':''}" style="${currentMarkFilter===m.name?`background:${m.color};border-color:${m.color};`:''}" onclick="setMarkFilter('${escapeHtml(m.name)}')">${escapeHtml(m.name)}</div>`).join("");
+}
+window.setMarkFilter = function(m) {
+  currentMarkFilter = m;
+  renderMarkFilterTabs();
+  renderEventList();
+};
+
+function renderEventList() {
+  renderYearFilterTabs();
+  renderMarkFilterTabs();
+  const container = document.getElementById("eventListContainer");
+  let filtered = allEvents;
+  if (currentYearFilter !== "all") {
+    filtered = filtered.filter(ev => (ev.date||"").startsWith(currentYearFilter));
+  }
+  if (currentMarkFilter !== "all") {
+    filtered = filtered.filter(ev => ev.mark === currentMarkFilter);
+  }
+  if (currentEventSearch.trim()) {
+    const q = currentEventSearch.trim().toLowerCase();
+    filtered = filtered.filter(ev => (ev.title||"").toLowerCase().includes(q) || (ev.notes||"").toLowerCase().includes(q));
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する出来事がありません</div>'; return; }
+
+  filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
+
+  const groups = {};
+  filtered.forEach(ev => {
+    const y = (ev.date||"未設定").slice(0,4) || "未設定";
+    if (!groups[y]) groups[y] = [];
+    groups[y].push(ev);
+  });
+  const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  container.innerHTML = years.map(y => `
+    <div class="year-group-label">${y}年</div>
+    ${groups[y].map(ev => {
+      const mark = findMark(ev.mark);
+      return `
+      <div class="event-card" style="border-left-color:${mark ? escapeHtml(mark.color) : '#4338ca'};">
+        <div class="event-date">${ev.date || "-"}</div>
+        ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
+        <div class="event-title">${escapeHtml(ev.title)}</div>
+        ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
+        <div class="event-actions">
+          <button class="btn-edit" onclick="openEditEvent('${ev.id}')">編集</button>
+          <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
+        </div>
+      </div>
+    `;
+    }).join("")}
+  `).join("");
+}
+document.getElementById("eventSearchInput").addEventListener("input", (e) => { currentEventSearch = e.target.value; renderEventList(); });
+
+function subscribeEvents() {
+  db.collection(EVENT_COLLECTION).onSnapshot(snapshot => {
+    allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderCalendar();
+    renderEventList();
+  }, err => {
+    document.getElementById("eventListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
+  });
+}
+
+function subscribeMarks() {
+  db.collection(MARK_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+    allMarks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    populateMarkSelect();
+    renderMarkList();
+    renderCalendar();
+    renderEventList();
+  });
+}
+function findMark(name) { return allMarks.find(m => m.name === name); }
+function populateMarkSelect(selectedName) {
+  const el = document.getElementById("eventMark");
+  const current = selectedName !== undefined ? selectedName : el.value;
+  el.innerHTML = `<option value="">未分類</option>` + allMarks.map(m =>
+    `<option value="${escapeHtml(m.name)}" ${m.name===current?"selected":""}>${escapeHtml(m.name)}</option>`
+  ).join("");
+}
+function renderMarkList() {
+  const el = document.getElementById("eventMarkList");
+  if (!allMarks.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだマークが登録されていません</div>'; return; }
+  el.innerHTML = allMarks.map(m => `
+    <div class="master-item">
+      <div class="master-item-info">
+        <span class="mark-swatch" style="background:${escapeHtml(m.color||'#4338ca')};"></span>
+        <span>${escapeHtml(m.name)}</span>
+      </div>
+      <div class="master-item-actions"><button onclick="deleteMark('${m.id}')">削除</button></div>
+    </div>
+  `).join("");
+}
+window.deleteMark = function(id) {
+  if (!confirm("このマークを削除しますか？")) return;
+  db.collection(MARK_COLLECTION).doc(id).delete();
+};
+document.getElementById("addMarkBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newMarkName").value.trim();
+  const color = document.getElementById("newMarkColor").value || "#4338ca";
+  if (!name) { alert("マーク名を入力してください"); return; }
+  await db.collection(MARK_COLLECTION).add({ name, color });
+  document.getElementById("newMarkName").value = "";
+  document.getElementById("newMarkColor").value = "#4338ca";
+});
+
+// ================= 水質検査 =================
+function subscribeWaterTests() {
+  db.collection(WATERTEST_COLLECTION).onSnapshot(snapshot => {
+    allWaterTests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderWaterTestList();
+  }, err => {
+    document.getElementById("waterTestListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
+  });
+}
+function subscribeWaterItems() {
+  db.collection(WATERTEST_ITEM_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+    allWaterItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderWaterItemList();
+  });
+}
+function renderWaterItemList() {
+  const el = document.getElementById("waterItemList");
+  if (!allWaterItems.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ検査項目が登録されていません</div>'; return; }
+  el.innerHTML = allWaterItems.map(item => `
+    <div class="master-item">
+      <div class="master-item-info"><span>${escapeHtml(item.name)}</span></div>
+      <div class="master-item-actions"><button onclick="deleteWaterItem('${item.id}')">削除</button></div>
+    </div>
+  `).join("");
+}
+window.deleteWaterItem = function(id) {
+  if (!confirm("この検査項目を削除しますか？")) return;
+  db.collection(WATERTEST_ITEM_COLLECTION).doc(id).delete();
+};
+document.getElementById("addWaterItemBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newWaterItem").value.trim();
+  if (!name) { alert("検査項目名を入力してください"); return; }
+  await db.collection(WATERTEST_ITEM_COLLECTION).add({ name });
+  document.getElementById("newWaterItem").value = "";
+});
+
+// ---- 検査項目の行(フォーム内で動的に追加/削除) ----
+function addWaterTestItemRow(prefill) {
+  const container = document.getElementById("waterTestItemsContainer");
+  const row = document.createElement("div");
+  row.className = "water-item-row";
+  const itemOptions = allWaterItems.map(i => `<option value="${escapeHtml(i.name)}">${escapeHtml(i.name)}</option>`).join("");
+  row.innerHTML = `
+    <div class="field">
+      <label>項目</label>
+      <select class="wt-item-name">
+        <option value="">選択</option>
+        ${itemOptions}
+      </select>
+    </div>
+    <div class="field">
+      <label>数値</label>
+      <input type="text" class="wt-item-value" placeholder="例：7.2">
+    </div>
+    <div class="field">
+      <label>判定</label>
+      <select class="wt-item-judgement">
+        <option value="pass">合格</option>
+        <option value="fail">不合格</option>
+      </select>
+    </div>
+    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove()">✕</button>
+  `;
+  container.appendChild(row);
+  if (prefill) {
+    row.querySelector(".wt-item-name").value = prefill.name || "";
+    row.querySelector(".wt-item-value").value = prefill.value || "";
+    row.querySelector(".wt-item-judgement").value = prefill.judgement || "pass";
+  }
+}
+document.getElementById("addWaterTestItemRowBtn").addEventListener("click", () => addWaterTestItemRow());
+
+function collectWaterTestItems() {
+  return Array.from(document.querySelectorAll("#waterTestItemsContainer .water-item-row")).map(row => ({
+    name: row.querySelector(".wt-item-name").value,
+    value: row.querySelector(".wt-item-value").value.trim(),
+    judgement: row.querySelector(".wt-item-judgement").value
+  })).filter(it => it.name);
+}
+
+const waterTestOverlay = document.getElementById("waterTestModalOverlay");
+const waterTestFormEl = document.getElementById("waterTestForm");
+
+document.getElementById("addWaterTestBtn").addEventListener("click", () => {
+  waterTestFormEl.reset();
+  document.getElementById("waterTestEditId").value = "";
+  document.getElementById("waterTestModalTitle").textContent = "水質検査を追加";
+  document.getElementById("waterTestDeleteBtnInModal").style.display = "none";
+  document.getElementById("waterTestItemsContainer").innerHTML = "";
+  addWaterTestItemRow();
+  waterTestOverlay.classList.add("open");
+});
+document.getElementById("waterTestCancelBtn").addEventListener("click", () => waterTestOverlay.classList.remove("open"));
+waterTestOverlay.addEventListener("click", (e) => { if (e.target === waterTestOverlay) waterTestOverlay.classList.remove("open"); });
+
+window.openEditWaterTest = function(id) {
+  const t = allWaterTests.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById("waterTestEditId").value = id;
+  document.getElementById("waterTestDate").value = t.date || "";
+  document.getElementById("waterTestLocation").value = t.location || "";
+  document.getElementById("waterTestNotes").value = t.notes || "";
+  document.getElementById("waterTestItemsContainer").innerHTML = "";
+  (t.items && t.items.length ? t.items : [{}]).forEach(it => addWaterTestItemRow(it));
+  document.getElementById("waterTestModalTitle").textContent = "水質検査を編集";
+  document.getElementById("waterTestDeleteBtnInModal").style.display = "block";
+  waterTestOverlay.classList.add("open");
+};
+document.getElementById("waterTestDeleteBtnInModal").addEventListener("click", () => {
+  const id = document.getElementById("waterTestEditId").value;
+  if (!id) return;
+  if (!confirm("この水質検査記録を削除しますか？")) return;
+  db.collection(WATERTEST_COLLECTION).doc(id).delete();
+  waterTestOverlay.classList.remove("open");
+});
+window.deleteWaterTest = function(id) {
+  if (!confirm("この水質検査記録を削除しますか？")) return;
+  db.collection(WATERTEST_COLLECTION).doc(id).delete();
+};
+
+waterTestFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("waterTestEditId").value;
+  const items = collectWaterTestItems();
+  const overallJudgement = items.length ? (items.every(it => it.judgement === "pass") ? "pass" : "fail") : "";
+  const data = {
+    date: document.getElementById("waterTestDate").value,
+    location: document.getElementById("waterTestLocation").value.trim(),
+    items,
+    overallJudgement,
+    notes: document.getElementById("waterTestNotes").value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (id) {
+      await db.collection(WATERTEST_COLLECTION).doc(id).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(WATERTEST_COLLECTION).add(data);
+    }
+    waterTestOverlay.classList.remove("open");
+  } catch (err) { alert("保存エラー: " + err.message); }
+});
+
+function renderWaterTestYearTabs() {
+  const years = Array.from(new Set(allWaterTests.map(t => (t.date||"").slice(0,4)).filter(Boolean))).sort((a,b) => b.localeCompare(a));
+  const el = document.getElementById("waterTestYearTabs");
+  el.innerHTML = `<div class="year-filter-tab ${currentWaterTestYear==='all'?'active':''}" onclick="setWaterTestYear('all')">すべて</div>` +
+    years.map(y => `<div class="year-filter-tab ${currentWaterTestYear===y?'active':''}" onclick="setWaterTestYear('${y}')">${y}年</div>`).join("");
+}
+window.setWaterTestYear = function(y) {
+  currentWaterTestYear = y;
+  renderWaterTestYearTabs();
+  renderWaterTestList();
+};
+
+function renderWaterTestList() {
+  renderWaterTestYearTabs();
+  const container = document.getElementById("waterTestListContainer");
+  let filtered = allWaterTests;
+  if (currentWaterTestYear !== "all") filtered = filtered.filter(t => (t.date||"").startsWith(currentWaterTestYear));
+  if (currentWaterTestSearch.trim()) {
+    const q = currentWaterTestSearch.trim().toLowerCase();
+    filtered = filtered.filter(t => (t.location||"").toLowerCase().includes(q));
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する水質検査記録がありません</div>'; return; }
+
+  filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
+
+  const groups = {};
+  filtered.forEach(t => {
+    const y = (t.date||"未設定").slice(0,4) || "未設定";
+    if (!groups[y]) groups[y] = [];
+    groups[y].push(t);
+  });
+  const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  container.innerHTML = years.map(y => `
+    <div class="year-group-label">${y}年</div>
+    ${groups[y].map(t => {
+      const itemsHtml = (t.items||[]).map(it => `
+        <div class="water-test-item-line">
+          <span>${escapeHtml(it.name)}${it.value ? "：" + escapeHtml(it.value) : ""}</span>
+          <span class="${it.judgement === 'fail' ? 'water-judgement-fail' : 'water-judgement-pass'}">${it.judgement === 'fail' ? '不合格' : '合格'}</span>
+        </div>
+      `).join("");
+      return `
+        <div class="event-card" style="border-left-color:${t.overallJudgement==='fail' ? '#ef4444' : '#0d9488'};">
+          <div class="event-date">${t.date || "-"}</div>
+          <div class="event-title">${escapeHtml(t.location || "検査場所未設定")}
+            ${t.overallJudgement ? `<span class="mark-badge" style="background:${t.overallJudgement==='fail'?'#ef4444':'#0d9488'};">${t.overallJudgement==='fail'?'不合格':'合格'}</span>` : ""}
+          </div>
+          ${itemsHtml ? `<div class="water-test-card-items">${itemsHtml}</div>` : ""}
+          ${t.notes ? `<div class="event-notes">${escapeHtml(t.notes)}</div>` : ""}
+          <div class="event-actions">
+            <button class="btn-edit" onclick="openEditWaterTest('${t.id}')">編集</button>
+            <button class="btn-delete" onclick="deleteWaterTest('${t.id}')">削除</button>
+          </div>
+        </div>
+      `;
+    }).join("")}
+  `).join("");
+}
+document.getElementById("waterTestSearchInput").addEventListener("input", (e) => { currentWaterTestSearch = e.target.value; renderWaterTestList(); });
+document.getElementById("jpegBtnWaterTest").addEventListener("click", () => {
+  let list = [...allWaterTests];
+  if (currentWaterTestYear !== "all") list = list.filter(t => (t.date||"").startsWith(currentWaterTestYear));
+  if (currentWaterTestSearch.trim()) {
+    const q = currentWaterTestSearch.trim().toLowerCase();
+    list = list.filter(t => (t.location||"").toLowerCase().includes(q));
+  }
+  list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const rows = [];
+  list.forEach(t => {
+    const itemsText = (t.items||[]).map(it => `${it.name}${it.value?"("+it.value+")":""}:${it.judgement==='fail'?'不合格':'合格'}`).join("・");
+    rows.push([t.date||"-", escapeHtml(t.location||"-"), t.overallJudgement==='fail'?"不合格":(t.overallJudgement==='pass'?"合格":"-"), escapeHtml(itemsText)]);
+  });
+  exportTableAsJpeg("水質検査記録", ["検査日","検査場所","総合判定","検査項目"], rows, "水質検査記録");
+});
+
+// ================= 騒音チェック =================
+function noiseJudge(db) {
+  if (db === null || db === undefined || db === "") return null;
+  const v = Number(db);
+  if (v <= 70) return "good";
+  if (v <= 80) return "warn";
+  return "bad";
+}
+function noiseJudgeLabel(j) {
+  if (j === "good") return "○";
+  if (j === "warn") return "△";
+  if (j === "bad") return "✕";
+  return "-";
+}
+function noiseJudgeClass(j) {
+  if (j === "good") return "noise-judge-good";
+  if (j === "warn") return "noise-judge-warn";
+  if (j === "bad") return "noise-judge-bad";
+  return "";
+}
+
+function subscribeNoiseChecks() {
+  db.collection(NOISECHECK_COLLECTION).onSnapshot(snapshot => {
+    allNoiseChecks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderNoiseCheckList();
+  }, err => {
+    document.getElementById("noiseCheckListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
+  });
+}
+
+const noiseCheckOverlay = document.getElementById("noiseCheckModalOverlay");
+const noiseCheckFormEl = document.getElementById("noiseCheckForm");
+
+document.getElementById("addNoiseCheckBtn").addEventListener("click", () => {
+  noiseCheckFormEl.reset();
+  document.getElementById("noiseCheckEditId").value = "";
+  document.getElementById("noiseCheckModalTitle").textContent = "騒音チェックを追加";
+  document.getElementById("noiseCheckDeleteBtnInModal").style.display = "none";
+  noiseCheckOverlay.classList.add("open");
+});
+document.getElementById("noiseCheckCancelBtn").addEventListener("click", () => noiseCheckOverlay.classList.remove("open"));
+noiseCheckOverlay.addEventListener("click", (e) => { if (e.target === noiseCheckOverlay) noiseCheckOverlay.classList.remove("open"); });
+
+window.openEditNoiseCheck = function(id) {
+  const n = allNoiseChecks.find(x => x.id === id);
+  if (!n) return;
+  document.getElementById("noiseCheckEditId").value = id;
+  document.getElementById("noiseCheckDate").value = n.date || "";
+  document.getElementById("noiseCheckLocation").value = n.location || "";
+  document.getElementById("noiseCheckDb").value = n.db !== undefined ? n.db : "";
+  document.getElementById("noiseCheckNotes").value = n.notes || "";
+  document.getElementById("noiseCheckModalTitle").textContent = "騒音チェックを編集";
+  document.getElementById("noiseCheckDeleteBtnInModal").style.display = "block";
+  noiseCheckOverlay.classList.add("open");
+};
+document.getElementById("noiseCheckDeleteBtnInModal").addEventListener("click", () => {
+  const id = document.getElementById("noiseCheckEditId").value;
+  if (!id) return;
+  if (!confirm("この騒音チェック記録を削除しますか？")) return;
+  db.collection(NOISECHECK_COLLECTION).doc(id).delete();
+  noiseCheckOverlay.classList.remove("open");
+});
+window.deleteNoiseCheck = function(id) {
+  if (!confirm("この騒音チェック記録を削除しますか？")) return;
+  db.collection(NOISECHECK_COLLECTION).doc(id).delete();
+};
+
+noiseCheckFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("noiseCheckEditId").value;
+  const dbVal = document.getElementById("noiseCheckDb").value;
+  const data = {
+    date: document.getElementById("noiseCheckDate").value,
+    location: document.getElementById("noiseCheckLocation").value.trim(),
+    db: dbVal ? Number(dbVal) : null,
+    notes: document.getElementById("noiseCheckNotes").value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (id) {
+      await db.collection(NOISECHECK_COLLECTION).doc(id).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(NOISECHECK_COLLECTION).add(data);
+    }
+    noiseCheckOverlay.classList.remove("open");
+  } catch (err) { alert("保存エラー: " + err.message); }
+});
+
+function renderNoiseCheckYearTabs() {
+  const years = Array.from(new Set(allNoiseChecks.map(n => (n.date||"").slice(0,4)).filter(Boolean))).sort((a,b) => b.localeCompare(a));
+  const el = document.getElementById("noiseCheckYearTabs");
+  el.innerHTML = `<div class="year-filter-tab ${currentNoiseCheckYear==='all'?'active':''}" onclick="setNoiseCheckYear('all')">すべて</div>` +
+    years.map(y => `<div class="year-filter-tab ${currentNoiseCheckYear===y?'active':''}" onclick="setNoiseCheckYear('${y}')">${y}年</div>`).join("");
+}
+window.setNoiseCheckYear = function(y) {
+  currentNoiseCheckYear = y;
+  renderNoiseCheckYearTabs();
+  renderNoiseCheckList();
+};
+
+function renderNoiseCheckList() {
+  renderNoiseCheckYearTabs();
+  const container = document.getElementById("noiseCheckListContainer");
+  let filtered = allNoiseChecks;
+  if (currentNoiseCheckYear !== "all") filtered = filtered.filter(n => (n.date||"").startsWith(currentNoiseCheckYear));
+  if (currentNoiseCheckSearch.trim()) {
+    const q = currentNoiseCheckSearch.trim().toLowerCase();
+    filtered = filtered.filter(n => (n.location||"").toLowerCase().includes(q));
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する騒音チェック記録がありません</div>'; return; }
+
+  filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
+
+  const groups = {};
+  filtered.forEach(n => {
+    const y = (n.date||"未設定").slice(0,4) || "未設定";
+    if (!groups[y]) groups[y] = [];
+    groups[y].push(n);
+  });
+  const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  container.innerHTML = years.map(y => {
+    const list = groups[y];
+    const dbValues = list.map(n => n.db).filter(v => v !== null && v !== undefined);
+    const avg = dbValues.length ? (dbValues.reduce((a,b)=>a+b,0) / dbValues.length).toFixed(1) : null;
+    return `
+    <div class="year-group-label">${y}年${avg !== null ? `　（年間平均 ${avg}dB）` : ""}</div>
+    ${list.map(n => {
+      const j = noiseJudge(n.db);
+      return `
+      <div class="event-card" style="border-left-color:${j==='bad'?'#ef4444':j==='warn'?'#eab308':'#ea580c'};">
+        <div class="event-date">${n.date || "-"}${n.location ? "　" + escapeHtml(n.location) : ""}</div>
+        <div class="noise-db-value">${n.db !== null && n.db !== undefined ? n.db : "-"}dB
+          <span class="mark-badge ${noiseJudgeClass(j)}" style="color:inherit;">${noiseJudgeLabel(j)}</span>
+        </div>
+        ${n.notes ? `<div class="event-notes">${escapeHtml(n.notes)}</div>` : ""}
+        <div class="event-actions">
+          <button class="btn-edit" onclick="openEditNoiseCheck('${n.id}')">編集</button>
+          <button class="btn-delete" onclick="deleteNoiseCheck('${n.id}')">削除</button>
+        </div>
+      </div>
+    `;
+    }).join("")}
+  `;
+  }).join("");
+}
+document.getElementById("noiseCheckSearchInput").addEventListener("input", (e) => { currentNoiseCheckSearch = e.target.value; renderNoiseCheckList(); });
+document.getElementById("jpegBtnNoiseCheck").addEventListener("click", () => {
+  let list = [...allNoiseChecks];
+  if (currentNoiseCheckYear !== "all") list = list.filter(n => (n.date||"").startsWith(currentNoiseCheckYear));
+  if (currentNoiseCheckSearch.trim()) {
+    const q = currentNoiseCheckSearch.trim().toLowerCase();
+    list = list.filter(n => (n.location||"").toLowerCase().includes(q));
+  }
+  list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const rows = list.map(n => [n.date||"-", escapeHtml(n.location||"-"), n.db!==null&&n.db!==undefined?String(n.db):"-", noiseJudgeLabel(noiseJudge(n.db))]);
+  exportTableAsJpeg("騒音チェック記録", ["検査日","検査場所","dB","判定"], rows, "騒音チェック記録");
+});
+
+// ---- 出来事追加/編集モーダル ----
+const eventOverlay = document.getElementById("eventModalOverlay");
+const eventFormEl = document.getElementById("eventForm");
+
+function openAddEventModal(prefillDate) {
+  eventFormEl.reset();
+  document.getElementById("editId").value = "";
+  document.getElementById("eventModalTitle").textContent = "出来事を追加";
+  document.getElementById("eventDeleteBtnInModal").style.display = "none";
+  populateMarkSelect("");
+  if (prefillDate) document.getElementById("eventDate").value = prefillDate;
+  eventOverlay.classList.add("open");
+}
+document.getElementById("addBtn").addEventListener("click", () => openAddEventModal(null));
+document.getElementById("eventCancelBtn").addEventListener("click", () => eventOverlay.classList.remove("open"));
+eventOverlay.addEventListener("click", (e) => { if (e.target === eventOverlay) eventOverlay.classList.remove("open"); });
+
+window.openEditEvent = function(id) {
+  const ev = allEvents.find(x => x.id === id);
+  if (!ev) return;
+  document.getElementById("editId").value = id;
+  document.getElementById("eventDate").value = ev.date || "";
+  populateMarkSelect(ev.mark || "");
+  document.getElementById("eventTitle").value = ev.title || "";
+  document.getElementById("eventNotes").value = ev.notes || "";
+  document.getElementById("eventModalTitle").textContent = "出来事を編集";
+  document.getElementById("eventDeleteBtnInModal").style.display = "block";
+  eventOverlay.classList.add("open");
+};
+document.getElementById("eventDeleteBtnInModal").addEventListener("click", () => {
+  const id = document.getElementById("editId").value;
+  if (!id) return;
+  if (!confirm("この出来事を削除しますか？")) return;
+  db.collection(EVENT_COLLECTION).doc(id).delete();
+  eventOverlay.classList.remove("open");
+});
+window.deleteEvent = function(id) {
+  if (!confirm("この出来事を削除しますか？")) return;
+  db.collection(EVENT_COLLECTION).doc(id).delete();
+  renderDayEventsList();
+};
+
+eventFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("editId").value;
+  const data = {
+    date: document.getElementById("eventDate").value,
+    mark: document.getElementById("eventMark").value,
+    title: document.getElementById("eventTitle").value.trim(),
+    notes: document.getElementById("eventNotes").value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (id) {
+      await db.collection(EVENT_COLLECTION).doc(id).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(EVENT_COLLECTION).add(data);
+    }
+    eventOverlay.classList.remove("open");
+  } catch (err) {
+    alert("保存エラー: " + err.message);
+  }
+});
+
+// ---- JPEG出力(表形式) ----
+function chunkRows(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+async function exportTableAsJpeg(title, columns, rows, filenameBase, rowsPerPage) {
+  if (!window.html2canvas) { alert("JPEG出力の準備中です。少し待ってから再度お試しください。"); return; }
+  if (!rows.length) { alert("出力するデータがありません。"); return; }
+  const perPage = rowsPerPage || 25;
+  const pages = chunkRows(rows, perPage);
+  for (let i = 0; i < pages.length; i++) {
+    const pageRows = pages[i];
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "fixed"; wrapper.style.left = "-99999px"; wrapper.style.top = "0";
+    wrapper.style.background = "#ffffff"; wrapper.style.padding = "24px";
+    wrapper.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+    let html = `<div style="font-size:18px;font-weight:800;color:#4338ca;margin-bottom:4px;">${escapeHtml(title)}</div>`;
+    html += pages.length > 1 ? `<div style="font-size:12px;color:#8b8b9e;margin-bottom:10px;">${i+1} / ${pages.length} ページ</div>` : `<div style="margin-bottom:10px;"></div>`;
+    html += `<table style="border-collapse:collapse;width:${Math.max(700, columns.length*180)}px;">`;
+    html += "<tr>" + columns.map(c => `<th style="border:1px solid #d9d9e3;padding:8px 10px;background:#4338ca;color:#fff;font-size:12.5px;text-align:left;white-space:nowrap;">${escapeHtml(c)}</th>`).join("") + "</tr>";
+    pageRows.forEach((row, idx) => {
+      html += `<tr style="background:${idx % 2 ? '#f4f4fb' : '#ffffff'};">` +
+        row.map(cell => `<td style="border:1px solid #e5e5ee;padding:7px 10px;font-size:12px;color:#1a1a2e;">${cell}</td>`).join("") + "</tr>";
+    });
+    html += "</table>";
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
+    try {
+      const canvas = await html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2 });
+      const link = document.createElement("a");
+      link.download = pages.length > 1 ? `${filenameBase}_${i+1}.jpg` : `${filenameBase}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.92);
+      link.click();
+    } finally {
+      document.body.removeChild(wrapper);
+    }
+    if (i < pages.length - 1) await new Promise(r => setTimeout(r, 400));
+  }
+}
+document.getElementById("jpegBtnEvents").addEventListener("click", () => {
+  let list = [...allEvents];
+  if (currentYearFilter !== "all") list = list.filter(ev => (ev.date||"").startsWith(currentYearFilter));
+  if (currentMarkFilter !== "all") list = list.filter(ev => ev.mark === currentMarkFilter);
+  if (currentEventSearch.trim()) {
+    const q = currentEventSearch.trim().toLowerCase();
+    list = list.filter(ev => (ev.title||"").toLowerCase().includes(q) || (ev.notes||"").toLowerCase().includes(q));
+  }
+  list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const rows = list.map(ev => [ev.date || "-", escapeHtml(ev.mark || "-"), escapeHtml(ev.title || "-"), escapeHtml(ev.notes || "")]);
+  exportTableAsJpeg("ISO管理 年間記録", ["日付","マーク","タイトル","内容"], rows, "年間記録");
+});
+
+// ---- ホーム画面に追加(PWAインストール) ----
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById("installBtn");
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstallPrompt = e; installBtn.style.display = "inline-block"; });
+installBtn.addEventListener("click", async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; installBtn.style.display = "none";
+  } else { alert("iPhoneの場合は、共有ボタン(□に↑)から「ホーム画面に追加」を選んでください。"); }
+});
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+const isIOS = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+if (isIOS && !isStandalone) { installBtn.style.display = "inline-block"; }
+
+renderCalendar();
+subscribeEvents();
+subscribeMarks();
+subscribeWaterTests();
+subscribeWaterItems();
+subscribeNoiseChecks();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
