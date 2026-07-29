@@ -281,7 +281,16 @@
 <div class="section" id="section-donation">
   <div class="master-sub-tabs">
     <div class="master-sub-tab active" data-donationview="activity">📅 活動実績</div>
+    <div class="master-sub-tab" data-donationview="activitySummary">📊 活動ごと</div>
     <div class="master-sub-tab" data-donationview="donation">🎁 寄付記録</div>
+  </div>
+
+  <div id="donationViewActivitySummary" style="display:none;">
+    <div class="toolbar-row">
+      <div class="search-box"><input type="text" id="activitySummarySearchInput" placeholder="活動名で検索"></div>
+      <button class="jpeg-btn" id="jpegBtnActivitySummary">🖨️ JPEG</button>
+    </div>
+    <div class="list" id="activitySummaryContainer"><div class="loading">読み込み中...</div></div>
   </div>
 
   <div id="donationViewActivity">
@@ -947,16 +956,18 @@ document.querySelectorAll("#section-master .master-sub-tab").forEach(tab => {
   });
 });
 
-// ---- 地域貢献 サブタブ(活動実績/寄付記録) ----
+// ---- 地域貢献 サブタブ(活動実績/活動ごと/寄付記録) ----
 document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll("#section-donation .master-sub-tab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
-    const isActivity = tab.dataset.donationview === "activity";
-    document.getElementById("donationViewActivity").style.display = isActivity ? "block" : "none";
-    document.getElementById("donationViewDonation").style.display = isActivity ? "none" : "block";
-    document.getElementById("addActivityBtn").style.display = isActivity ? "block" : "none";
-    document.getElementById("addDonationBtn").style.display = isActivity ? "none" : "block";
+    const view = tab.dataset.donationview;
+    document.getElementById("donationViewActivity").style.display = view === "activity" ? "block" : "none";
+    document.getElementById("donationViewActivitySummary").style.display = view === "activitySummary" ? "block" : "none";
+    document.getElementById("donationViewDonation").style.display = view === "donation" ? "block" : "none";
+    document.getElementById("addActivityBtn").style.display = view === "activity" ? "block" : "none";
+    document.getElementById("addDonationBtn").style.display = view === "donation" ? "block" : "none";
+    if (view === "activitySummary") renderActivitySummary();
   });
 });
 
@@ -2741,6 +2752,7 @@ async function subscribeActivityTypes() {
     renderActivityTypeList();
     populateActivitySelect();
     renderActivityList();
+    renderActivitySummary();
   });
 }
 function renderActivityTypeList() {
@@ -2777,6 +2789,7 @@ function subscribeActivityRecords() {
   db.collection(ACTIVITY_RECORD_COLLECTION).onSnapshot(snapshot => {
     allActivityRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderActivityList();
+    renderActivitySummary();
   }, err => {
     document.getElementById("activityListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
   });
@@ -2946,6 +2959,65 @@ document.getElementById("jpegBtnActivity").addEventListener("click", () => {
     return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), escapeHtml(datesText)];
   });
   exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","実施日"], rows, "地域貢献活動実績");
+});
+
+let currentActivitySummarySearch = "";
+function renderActivitySummary() {
+  const container = document.getElementById("activitySummaryContainer");
+  if (!container) return;
+  let types = allActivityTypes;
+  if (currentActivitySummarySearch.trim()) {
+    const q = currentActivitySummarySearch.trim().toLowerCase();
+    types = types.filter(t => (t.name||"").toLowerCase().includes(q));
+  }
+  if (types.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動がありません</div>'; return; }
+
+  container.innerHTML = types.map(t => {
+    const records = allActivityRecords.filter(r => r.activityName === t.name);
+    const totalCount = records.reduce((sum,r) => sum + (r.count||0), 0);
+
+    // 年度ごとの内訳
+    const byYear = {};
+    records.forEach(r => {
+      const fy = metalFiscalYear(r.yearMonth);
+      byYear[fy] = (byYear[fy] || 0) + (r.count||0);
+    });
+    const years = Object.keys(byYear).sort((a,b) => b.localeCompare(a));
+    const yearRowsHtml = years.length
+      ? years.map(y => `<div class="water-test-item-line"><span>${escapeHtml(y)}年度</span><span>${byYear[y]}回</span></div>`).join("")
+      : `<div class="vehicle-chip none">記録がまだありません</div>`;
+
+    return `
+      <div class="card" style="border-left-color:#059669;">
+        <div class="card-top">
+          <div class="card-title">${escapeHtml(t.name)}</div>
+          <div class="badge status-ok">合計 ${totalCount}回</div>
+        </div>
+        <div class="water-test-card-items">${yearRowsHtml}</div>
+      </div>
+    `;
+  }).join("");
+}
+document.getElementById("activitySummarySearchInput").addEventListener("input", (e) => { currentActivitySummarySearch = e.target.value; renderActivitySummary(); });
+document.getElementById("jpegBtnActivitySummary").addEventListener("click", () => {
+  let types = allActivityTypes;
+  if (currentActivitySummarySearch.trim()) {
+    const q = currentActivitySummarySearch.trim().toLowerCase();
+    types = types.filter(t => (t.name||"").toLowerCase().includes(q));
+  }
+  const rows = [];
+  types.forEach(t => {
+    const records = allActivityRecords.filter(r => r.activityName === t.name);
+    const byYear = {};
+    records.forEach(r => {
+      const fy = metalFiscalYear(r.yearMonth);
+      byYear[fy] = (byYear[fy] || 0) + (r.count||0);
+    });
+    const years = Object.keys(byYear).sort((a,b) => b.localeCompare(a));
+    if (years.length === 0) { rows.push([escapeHtml(t.name), "-", "0"]); return; }
+    years.forEach(y => rows.push([escapeHtml(t.name), y + "年度", String(byYear[y])]));
+  });
+  exportTableAsJpeg("地域貢献 活動ごとのまとめ", ["活動名","年度","回数"], rows, "地域貢献活動ごとまとめ");
 });
 
 // ================= 寄付記録 =================
