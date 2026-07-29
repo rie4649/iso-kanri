@@ -291,7 +291,6 @@
     </div>
     <div class="year-filter-tabs" id="activityYearTabs"></div>
     <div class="list" id="activityListContainer"><div class="loading">読み込み中...</div></div>
-    <button class="fab" id="addActivityBtn" style="background:#059669;">＋</button>
   </div>
 
   <div id="donationViewDonation" style="display:none;">
@@ -301,8 +300,10 @@
     </div>
     <div class="year-filter-tabs" id="donationYearTabs"></div>
     <div class="list" id="donationListContainer"><div class="loading">読み込み中...</div></div>
-    <button class="fab" id="addDonationBtn" style="background:#db2777;">＋</button>
   </div>
+
+  <button class="fab" id="addActivityBtn" style="background:#059669;">＋</button>
+  <button class="fab" id="addDonationBtn" style="background:#db2777;display:none;">＋</button>
 </div>
 
 <!-- ================= 進捗記録クリーン度チェックセクション ================= -->
@@ -958,6 +959,8 @@ document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
     const isActivity = tab.dataset.donationview === "activity";
     document.getElementById("donationViewActivity").style.display = isActivity ? "block" : "none";
     document.getElementById("donationViewDonation").style.display = isActivity ? "none" : "block";
+    document.getElementById("addActivityBtn").style.display = isActivity ? "block" : "none";
+    document.getElementById("addDonationBtn").style.display = isActivity ? "none" : "block";
   });
 });
 
