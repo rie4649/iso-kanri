@@ -298,11 +298,10 @@
       <button class="jpeg-btn" id="jpegBtnActivity">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="activityYearTabs"></div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">📋年間記録でタイトルに活動名を選んで入力すると、ここに自動で反映されます</div>
     <div class="list" id="activityListContainer"><div class="loading">読み込み中...</div></div>
   </div>
 
-
-  <button class="fab" id="addActivityBtn" style="background:#059669;">＋</button>
 </div>
 
 <!-- ================= 進捗記録クリーン度チェックセクション ================= -->
@@ -614,44 +613,6 @@
   </div>
 </div>
 
-<!-- 活動実績 追加/編集モーダル -->
-<div class="modal-overlay" id="activityModalOverlay">
-  <div class="modal">
-    <h2 id="activityModalTitle">活動実績を追加</h2>
-    <form id="activityForm">
-      <input type="hidden" id="activityEditId">
-      <div class="field">
-        <label>年月</label>
-        <input type="month" id="activityYearMonth" required>
-      </div>
-      <div class="field">
-        <label>活動名</label>
-        <select id="activityName" required><option value="">選択してください</option></select>
-        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">一覧にない場合は⚙️マスター管理の「活動名」から追加してください</div>
-      </div>
-      <div class="field">
-        <label>実施回数</label>
-        <input type="number" id="activityCount" placeholder="例：4">
-        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">下の「実施日」を入力すると自動で回数が計算されます（手入力も可）</div>
-      </div>
-      <div class="field">
-        <label>実施日（任意）</label>
-        <div id="activityDatesContainer"></div>
-        <button type="button" class="jpeg-btn" style="width:100%;margin-top:8px;" id="addActivityDateRowBtn">＋ 日付を追加</button>
-      </div>
-      <div class="field">
-        <label>備考</label>
-        <textarea id="activityNotes" placeholder="メモ"></textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" id="activityCancelBtn">キャンセル</button>
-        <button type="button" class="btn-cancel btn-delete-inline" id="activityDeleteBtnInModal" style="display:none;">削除</button>
-        <button type="submit" class="btn-save" style="background:#059669;">保存</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- 進捗記録クリーン度チェック 追加/編集モーダル -->
 <div class="modal-overlay" id="cleanModalOverlay">
   <div class="modal">
@@ -833,7 +794,6 @@ let lifelineTypeSeeded = false;
 const FREON_EQUIP_COLLECTION = "freonEquipments";
 const FREON_RECORD_COLLECTION = "freonRecords";
 const ACTIVITY_TYPE_COLLECTION = "activityTypes";
-const ACTIVITY_RECORD_COLLECTION = "activityRecords";
 
 let allEvents = [];
 let allMarks = [];
@@ -852,7 +812,6 @@ let allLifelineRecords = [];
 let allFreonEquips = [];
 let allFreonRecords = [];
 let allActivityTypes = [];
-let allActivityRecords = [];
 let currentEventSearch = "";
 let currentYearFilter = "all";
 let currentMarkFilter = "all";
@@ -920,7 +879,6 @@ document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
     const view = tab.dataset.donationview;
     document.getElementById("donationViewActivity").style.display = view === "activity" ? "block" : "none";
     document.getElementById("donationViewActivitySummary").style.display = view === "activitySummary" ? "block" : "none";
-    document.getElementById("addActivityBtn").style.display = view === "activity" ? "block" : "none";
     if (view === "activitySummary") renderActivitySummary();
   });
 });
@@ -1026,6 +984,7 @@ window.openDayModal = function(key) {
   const [y,m,d] = key.split("-");
   document.getElementById("dayModalTitle").textContent = `${y}年${m}月${d}日の出来事`;
   renderDayEventsList();
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   dayModalOverlay.classList.add("open");
 };
 function renderDayEventsList() {
@@ -1137,6 +1096,8 @@ function subscribeEvents() {
     allEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderCalendar();
     renderEventList();
+    renderActivityList();
+    renderActivitySummary();
   }, err => {
     document.getElementById("eventListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
   });
@@ -1335,12 +1296,14 @@ const cleanOverlay = document.getElementById("cleanModalOverlay");
 const cleanFormEl = document.getElementById("cleanForm");
 
 document.getElementById("addCleanBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   cleanFormEl.reset();
   document.getElementById("cleanEditId").value = "";
   document.getElementById("cleanModalTitle").textContent = "進捗記録クリーン度チェックを追加";
   document.getElementById("cleanDeleteBtnInModal").style.display = "none";
   document.getElementById("cleanZonesContainer").innerHTML = "";
   addCleanZoneRow();
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   cleanOverlay.classList.add("open");
 });
 document.getElementById("cleanCancelBtn").addEventListener("click", () => cleanOverlay.classList.remove("open"));
@@ -1356,6 +1319,7 @@ window.openEditClean = function(id) {
   (c.zones && c.zones.length ? c.zones : [{}]).forEach(z => addCleanZoneRow(z));
   document.getElementById("cleanModalTitle").textContent = "進捗記録クリーン度チェックを編集";
   document.getElementById("cleanDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   cleanOverlay.classList.add("open");
 };
 document.getElementById("cleanDeleteBtnInModal").addEventListener("click", () => {
@@ -1551,12 +1515,14 @@ const dieselOverlay = document.getElementById("dieselModalOverlay");
 const dieselFormEl = document.getElementById("dieselForm");
 
 document.getElementById("addDieselBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   dieselFormEl.reset();
   document.getElementById("dieselEditId").value = "";
   document.getElementById("dieselModalTitle").textContent = "軽油使用量を追加";
   document.getElementById("dieselDeleteBtnInModal").style.display = "none";
   document.getElementById("dieselVehiclesContainer").innerHTML = "";
   addDieselVehicleRow();
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   dieselOverlay.classList.add("open");
 });
 document.getElementById("dieselCancelBtn").addEventListener("click", () => dieselOverlay.classList.remove("open"));
@@ -1572,6 +1538,7 @@ window.openEditDiesel = function(id) {
   (r.vehicles && r.vehicles.length ? r.vehicles : [{}]).forEach(v => addDieselVehicleRow(v));
   document.getElementById("dieselModalTitle").textContent = "軽油使用量を編集";
   document.getElementById("dieselDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   dieselOverlay.classList.add("open");
 };
 document.getElementById("dieselDeleteBtnInModal").addEventListener("click", () => {
@@ -1615,6 +1582,7 @@ window.openDieselTarget = function(year) {
   const t = allDieselTargets.find(x => x.year === year);
   document.getElementById("dieselTargetYear").value = year;
   document.getElementById("dieselTargetLiters").value = t ? t.targetLiters : "";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   dieselTargetOverlay.classList.add("open");
 };
 document.getElementById("dieselTargetCancelBtn").addEventListener("click", () => dieselTargetOverlay.classList.remove("open"));
@@ -1815,12 +1783,14 @@ const lifelineOverlay = document.getElementById("lifelineModalOverlay");
 const lifelineFormEl = document.getElementById("lifelineForm");
 
 document.getElementById("addLifelineBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   lifelineFormEl.reset();
   document.getElementById("lifelineEditId").value = "";
   document.getElementById("lifelineModalTitle").textContent = "ライフライン使用量を追加";
   document.getElementById("lifelineDeleteBtnInModal").style.display = "none";
   document.getElementById("lifelineTypesContainer").innerHTML = "";
   addLifelineTypeRow();
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   lifelineOverlay.classList.add("open");
 });
 document.getElementById("lifelineCancelBtn").addEventListener("click", () => lifelineOverlay.classList.remove("open"));
@@ -1836,6 +1806,7 @@ window.openEditLifeline = function(id) {
   (r.types && r.types.length ? r.types : [{}]).forEach(t => addLifelineTypeRow(t));
   document.getElementById("lifelineModalTitle").textContent = "ライフライン使用量を編集";
   document.getElementById("lifelineDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   lifelineOverlay.classList.add("open");
 };
 document.getElementById("lifelineDeleteBtnInModal").addEventListener("click", () => {
@@ -2011,11 +1982,13 @@ const freonOverlay = document.getElementById("freonModalOverlay");
 const freonFormEl = document.getElementById("freonForm");
 
 document.getElementById("addFreonBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   freonFormEl.reset();
   document.getElementById("freonEditId").value = "";
   document.getElementById("freonModalTitle").textContent = "フロン点検を追加";
   document.getElementById("freonDeleteBtnInModal").style.display = "none";
   populateFreonEquipSelect("");
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   freonOverlay.classList.add("open");
 });
 document.getElementById("freonCancelBtn").addEventListener("click", () => freonOverlay.classList.remove("open"));
@@ -2033,6 +2006,7 @@ window.openEditFreon = function(id) {
   document.getElementById("freonNotes").value = r.notes || "";
   document.getElementById("freonModalTitle").textContent = "フロン点検を編集";
   document.getElementById("freonDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   freonOverlay.classList.add("open");
 };
 document.getElementById("freonDeleteBtnInModal").addEventListener("click", () => {
@@ -2209,12 +2183,14 @@ const metalOverlay = document.getElementById("metalModalOverlay");
 const metalFormEl = document.getElementById("metalForm");
 
 document.getElementById("addMetalBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   metalFormEl.reset();
   document.getElementById("metalEditId").value = "";
   document.getElementById("metalModalTitle").textContent = "進捗記録金属拾い上げを追加";
   document.getElementById("metalDeleteBtnInModal").style.display = "none";
   document.getElementById("metalItemsContainer").innerHTML = "";
   addMetalItemRow();
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   metalOverlay.classList.add("open");
 });
 document.getElementById("metalCancelBtn").addEventListener("click", () => metalOverlay.classList.remove("open"));
@@ -2230,6 +2206,7 @@ window.openEditMetal = function(id) {
   (r.items && r.items.length ? r.items : [{}]).forEach(it => addMetalItemRow(it));
   document.getElementById("metalModalTitle").textContent = "進捗記録金属拾い上げを編集";
   document.getElementById("metalDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   metalOverlay.classList.add("open");
 };
 document.getElementById("metalDeleteBtnInModal").addEventListener("click", () => {
@@ -2387,12 +2364,14 @@ const waterTestOverlay = document.getElementById("waterTestModalOverlay");
 const waterTestFormEl = document.getElementById("waterTestForm");
 
 document.getElementById("addWaterTestBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   waterTestFormEl.reset();
   document.getElementById("waterTestEditId").value = "";
   document.getElementById("waterTestModalTitle").textContent = "水質検査を追加";
   document.getElementById("waterTestDeleteBtnInModal").style.display = "none";
   document.getElementById("waterTestItemsContainer").innerHTML = "";
   addWaterTestItemRow();
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   waterTestOverlay.classList.add("open");
 });
 document.getElementById("waterTestCancelBtn").addEventListener("click", () => waterTestOverlay.classList.remove("open"));
@@ -2409,6 +2388,7 @@ window.openEditWaterTest = function(id) {
   (t.items && t.items.length ? t.items : [{}]).forEach(it => addWaterTestItemRow(it));
   document.getElementById("waterTestModalTitle").textContent = "水質検査を編集";
   document.getElementById("waterTestDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   waterTestOverlay.classList.add("open");
 };
 document.getElementById("waterTestDeleteBtnInModal").addEventListener("click", () => {
@@ -2557,10 +2537,12 @@ const noiseCheckOverlay = document.getElementById("noiseCheckModalOverlay");
 const noiseCheckFormEl = document.getElementById("noiseCheckForm");
 
 document.getElementById("addNoiseCheckBtn").addEventListener("click", () => {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   noiseCheckFormEl.reset();
   document.getElementById("noiseCheckEditId").value = "";
   document.getElementById("noiseCheckModalTitle").textContent = "騒音チェックを追加";
   document.getElementById("noiseCheckDeleteBtnInModal").style.display = "none";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   noiseCheckOverlay.classList.add("open");
 });
 document.getElementById("noiseCheckCancelBtn").addEventListener("click", () => noiseCheckOverlay.classList.remove("open"));
@@ -2576,6 +2558,7 @@ window.openEditNoiseCheck = function(id) {
   document.getElementById("noiseCheckNotes").value = n.notes || "";
   document.getElementById("noiseCheckModalTitle").textContent = "騒音チェックを編集";
   document.getElementById("noiseCheckDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   noiseCheckOverlay.classList.add("open");
 };
 document.getElementById("noiseCheckDeleteBtnInModal").addEventListener("click", () => {
@@ -2704,7 +2687,6 @@ async function subscribeActivityTypes() {
     }
     allActivityTypes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderActivityTypeList();
-    populateActivitySelect();
     renderActivityList();
     renderActivitySummary();
   });
@@ -2733,121 +2715,18 @@ document.getElementById("addActivityTypeBtn").addEventListener("click", async ()
   await db.collection(ACTIVITY_TYPE_COLLECTION).add({ name });
   document.getElementById("newActivityType").value = "";
 });
-function populateActivitySelect(selectedName) {
-  const el = document.getElementById("activityName");
-  const current = selectedName !== undefined ? selectedName : el.value;
-  el.innerHTML = `<option value="">選択してください</option>` + allActivityTypes.map(a =>
-    `<option value="${escapeHtml(a.name)}" ${a.name===current?"selected":""}>${escapeHtml(a.name)}</option>`
-  ).join("");
-}
 function findActivityType(name) { return allActivityTypes.find(a => a.name === name); }
 
-// ================= 活動実績 =================
-function subscribeActivityRecords() {
-  db.collection(ACTIVITY_RECORD_COLLECTION).onSnapshot(snapshot => {
-    allActivityRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderActivityList();
-    renderActivitySummary();
-  }, err => {
-    document.getElementById("activityListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
-  });
+// ================= 活動実績（年間記録から自動集計） =================
+// 年間記録のタイトルが活動名マスターと一致するものを、活動実績として自動的に拾い上げる
+function matchingActivityEvents() {
+  const activityNames = new Set(allActivityTypes.map(a => a.name));
+  return allEvents.filter(ev => activityNames.has(ev.title));
 }
-
-const activityOverlay = document.getElementById("activityModalOverlay");
-const activityFormEl = document.getElementById("activityForm");
-
-function addActivityDateRow(prefillDate) {
-  const container = document.getElementById("activityDatesContainer");
-  const row = document.createElement("div");
-  row.className = "water-item-row";
-  row.innerHTML = `
-    <div class="field">
-      <label>日付</label>
-      <input type="date" class="activity-date-input" value="${prefillDate||''}">
-    </div>
-    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove(); updateActivityCountFromDates();">✕</button>
-  `;
-  container.appendChild(row);
-  row.querySelector(".activity-date-input").addEventListener("change", updateActivityCountFromDates);
-}
-document.getElementById("addActivityDateRowBtn").addEventListener("click", () => { addActivityDateRow(); updateActivityCountFromDates(); });
-
-function collectActivityDates() {
-  return Array.from(document.querySelectorAll("#activityDatesContainer .activity-date-input"))
-    .map(inp => inp.value).filter(Boolean);
-}
-function updateActivityCountFromDates() {
-  const dates = collectActivityDates();
-  if (dates.length > 0) {
-    document.getElementById("activityCount").value = dates.length;
-  }
-}
-
-document.getElementById("addActivityBtn").addEventListener("click", () => {
-  activityFormEl.reset();
-  document.getElementById("activityEditId").value = "";
-  document.getElementById("activityModalTitle").textContent = "活動実績を追加";
-  document.getElementById("activityDeleteBtnInModal").style.display = "none";
-  populateActivitySelect("");
-  document.getElementById("activityDatesContainer").innerHTML = "";
-  activityOverlay.classList.add("open");
-});
-document.getElementById("activityCancelBtn").addEventListener("click", () => activityOverlay.classList.remove("open"));
-activityOverlay.addEventListener("click", (e) => { if (e.target === activityOverlay) activityOverlay.classList.remove("open"); });
-
-window.openEditActivity = function(id) {
-  const r = allActivityRecords.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById("activityEditId").value = id;
-  document.getElementById("activityYearMonth").value = r.yearMonth || "";
-  populateActivitySelect(r.activityName || "");
-  document.getElementById("activityCount").value = r.count !== undefined ? r.count : "";
-  document.getElementById("activityNotes").value = r.notes || "";
-  document.getElementById("activityDatesContainer").innerHTML = "";
-  (r.dates || []).forEach(d => addActivityDateRow(d));
-  document.getElementById("activityModalTitle").textContent = "活動実績を編集";
-  document.getElementById("activityDeleteBtnInModal").style.display = "block";
-  activityOverlay.classList.add("open");
-};
-document.getElementById("activityDeleteBtnInModal").addEventListener("click", () => {
-  const id = document.getElementById("activityEditId").value;
-  if (!id) return;
-  if (!confirm("この活動実績を削除しますか？")) return;
-  db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).delete();
-  activityOverlay.classList.remove("open");
-});
-window.deleteActivity = function(id) {
-  if (!confirm("この活動実績を削除しますか？")) return;
-  db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).delete();
-};
-
-activityFormEl.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const id = document.getElementById("activityEditId").value;
-  const dates = collectActivityDates();
-  const data = {
-    yearMonth: document.getElementById("activityYearMonth").value,
-    activityName: document.getElementById("activityName").value,
-    count: dates.length > 0 ? dates.length : (Number(document.getElementById("activityCount").value) || 0),
-    dates,
-    notes: document.getElementById("activityNotes").value.trim(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  if (!data.activityName) { alert("活動名を選択してください"); return; }
-  if (!data.count) { alert("実施回数を入力するか、実施日を追加してください"); return; }
-  try {
-    if (id) {
-      await db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).update(data);
-    } else {
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection(ACTIVITY_RECORD_COLLECTION).add(data);
-    }
-    activityOverlay.classList.remove("open");
-  } catch (err) { alert("保存エラー: " + err.message); }
-});
 
 function renderActivityYearTabs() {
-  const years = Array.from(new Set(allActivityRecords.map(r => metalFiscalYear(r.yearMonth)))).sort((a,b) => b.localeCompare(a));
+  const matched = matchingActivityEvents();
+  const years = Array.from(new Set(matched.map(ev => metalFiscalYear((ev.date||"").slice(0,7))))).sort((a,b) => b.localeCompare(a));
   const el = document.getElementById("activityYearTabs");
   el.innerHTML = `<div class="year-filter-tab ${currentActivityYear==='all'?'active':''}" onclick="setActivityYear('all')">すべて</div>` +
     years.map(y => `<div class="year-filter-tab ${currentActivityYear===y?'active':''}" onclick="setActivityYear('${y}')">${y}年度</div>`).join("");
@@ -2862,61 +2741,53 @@ function renderActivityList() {
   const container = document.getElementById("activityListContainer");
   if (!container) return;
   renderActivityYearTabs();
-  let filtered = allActivityRecords;
-  if (currentActivityYear !== "all") filtered = filtered.filter(r => metalFiscalYear(r.yearMonth) === currentActivityYear);
+  let filtered = matchingActivityEvents();
+  if (currentActivityYear !== "all") filtered = filtered.filter(ev => metalFiscalYear((ev.date||"").slice(0,7)) === currentActivityYear);
   if (currentActivitySearch.trim()) {
     const q = currentActivitySearch.trim().toLowerCase();
-    filtered = filtered.filter(r => (r.activityName||"").toLowerCase().includes(q));
+    filtered = filtered.filter(ev => (ev.title||"").toLowerCase().includes(q));
   }
-  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動実績がありません</div>'; return; }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動実績がありません（📋年間記録でタイトルに活動名を選んで入力してください）</div>'; return; }
+
+  filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
 
   const groups = {};
-  filtered.forEach(r => {
-    const fy = metalFiscalYear(r.yearMonth);
+  filtered.forEach(ev => {
+    const fy = metalFiscalYear((ev.date||"").slice(0,7));
     if (!groups[fy]) groups[fy] = [];
-    groups[fy].push(r);
+    groups[fy].push(ev);
   });
   const fys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
 
   container.innerHTML = fys.map(fy => {
-    const records = [...groups[fy]].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
-    const totalCount = records.reduce((sum,r) => sum + (r.count||0), 0);
-
-    const rowsHtml = records.map(r => {
-      const datesHtml = (r.dates && r.dates.length) ? `<div class="event-notes">実施日：${r.dates.slice().sort().map(d=>escapeHtml(d)).join("・")}</div>` : "";
-      return `
+    const records = groups[fy];
+    return `
+      <div class="year-group-label">${fy}年度（${records.length}件）</div>
+      ${records.map(ev => `
         <div class="event-card" style="border-left-color:#059669;">
-          <div class="event-date">${r.yearMonth || "-"}</div>
-          <div class="event-title">${escapeHtml(r.activityName)}　${r.count}回</div>
-          ${datesHtml}
-          ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
+          <div class="event-date">${ev.date || "-"}</div>
+          <div class="event-title">${escapeHtml(ev.title)}</div>
+          ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
           <div class="event-actions">
-            <button class="btn-edit" onclick="openEditActivity('${r.id}')">編集</button>
-            <button class="btn-delete" onclick="deleteActivity('${r.id}')">削除</button>
+            <button class="btn-edit" onclick="openEditEvent('${ev.id}')">編集</button>
+            <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
           </div>
         </div>
-      `;
-    }).join("");
-    return `
-      <div class="year-group-label">${fy}年度（年間合計 ${totalCount}回）</div>
-      ${rowsHtml}
+      `).join("")}
     `;
   }).join("");
 }
 document.getElementById("activitySearchInput").addEventListener("input", (e) => { currentActivitySearch = e.target.value; renderActivityList(); });
 document.getElementById("jpegBtnActivity").addEventListener("click", () => {
-  let list = [...allActivityRecords];
-  if (currentActivityYear !== "all") list = list.filter(r => metalFiscalYear(r.yearMonth) === currentActivityYear);
+  let list = matchingActivityEvents();
+  if (currentActivityYear !== "all") list = list.filter(ev => metalFiscalYear((ev.date||"").slice(0,7)) === currentActivityYear);
   if (currentActivitySearch.trim()) {
     const q = currentActivitySearch.trim().toLowerCase();
-    list = list.filter(r => (r.activityName||"").toLowerCase().includes(q));
+    list = list.filter(ev => (ev.title||"").toLowerCase().includes(q));
   }
-  list.sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
-  const rows = list.map(r => {
-    const datesText = (r.dates||[]).join("・");
-    return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), escapeHtml(datesText)];
-  });
-  exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","実施日"], rows, "地域貢献活動実績");
+  list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
+  const rows = list.map(ev => [ev.date||"-", escapeHtml(ev.title||"-"), escapeHtml(ev.notes||"")]);
+  exportTableAsJpeg("地域貢献 活動実績", ["日付","活動名","内容・メモ"], rows, "地域貢献活動実績");
 });
 
 let currentActivitySummarySearch = "";
@@ -2931,14 +2802,13 @@ function renderActivitySummary() {
   if (types.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動がありません</div>'; return; }
 
   container.innerHTML = types.map(t => {
-    const records = allActivityRecords.filter(r => r.activityName === t.name);
-    const totalCount = records.reduce((sum,r) => sum + (r.count||0), 0);
+    const records = allEvents.filter(ev => ev.title === t.name);
+    const totalCount = records.length;
 
-    // 年度ごとの内訳
     const byYear = {};
-    records.forEach(r => {
-      const fy = metalFiscalYear(r.yearMonth);
-      byYear[fy] = (byYear[fy] || 0) + (r.count||0);
+    records.forEach(ev => {
+      const fy = metalFiscalYear((ev.date||"").slice(0,7));
+      byYear[fy] = (byYear[fy] || 0) + 1;
     });
     const years = Object.keys(byYear).sort((a,b) => b.localeCompare(a));
     const yearRowsHtml = years.length
@@ -2965,11 +2835,11 @@ document.getElementById("jpegBtnActivitySummary").addEventListener("click", () =
   }
   const rows = [];
   types.forEach(t => {
-    const records = allActivityRecords.filter(r => r.activityName === t.name);
+    const records = allEvents.filter(ev => ev.title === t.name);
     const byYear = {};
-    records.forEach(r => {
-      const fy = metalFiscalYear(r.yearMonth);
-      byYear[fy] = (byYear[fy] || 0) + (r.count||0);
+    records.forEach(ev => {
+      const fy = metalFiscalYear((ev.date||"").slice(0,7));
+      byYear[fy] = (byYear[fy] || 0) + 1;
     });
     const years = Object.keys(byYear).sort((a,b) => b.localeCompare(a));
     if (years.length === 0) { rows.push([escapeHtml(t.name), "-", "0"]); return; }
@@ -2978,17 +2848,20 @@ document.getElementById("jpegBtnActivitySummary").addEventListener("click", () =
   exportTableAsJpeg("地域貢献 活動ごとのまとめ", ["活動名","年度","回数"], rows, "地域貢献活動ごとまとめ");
 });
 
+
 // ---- 出来事追加/編集モーダル ----
 const eventOverlay = document.getElementById("eventModalOverlay");
 const eventFormEl = document.getElementById("eventForm");
 
 function openAddEventModal(prefillDate) {
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   eventFormEl.reset();
   document.getElementById("editId").value = "";
   document.getElementById("eventModalTitle").textContent = "出来事を追加";
   document.getElementById("eventDeleteBtnInModal").style.display = "none";
   populateMarkSelect("");
   if (prefillDate) document.getElementById("eventDate").value = prefillDate;
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   eventOverlay.classList.add("open");
 }
 document.getElementById("addBtn").addEventListener("click", () => openAddEventModal(null));
@@ -3005,6 +2878,7 @@ window.openEditEvent = function(id) {
   document.getElementById("eventNotes").value = ev.notes || "";
   document.getElementById("eventModalTitle").textContent = "出来事を編集";
   document.getElementById("eventDeleteBtnInModal").style.display = "block";
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   eventOverlay.classList.add("open");
 };
 document.getElementById("eventDeleteBtnInModal").addEventListener("click", () => {
@@ -3128,7 +3002,6 @@ subscribeLifelineRecords();
 subscribeFreonEquips();
 subscribeFreonRecords();
 subscribeActivityTypes();
-subscribeActivityRecords();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
