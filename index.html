@@ -282,7 +282,6 @@
   <div class="master-sub-tabs">
     <div class="master-sub-tab active" data-donationview="activity">📅 活動実績</div>
     <div class="master-sub-tab" data-donationview="activitySummary">📊 活動ごと</div>
-    <div class="master-sub-tab" data-donationview="donation">🎁 寄付記録</div>
   </div>
 
   <div id="donationViewActivitySummary" style="display:none;">
@@ -302,17 +301,8 @@
     <div class="list" id="activityListContainer"><div class="loading">読み込み中...</div></div>
   </div>
 
-  <div id="donationViewDonation" style="display:none;">
-    <div class="toolbar-row">
-      <div class="search-box"><input type="text" id="donationSearchInput" placeholder="品目・寄付先で検索"></div>
-      <button class="jpeg-btn" id="jpegBtnDonation">🖨️ JPEG</button>
-    </div>
-    <div class="year-filter-tabs" id="donationYearTabs"></div>
-    <div class="list" id="donationListContainer"><div class="loading">読み込み中...</div></div>
-  </div>
 
   <button class="fab" id="addActivityBtn" style="background:#059669;">＋</button>
-  <button class="fab" id="addDonationBtn" style="background:#db2777;display:none;">＋</button>
 </div>
 
 <!-- ================= 進捗記録クリーン度チェックセクション ================= -->
@@ -505,7 +495,8 @@
       </div>
       <div class="field">
         <label>タイトル</label>
-        <input type="text" id="eventTitle" placeholder="出来事のタイトル" required>
+        <input type="text" id="eventTitle" list="activityNameDatalist" placeholder="出来事のタイトル（活動名の候補から選ぶか自由入力）" required>
+        <datalist id="activityNameDatalist"></datalist>
       </div>
       <div class="field">
         <label>内容・メモ</label>
@@ -618,37 +609,6 @@
         <button type="button" class="btn-cancel" id="metalCancelBtn">キャンセル</button>
         <button type="button" class="btn-cancel btn-delete-inline" id="metalDeleteBtnInModal" style="display:none;">削除</button>
         <button type="submit" class="btn-save" style="background:#78716c;">保存</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- 寄付記録 追加/編集モーダル -->
-<div class="modal-overlay" id="donationModalOverlay">
-  <div class="modal">
-    <h2 id="donationModalTitle">寄付記録を追加</h2>
-    <form id="donationForm">
-      <input type="hidden" id="donationEditId">
-      <div class="field">
-        <label>日付</label>
-        <input type="date" id="donationDate" required>
-      </div>
-      <div class="field">
-        <label>寄付先</label>
-        <input type="text" id="donationRecipient" placeholder="例：上田市社会福祉協議会">
-      </div>
-      <div class="field">
-        <label>品目・内容</label>
-        <input type="text" id="donationItem" placeholder="例：お米20kg" required>
-      </div>
-      <div class="field">
-        <label>備考</label>
-        <textarea id="donationNotes" placeholder="メモ"></textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" id="donationCancelBtn">キャンセル</button>
-        <button type="button" class="btn-cancel btn-delete-inline" id="donationDeleteBtnInModal" style="display:none;">削除</button>
-        <button type="submit" class="btn-save" style="background:#db2777;">保存</button>
       </div>
     </form>
   </div>
@@ -856,7 +816,6 @@ const WATERTEST_ITEM_COLLECTION = "waterTestItems";
 const NOISECHECK_COLLECTION = "noiseChecks";
 const METAL_ITEM_COLLECTION = "metalItems";
 const METAL_RECORD_COLLECTION = "metalRecords";
-const DONATION_COLLECTION = "donationRecords";
 const CLEAN_ZONE_COLLECTION = "cleanlinessZones";
 const CLEAN_CHECK_COLLECTION = "cleanlinessChecks";
 const DIESEL_VEHICLE_COLLECTION = "dieselVehicles";
@@ -883,7 +842,6 @@ let allWaterItems = [];
 let allNoiseChecks = [];
 let allMetalItems = [];
 let allMetalRecords = [];
-let allDonations = [];
 let allCleanZones = [];
 let allCleanChecks = [];
 let allDieselVehicles = [];
@@ -903,8 +861,6 @@ let currentWaterTestYear = "all";
 let currentNoiseCheckSearch = "";
 let currentNoiseCheckYear = "all";
 let currentMetalSearch = "";
-let currentDonationSearch = "";
-let currentDonationYear = "all";
 let currentCleanSearch = "";
 let currentCleanYear = "all";
 let currentDieselSearch = "";
@@ -938,7 +894,7 @@ document.querySelectorAll(".main-tab").forEach(tab => {
     else if (tab.dataset.section === "waterTest") renderWaterTestList();
     else if (tab.dataset.section === "noiseCheck") renderNoiseCheckList();
     else if (tab.dataset.section === "metal") renderMetalList();
-    else if (tab.dataset.section === "donation") { renderActivityList(); renderDonationList(); }
+    else if (tab.dataset.section === "donation") { renderActivityList(); renderActivitySummary(); }
     else if (tab.dataset.section === "clean") renderCleanList();
     else if (tab.dataset.section === "diesel") renderDieselList();
     else if (tab.dataset.section === "lifeline") renderLifelineList();
@@ -956,7 +912,7 @@ document.querySelectorAll("#section-master .master-sub-tab").forEach(tab => {
   });
 });
 
-// ---- 地域貢献 サブタブ(活動実績/活動ごと/寄付記録) ----
+// ---- 地域貢献 サブタブ(活動実績/活動ごと) ----
 document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll("#section-donation .master-sub-tab").forEach(t => t.classList.remove("active"));
@@ -964,9 +920,7 @@ document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
     const view = tab.dataset.donationview;
     document.getElementById("donationViewActivity").style.display = view === "activity" ? "block" : "none";
     document.getElementById("donationViewActivitySummary").style.display = view === "activitySummary" ? "block" : "none";
-    document.getElementById("donationViewDonation").style.display = view === "donation" ? "block" : "none";
     document.getElementById("addActivityBtn").style.display = view === "activity" ? "block" : "none";
-    document.getElementById("addDonationBtn").style.display = view === "donation" ? "block" : "none";
     if (view === "activitySummary") renderActivitySummary();
   });
 });
@@ -2764,6 +2718,10 @@ function renderActivityTypeList() {
       <div class="master-item-actions"><button onclick="deleteActivityType('${a.id}')">削除</button></div>
     </div>
   `).join("");
+  const datalistEl = document.getElementById("activityNameDatalist");
+  if (datalistEl) {
+    datalistEl.innerHTML = allActivityTypes.map(a => `<option value="${escapeHtml(a.name)}">`).join("");
+  }
 }
 window.deleteActivityType = function(id) {
   if (!confirm("この活動を削除しますか？")) return;
@@ -3018,170 +2976,6 @@ document.getElementById("jpegBtnActivitySummary").addEventListener("click", () =
     years.forEach(y => rows.push([escapeHtml(t.name), y + "年度", String(byYear[y])]));
   });
   exportTableAsJpeg("地域貢献 活動ごとのまとめ", ["活動名","年度","回数"], rows, "地域貢献活動ごとまとめ");
-});
-
-// ================= 寄付記録 =================
-function subscribeDonations() {
-  db.collection(DONATION_COLLECTION).onSnapshot(snapshot => {
-    allDonations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderDonationList();
-  }, err => {
-    document.getElementById("donationListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
-  });
-}
-
-const donationOverlay = document.getElementById("donationModalOverlay");
-const donationFormEl = document.getElementById("donationForm");
-
-document.getElementById("addDonationBtn").addEventListener("click", () => {
-  donationFormEl.reset();
-  document.getElementById("donationEditId").value = "";
-  document.getElementById("donationModalTitle").textContent = "寄付記録を追加";
-  document.getElementById("donationDeleteBtnInModal").style.display = "none";
-  donationOverlay.classList.add("open");
-});
-document.getElementById("donationCancelBtn").addEventListener("click", () => donationOverlay.classList.remove("open"));
-donationOverlay.addEventListener("click", (e) => { if (e.target === donationOverlay) donationOverlay.classList.remove("open"); });
-
-window.openEditDonation = function(id) {
-  const d = allDonations.find(x => x.id === id);
-  if (!d) return;
-  document.getElementById("donationEditId").value = id;
-  document.getElementById("donationDate").value = d.date || "";
-  document.getElementById("donationRecipient").value = d.recipient || "";
-  document.getElementById("donationItem").value = d.item || "";
-  document.getElementById("donationNotes").value = d.notes || "";
-  document.getElementById("donationModalTitle").textContent = "寄付記録を編集";
-  document.getElementById("donationDeleteBtnInModal").style.display = "block";
-  donationOverlay.classList.add("open");
-};
-document.getElementById("donationDeleteBtnInModal").addEventListener("click", async () => {
-  const id = document.getElementById("donationEditId").value;
-  if (!id) return;
-  if (!confirm("この寄付記録を削除しますか？")) return;
-  await deleteDonationAndLinkedEvent(id);
-  donationOverlay.classList.remove("open");
-});
-window.deleteDonation = function(id) {
-  if (!confirm("この寄付記録を削除しますか？")) return;
-  deleteDonationAndLinkedEvent(id);
-};
-async function deleteDonationAndLinkedEvent(id) {
-  const d = allDonations.find(x => x.id === id);
-  if (d && d.linkedEventId) {
-    try { await db.collection(EVENT_COLLECTION).doc(d.linkedEventId).delete(); } catch (err) {}
-  }
-  await db.collection(DONATION_COLLECTION).doc(id).delete();
-}
-
-async function ensureDonationMark() {
-  let mark = allMarks.find(m => m.name === "寄付");
-  if (mark) return mark.name;
-  await db.collection(MARK_COLLECTION).add({ name: "寄付", color: "#db2777" });
-  return "寄付";
-}
-
-donationFormEl.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const id = document.getElementById("donationEditId").value;
-  const data = {
-    date: document.getElementById("donationDate").value,
-    recipient: document.getElementById("donationRecipient").value.trim(),
-    item: document.getElementById("donationItem").value.trim(),
-    notes: document.getElementById("donationNotes").value.trim(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  };
-  try {
-    const markName = await ensureDonationMark();
-    const eventData = {
-      date: data.date,
-      mark: markName,
-      title: data.item || "寄付",
-      notes: data.recipient ? `寄付先：${data.recipient}${data.notes ? "\n" + data.notes : ""}` : data.notes,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    if (id) {
-      const existing = allDonations.find(x => x.id === id);
-      if (existing && existing.linkedEventId) {
-        await db.collection(EVENT_COLLECTION).doc(existing.linkedEventId).update(eventData);
-        data.linkedEventId = existing.linkedEventId;
-      } else {
-        eventData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        const newEventRef = await db.collection(EVENT_COLLECTION).add(eventData);
-        data.linkedEventId = newEventRef.id;
-      }
-      await db.collection(DONATION_COLLECTION).doc(id).update(data);
-    } else {
-      eventData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      const newEventRef = await db.collection(EVENT_COLLECTION).add(eventData);
-      data.linkedEventId = newEventRef.id;
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection(DONATION_COLLECTION).add(data);
-    }
-    donationOverlay.classList.remove("open");
-  } catch (err) { alert("保存エラー: " + err.message); }
-});
-
-function renderDonationYearTabs() {
-  const years = Array.from(new Set(allDonations.map(d => (d.date||"").slice(0,4)).filter(Boolean))).sort((a,b) => b.localeCompare(a));
-  const el = document.getElementById("donationYearTabs");
-  el.innerHTML = `<div class="year-filter-tab ${currentDonationYear==='all'?'active':''}" onclick="setDonationYear('all')">すべて</div>` +
-    years.map(y => `<div class="year-filter-tab ${currentDonationYear===y?'active':''}" onclick="setDonationYear('${y}')">${y}年</div>`).join("");
-}
-window.setDonationYear = function(y) {
-  currentDonationYear = y;
-  renderDonationYearTabs();
-  renderDonationList();
-};
-
-function renderDonationList() {
-  renderDonationYearTabs();
-  const container = document.getElementById("donationListContainer");
-  let filtered = allDonations;
-  if (currentDonationYear !== "all") filtered = filtered.filter(d => (d.date||"").startsWith(currentDonationYear));
-  if (currentDonationSearch.trim()) {
-    const q = currentDonationSearch.trim().toLowerCase();
-    filtered = filtered.filter(d => (d.item||"").toLowerCase().includes(q) || (d.recipient||"").toLowerCase().includes(q));
-  }
-  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する寄付記録がありません</div>'; return; }
-
-  filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
-
-  const groups = {};
-  filtered.forEach(d => {
-    const y = (d.date||"未設定").slice(0,4) || "未設定";
-    if (!groups[y]) groups[y] = [];
-    groups[y].push(d);
-  });
-  const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
-
-  container.innerHTML = years.map(y => `
-    <div class="year-group-label">${y}年（${groups[y].length}件）</div>
-    ${groups[y].map(d => `
-      <div class="event-card" style="border-left-color:#db2777;">
-        <div class="event-date">${d.date || "-"}</div>
-        <div class="event-title">${escapeHtml(d.item)}</div>
-        ${d.recipient ? `<div class="event-notes">寄付先：${escapeHtml(d.recipient)}</div>` : ""}
-        ${d.notes ? `<div class="event-notes">${escapeHtml(d.notes)}</div>` : ""}
-        <div class="event-actions">
-          <button class="btn-edit" onclick="openEditDonation('${d.id}')">編集</button>
-          <button class="btn-delete" onclick="deleteDonation('${d.id}')">削除</button>
-        </div>
-      </div>
-    `).join("")}
-  `).join("");
-}
-document.getElementById("donationSearchInput").addEventListener("input", (e) => { currentDonationSearch = e.target.value; renderDonationList(); });
-document.getElementById("jpegBtnDonation").addEventListener("click", () => {
-  let list = [...allDonations];
-  if (currentDonationYear !== "all") list = list.filter(d => (d.date||"").startsWith(currentDonationYear));
-  if (currentDonationSearch.trim()) {
-    const q = currentDonationSearch.trim().toLowerCase();
-    list = list.filter(d => (d.item||"").toLowerCase().includes(q) || (d.recipient||"").toLowerCase().includes(q));
-  }
-  list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
-  const rows = list.map(d => [d.date||"-", escapeHtml(d.recipient||"-"), escapeHtml(d.item||"-"), escapeHtml(d.notes||"")]);
-  exportTableAsJpeg("寄付記録", ["日付","寄付先","品目・内容","備考"], rows, "寄付記録");
 });
 
 // ---- 出来事追加/編集モーダル ----
