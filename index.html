@@ -665,7 +665,13 @@
       </div>
       <div class="field">
         <label>実施回数</label>
-        <input type="number" id="activityCount" placeholder="例：4" required>
+        <input type="number" id="activityCount" placeholder="例：4">
+        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">下の「実施日」を入力すると自動で回数が計算されます（手入力も可）</div>
+      </div>
+      <div class="field">
+        <label>実施日（任意）</label>
+        <div id="activityDatesContainer"></div>
+        <button type="button" class="jpeg-btn" style="width:100%;margin-top:8px;" id="addActivityDateRowBtn">＋ 日付を追加</button>
       </div>
       <div class="field">
         <label>備考</label>
@@ -2766,12 +2772,40 @@ function subscribeActivityRecords() {
 const activityOverlay = document.getElementById("activityModalOverlay");
 const activityFormEl = document.getElementById("activityForm");
 
+function addActivityDateRow(prefillDate) {
+  const container = document.getElementById("activityDatesContainer");
+  const row = document.createElement("div");
+  row.className = "water-item-row";
+  row.innerHTML = `
+    <div class="field">
+      <label>日付</label>
+      <input type="date" class="activity-date-input" value="${prefillDate||''}">
+    </div>
+    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove(); updateActivityCountFromDates();">✕</button>
+  `;
+  container.appendChild(row);
+  row.querySelector(".activity-date-input").addEventListener("change", updateActivityCountFromDates);
+}
+document.getElementById("addActivityDateRowBtn").addEventListener("click", () => { addActivityDateRow(); updateActivityCountFromDates(); });
+
+function collectActivityDates() {
+  return Array.from(document.querySelectorAll("#activityDatesContainer .activity-date-input"))
+    .map(inp => inp.value).filter(Boolean);
+}
+function updateActivityCountFromDates() {
+  const dates = collectActivityDates();
+  if (dates.length > 0) {
+    document.getElementById("activityCount").value = dates.length;
+  }
+}
+
 document.getElementById("addActivityBtn").addEventListener("click", () => {
   activityFormEl.reset();
   document.getElementById("activityEditId").value = "";
   document.getElementById("activityModalTitle").textContent = "活動実績を追加";
   document.getElementById("activityDeleteBtnInModal").style.display = "none";
   populateActivitySelect("");
+  document.getElementById("activityDatesContainer").innerHTML = "";
   activityOverlay.classList.add("open");
 });
 document.getElementById("activityCancelBtn").addEventListener("click", () => activityOverlay.classList.remove("open"));
@@ -2785,6 +2819,8 @@ window.openEditActivity = function(id) {
   populateActivitySelect(r.activityName || "");
   document.getElementById("activityCount").value = r.count !== undefined ? r.count : "";
   document.getElementById("activityNotes").value = r.notes || "";
+  document.getElementById("activityDatesContainer").innerHTML = "";
+  (r.dates || []).forEach(d => addActivityDateRow(d));
   document.getElementById("activityModalTitle").textContent = "活動実績を編集";
   document.getElementById("activityDeleteBtnInModal").style.display = "block";
   activityOverlay.classList.add("open");
@@ -2804,14 +2840,17 @@ window.deleteActivity = function(id) {
 activityFormEl.addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = document.getElementById("activityEditId").value;
+  const dates = collectActivityDates();
   const data = {
     yearMonth: document.getElementById("activityYearMonth").value,
     activityName: document.getElementById("activityName").value,
-    count: Number(document.getElementById("activityCount").value) || 0,
+    count: dates.length > 0 ? dates.length : (Number(document.getElementById("activityCount").value) || 0),
+    dates,
     notes: document.getElementById("activityNotes").value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   if (!data.activityName) { alert("活動名を選択してください"); return; }
+  if (!data.count) { alert("実施回数を入力するか、実施日を追加してください"); return; }
   try {
     if (id) {
       await db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).update(data);
@@ -2830,10 +2869,10 @@ function activityAchieved(r) {
 }
 
 function renderActivityYearTabs() {
-  const years = Array.from(new Set(allActivityRecords.map(r => (r.yearMonth||"").slice(0,4)).filter(Boolean))).sort((a,b) => b.localeCompare(a));
+  const years = Array.from(new Set(allActivityRecords.map(r => metalFiscalYear(r.yearMonth)))).sort((a,b) => b.localeCompare(a));
   const el = document.getElementById("activityYearTabs");
   el.innerHTML = `<div class="year-filter-tab ${currentActivityYear==='all'?'active':''}" onclick="setActivityYear('all')">すべて</div>` +
-    years.map(y => `<div class="year-filter-tab ${currentActivityYear===y?'active':''}" onclick="setActivityYear('${y}')">${y}年</div>`).join("");
+    years.map(y => `<div class="year-filter-tab ${currentActivityYear===y?'active':''}" onclick="setActivityYear('${y}')">${y}年度</div>`).join("");
 }
 window.setActivityYear = function(y) {
   currentActivityYear = y;
@@ -2846,34 +2885,45 @@ function renderActivityList() {
   if (!container) return;
   renderActivityYearTabs();
   let filtered = allActivityRecords;
-  if (currentActivityYear !== "all") filtered = filtered.filter(r => (r.yearMonth||"").startsWith(currentActivityYear));
+  if (currentActivityYear !== "all") filtered = filtered.filter(r => metalFiscalYear(r.yearMonth) === currentActivityYear);
   if (currentActivitySearch.trim()) {
     const q = currentActivitySearch.trim().toLowerCase();
     filtered = filtered.filter(r => (r.activityName||"").toLowerCase().includes(q));
   }
   if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動実績がありません</div>'; return; }
 
-  filtered = [...filtered].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
-
   const groups = {};
   filtered.forEach(r => {
-    const y = (r.yearMonth||"未設定").slice(0,4) || "未設定";
-    if (!groups[y]) groups[y] = [];
-    groups[y].push(r);
+    const fy = metalFiscalYear(r.yearMonth);
+    if (!groups[fy]) groups[fy] = [];
+    groups[fy].push(r);
   });
-  const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+  const fys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
 
-  container.innerHTML = years.map(y => {
-    const records = groups[y];
+  container.innerHTML = fys.map(fy => {
+    const records = [...groups[fy]].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
     const totalCount = records.reduce((sum,r) => sum + (r.count||0), 0);
+
+    // 活動名ごとに年度全体の評価(全月達成なら〇)を計算
+    const byActivity = {};
+    records.forEach(r => { if (!byActivity[r.activityName]) byActivity[r.activityName] = []; byActivity[r.activityName].push(r); });
+    const yearEvalHtml = Object.entries(byActivity).map(([name, recs]) => {
+      const evals = recs.map(activityAchieved).filter(v => v !== null);
+      if (evals.length === 0) return "";
+      const allAchieved = evals.every(v => v === true);
+      return `<div class="water-test-item-line"><span>${escapeHtml(name)}</span><span style="font-weight:700;color:${allAchieved?'#059669':'#ef4444'};">${allAchieved ? "〇 進捗評価" : "× 進捗評価"}</span></div>`;
+    }).join("");
+
     const rowsHtml = records.map(r => {
       const achieved = activityAchieved(r);
+      const datesHtml = (r.dates && r.dates.length) ? `<div class="event-notes">実施日：${r.dates.slice().sort().map(d=>escapeHtml(d)).join("・")}</div>` : "";
       return `
         <div class="event-card" style="border-left-color:${achieved===false?'#ef4444':'#059669'};">
           <div class="event-date">${r.yearMonth || "-"}</div>
           <div class="event-title">${escapeHtml(r.activityName)}　${r.count}回
             ${achieved !== null ? `<span class="mark-badge" style="background:${achieved?'#059669':'#ef4444'};">${achieved?'〇 達成':'× 未達成'}</span>` : ""}
           </div>
+          ${datesHtml}
           ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
           <div class="event-actions">
             <button class="btn-edit" onclick="openEditActivity('${r.id}')">編集</button>
@@ -2883,7 +2933,8 @@ function renderActivityList() {
       `;
     }).join("");
     return `
-      <div class="year-group-label">${y}年（年間合計 ${totalCount}回）</div>
+      <div class="year-group-label">${fy}年度（年間合計 ${totalCount}回）</div>
+      ${yearEvalHtml ? `<div class="event-card" style="border-left-color:#059669;background:#f0fdf4;">${yearEvalHtml}</div>` : ""}
       ${rowsHtml}
     `;
   }).join("");
@@ -2891,7 +2942,7 @@ function renderActivityList() {
 document.getElementById("activitySearchInput").addEventListener("input", (e) => { currentActivitySearch = e.target.value; renderActivityList(); });
 document.getElementById("jpegBtnActivity").addEventListener("click", () => {
   let list = [...allActivityRecords];
-  if (currentActivityYear !== "all") list = list.filter(r => (r.yearMonth||"").startsWith(currentActivityYear));
+  if (currentActivityYear !== "all") list = list.filter(r => metalFiscalYear(r.yearMonth) === currentActivityYear);
   if (currentActivitySearch.trim()) {
     const q = currentActivitySearch.trim().toLowerCase();
     list = list.filter(r => (r.activityName||"").toLowerCase().includes(q));
@@ -2899,9 +2950,10 @@ document.getElementById("jpegBtnActivity").addEventListener("click", () => {
   list.sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
   const rows = list.map(r => {
     const achieved = activityAchieved(r);
-    return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), achieved===null?"-":(achieved?"達成":"未達成")];
+    const datesText = (r.dates||[]).join("・");
+    return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), achieved===null?"-":(achieved?"達成":"未達成"), escapeHtml(datesText)];
   });
-  exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","判定"], rows, "地域貢献活動実績");
+  exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","判定","実施日"], rows, "地域貢献活動実績");
 });
 
 // ================= 寄付記録 =================
