@@ -473,10 +473,6 @@
         <label>活動名</label>
         <input type="text" id="newActivityType" placeholder="例：会社周辺の環境美化活動">
       </div>
-      <div class="field">
-        <label>月間目標回数（任意）</label>
-        <input type="number" id="newActivityTypeTarget" placeholder="例：3">
-      </div>
       <button type="button" class="submit-btn" id="addActivityTypeBtn">追加</button>
     </div>
   </div>
@@ -2723,8 +2719,24 @@ document.getElementById("jpegBtnNoiseCheck").addEventListener("click", () => {
 });
 
 // ---- 活動種類マスター ----
-function subscribeActivityTypes() {
-  db.collection(ACTIVITY_TYPE_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+const DEFAULT_ACTIVITY_TYPES = [
+  "会社周辺の環境美化活動",
+  "地域清掃活動",
+  "地域イベントへの協力",
+  "地域との情報共有",
+  "福祉協会寄付"
+];
+let activityTypeSeeded = false;
+
+async function subscribeActivityTypes() {
+  db.collection(ACTIVITY_TYPE_COLLECTION).onSnapshot(async snapshot => {
+    if (snapshot.empty && !activityTypeSeeded) {
+      activityTypeSeeded = true;
+      const batch = db.batch();
+      DEFAULT_ACTIVITY_TYPES.forEach(name => batch.set(db.collection(ACTIVITY_TYPE_COLLECTION).doc(), { name }));
+      await batch.commit();
+      return;
+    }
     allActivityTypes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderActivityTypeList();
     populateActivitySelect();
@@ -2736,7 +2748,7 @@ function renderActivityTypeList() {
   if (!allActivityTypes.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ活動が登録されていません</div>'; return; }
   el.innerHTML = allActivityTypes.map(a => `
     <div class="master-item">
-      <div class="master-item-info"><span>${escapeHtml(a.name)}${a.target ? `（月間目標${a.target}回）` : ""}</span></div>
+      <div class="master-item-info"><span>${escapeHtml(a.name)}</span></div>
       <div class="master-item-actions"><button onclick="deleteActivityType('${a.id}')">削除</button></div>
     </div>
   `).join("");
@@ -2747,11 +2759,9 @@ window.deleteActivityType = function(id) {
 };
 document.getElementById("addActivityTypeBtn").addEventListener("click", async () => {
   const name = document.getElementById("newActivityType").value.trim();
-  const target = Number(document.getElementById("newActivityTypeTarget").value) || null;
   if (!name) { alert("活動名を入力してください"); return; }
-  await db.collection(ACTIVITY_TYPE_COLLECTION).add({ name, target });
+  await db.collection(ACTIVITY_TYPE_COLLECTION).add({ name });
   document.getElementById("newActivityType").value = "";
-  document.getElementById("newActivityTypeTarget").value = "";
 });
 function populateActivitySelect(selectedName) {
   const el = document.getElementById("activityName");
@@ -2865,12 +2875,6 @@ activityFormEl.addEventListener("submit", async (e) => {
   } catch (err) { alert("保存エラー: " + err.message); }
 });
 
-function activityAchieved(r) {
-  const type = findActivityType(r.activityName);
-  if (!type || !type.target) return null;
-  return (r.count||0) >= type.target;
-}
-
 function renderActivityYearTabs() {
   const years = Array.from(new Set(allActivityRecords.map(r => metalFiscalYear(r.yearMonth)))).sort((a,b) => b.localeCompare(a));
   const el = document.getElementById("activityYearTabs");
@@ -2907,25 +2911,12 @@ function renderActivityList() {
     const records = [...groups[fy]].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
     const totalCount = records.reduce((sum,r) => sum + (r.count||0), 0);
 
-    // 活動名ごとに年度全体の評価(全月達成なら〇)を計算
-    const byActivity = {};
-    records.forEach(r => { if (!byActivity[r.activityName]) byActivity[r.activityName] = []; byActivity[r.activityName].push(r); });
-    const yearEvalHtml = Object.entries(byActivity).map(([name, recs]) => {
-      const evals = recs.map(activityAchieved).filter(v => v !== null);
-      if (evals.length === 0) return "";
-      const allAchieved = evals.every(v => v === true);
-      return `<div class="water-test-item-line"><span>${escapeHtml(name)}</span><span style="font-weight:700;color:${allAchieved?'#059669':'#ef4444'};">${allAchieved ? "〇 進捗評価" : "× 進捗評価"}</span></div>`;
-    }).join("");
-
     const rowsHtml = records.map(r => {
-      const achieved = activityAchieved(r);
       const datesHtml = (r.dates && r.dates.length) ? `<div class="event-notes">実施日：${r.dates.slice().sort().map(d=>escapeHtml(d)).join("・")}</div>` : "";
       return `
-        <div class="event-card" style="border-left-color:${achieved===false?'#ef4444':'#059669'};">
+        <div class="event-card" style="border-left-color:#059669;">
           <div class="event-date">${r.yearMonth || "-"}</div>
-          <div class="event-title">${escapeHtml(r.activityName)}　${r.count}回
-            ${achieved !== null ? `<span class="mark-badge" style="background:${achieved?'#059669':'#ef4444'};">${achieved?'〇 達成':'× 未達成'}</span>` : ""}
-          </div>
+          <div class="event-title">${escapeHtml(r.activityName)}　${r.count}回</div>
           ${datesHtml}
           ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
           <div class="event-actions">
@@ -2937,7 +2928,6 @@ function renderActivityList() {
     }).join("");
     return `
       <div class="year-group-label">${fy}年度（年間合計 ${totalCount}回）</div>
-      ${yearEvalHtml ? `<div class="event-card" style="border-left-color:#059669;background:#f0fdf4;">${yearEvalHtml}</div>` : ""}
       ${rowsHtml}
     `;
   }).join("");
@@ -2952,11 +2942,10 @@ document.getElementById("jpegBtnActivity").addEventListener("click", () => {
   }
   list.sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
   const rows = list.map(r => {
-    const achieved = activityAchieved(r);
     const datesText = (r.dates||[]).join("・");
-    return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), achieved===null?"-":(achieved?"達成":"未達成"), escapeHtml(datesText)];
+    return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), escapeHtml(datesText)];
   });
-  exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","判定","実施日"], rows, "地域貢献活動実績");
+  exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","実施日"], rows, "地域貢献活動実績");
 });
 
 // ================= 寄付記録 =================
@@ -2994,17 +2983,31 @@ window.openEditDonation = function(id) {
   document.getElementById("donationDeleteBtnInModal").style.display = "block";
   donationOverlay.classList.add("open");
 };
-document.getElementById("donationDeleteBtnInModal").addEventListener("click", () => {
+document.getElementById("donationDeleteBtnInModal").addEventListener("click", async () => {
   const id = document.getElementById("donationEditId").value;
   if (!id) return;
   if (!confirm("この寄付記録を削除しますか？")) return;
-  db.collection(DONATION_COLLECTION).doc(id).delete();
+  await deleteDonationAndLinkedEvent(id);
   donationOverlay.classList.remove("open");
 });
 window.deleteDonation = function(id) {
   if (!confirm("この寄付記録を削除しますか？")) return;
-  db.collection(DONATION_COLLECTION).doc(id).delete();
+  deleteDonationAndLinkedEvent(id);
 };
+async function deleteDonationAndLinkedEvent(id) {
+  const d = allDonations.find(x => x.id === id);
+  if (d && d.linkedEventId) {
+    try { await db.collection(EVENT_COLLECTION).doc(d.linkedEventId).delete(); } catch (err) {}
+  }
+  await db.collection(DONATION_COLLECTION).doc(id).delete();
+}
+
+async function ensureDonationMark() {
+  let mark = allMarks.find(m => m.name === "寄付");
+  if (mark) return mark.name;
+  await db.collection(MARK_COLLECTION).add({ name: "寄付", color: "#db2777" });
+  return "寄付";
+}
 
 donationFormEl.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -3017,9 +3020,29 @@ donationFormEl.addEventListener("submit", async (e) => {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
+    const markName = await ensureDonationMark();
+    const eventData = {
+      date: data.date,
+      mark: markName,
+      title: data.item || "寄付",
+      notes: data.recipient ? `寄付先：${data.recipient}${data.notes ? "\n" + data.notes : ""}` : data.notes,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
     if (id) {
+      const existing = allDonations.find(x => x.id === id);
+      if (existing && existing.linkedEventId) {
+        await db.collection(EVENT_COLLECTION).doc(existing.linkedEventId).update(eventData);
+        data.linkedEventId = existing.linkedEventId;
+      } else {
+        eventData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        const newEventRef = await db.collection(EVENT_COLLECTION).add(eventData);
+        data.linkedEventId = newEventRef.id;
+      }
       await db.collection(DONATION_COLLECTION).doc(id).update(data);
     } else {
+      eventData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const newEventRef = await db.collection(EVENT_COLLECTION).add(eventData);
+      data.linkedEventId = newEventRef.id;
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection(DONATION_COLLECTION).add(data);
     }
