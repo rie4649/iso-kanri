@@ -204,7 +204,7 @@
     <div class="main-tab" data-section="noiseCheck">🔊 騒音チェック</div>
     <div class="main-tab" data-section="metal">🔩 進捗記録金属拾い上げ</div>
     <div class="main-tab" data-section="clean">🧹 進捗記録クリーン度チェック</div>
-    <div class="main-tab" data-section="donation">🎁 寄付記録</div>
+    <div class="main-tab" data-section="donation">🤝 地域貢献</div>
     <div class="main-tab" data-section="diesel">⛽ 軽油使用量</div>
     <div class="main-tab" data-section="lifeline">⚡ ライフライン</div>
     <div class="main-tab" data-section="freon">🌡️ フロン点検</div>
@@ -277,15 +277,32 @@
   <button class="fab" id="addMetalBtn" style="background:#78716c;">＋</button>
 </div>
 
-<!-- ================= 寄付記録セクション ================= -->
+<!-- ================= 地域貢献セクション ================= -->
 <div class="section" id="section-donation">
-  <div class="toolbar-row">
-    <div class="search-box"><input type="text" id="donationSearchInput" placeholder="品目・寄付先で検索"></div>
-    <button class="jpeg-btn" id="jpegBtnDonation">🖨️ JPEG</button>
+  <div class="master-sub-tabs">
+    <div class="master-sub-tab active" data-donationview="activity">📅 活動実績</div>
+    <div class="master-sub-tab" data-donationview="donation">🎁 寄付記録</div>
   </div>
-  <div class="year-filter-tabs" id="donationYearTabs"></div>
-  <div class="list" id="donationListContainer"><div class="loading">読み込み中...</div></div>
-  <button class="fab" id="addDonationBtn" style="background:#db2777;">＋</button>
+
+  <div id="donationViewActivity">
+    <div class="toolbar-row">
+      <div class="search-box"><input type="text" id="activitySearchInput" placeholder="活動名で検索"></div>
+      <button class="jpeg-btn" id="jpegBtnActivity">🖨️ JPEG</button>
+    </div>
+    <div class="year-filter-tabs" id="activityYearTabs"></div>
+    <div class="list" id="activityListContainer"><div class="loading">読み込み中...</div></div>
+    <button class="fab" id="addActivityBtn" style="background:#059669;">＋</button>
+  </div>
+
+  <div id="donationViewDonation" style="display:none;">
+    <div class="toolbar-row">
+      <div class="search-box"><input type="text" id="donationSearchInput" placeholder="品目・寄付先で検索"></div>
+      <button class="jpeg-btn" id="jpegBtnDonation">🖨️ JPEG</button>
+    </div>
+    <div class="year-filter-tabs" id="donationYearTabs"></div>
+    <div class="list" id="donationListContainer"><div class="loading">読み込み中...</div></div>
+    <button class="fab" id="addDonationBtn" style="background:#db2777;">＋</button>
+  </div>
 </div>
 
 <!-- ================= 進捗記録クリーン度チェックセクション ================= -->
@@ -340,6 +357,7 @@
     <div class="master-sub-tab" data-master="dieselVehicle">⛽ 車両名</div>
     <div class="master-sub-tab" data-master="lifelineType">⚡ ライフライン種別</div>
     <div class="master-sub-tab" data-master="freonEquip">🌡️ 対象機器</div>
+    <div class="master-sub-tab" data-master="activityType">🤝 活動名</div>
   </div>
 
   <div class="master-panel active" id="masterPanel-mark">
@@ -444,6 +462,21 @@
         <input type="number" step="0.01" id="newFreonEquipCharge" placeholder="例：1.7">
       </div>
       <button type="button" class="submit-btn" id="addFreonEquipBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="master-panel" id="masterPanel-activityType">
+    <div id="activityTypeList" style="margin-top:14px;"></div>
+    <div class="add-master-form">
+      <div class="field">
+        <label>活動名</label>
+        <input type="text" id="newActivityType" placeholder="例：会社周辺の環境美化活動">
+      </div>
+      <div class="field">
+        <label>月間目標回数（任意）</label>
+        <input type="number" id="newActivityTypeTarget" placeholder="例：3">
+      </div>
+      <button type="button" class="submit-btn" id="addActivityTypeBtn">追加</button>
     </div>
   </div>
 </div>
@@ -610,6 +643,38 @@
         <button type="button" class="btn-cancel" id="donationCancelBtn">キャンセル</button>
         <button type="button" class="btn-cancel btn-delete-inline" id="donationDeleteBtnInModal" style="display:none;">削除</button>
         <button type="submit" class="btn-save" style="background:#db2777;">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 活動実績 追加/編集モーダル -->
+<div class="modal-overlay" id="activityModalOverlay">
+  <div class="modal">
+    <h2 id="activityModalTitle">活動実績を追加</h2>
+    <form id="activityForm">
+      <input type="hidden" id="activityEditId">
+      <div class="field">
+        <label>年月</label>
+        <input type="month" id="activityYearMonth" required>
+      </div>
+      <div class="field">
+        <label>活動名</label>
+        <select id="activityName" required><option value="">選択してください</option></select>
+        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">一覧にない場合は⚙️マスター管理の「活動名」から追加してください</div>
+      </div>
+      <div class="field">
+        <label>実施回数</label>
+        <input type="number" id="activityCount" placeholder="例：4" required>
+      </div>
+      <div class="field">
+        <label>備考</label>
+        <textarea id="activityNotes" placeholder="メモ"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="activityCancelBtn">キャンセル</button>
+        <button type="button" class="btn-cancel btn-delete-inline" id="activityDeleteBtnInModal" style="display:none;">削除</button>
+        <button type="submit" class="btn-save" style="background:#059669;">保存</button>
       </div>
     </form>
   </div>
@@ -796,6 +861,8 @@ const DEFAULT_LIFELINE_TYPES = [
 let lifelineTypeSeeded = false;
 const FREON_EQUIP_COLLECTION = "freonEquipments";
 const FREON_RECORD_COLLECTION = "freonRecords";
+const ACTIVITY_TYPE_COLLECTION = "activityTypes";
+const ACTIVITY_RECORD_COLLECTION = "activityRecords";
 
 let allEvents = [];
 let allMarks = [];
@@ -814,6 +881,8 @@ let allLifelineTypes = [];
 let allLifelineRecords = [];
 let allFreonEquips = [];
 let allFreonRecords = [];
+let allActivityTypes = [];
+let allActivityRecords = [];
 let currentEventSearch = "";
 let currentYearFilter = "all";
 let currentMarkFilter = "all";
@@ -830,6 +899,8 @@ let currentDieselSearch = "";
 let currentLifelineSearch = "";
 let currentFreonSearch = "";
 let currentFreonYear = "all";
+let currentActivitySearch = "";
+let currentActivityYear = "all";
 let viewYear, viewMonth; // 0-indexed month
 let selectedDayKey = null;
 
@@ -855,7 +926,7 @@ document.querySelectorAll(".main-tab").forEach(tab => {
     else if (tab.dataset.section === "waterTest") renderWaterTestList();
     else if (tab.dataset.section === "noiseCheck") renderNoiseCheckList();
     else if (tab.dataset.section === "metal") renderMetalList();
-    else if (tab.dataset.section === "donation") renderDonationList();
+    else if (tab.dataset.section === "donation") { renderActivityList(); renderDonationList(); }
     else if (tab.dataset.section === "clean") renderCleanList();
     else if (tab.dataset.section === "diesel") renderDieselList();
     else if (tab.dataset.section === "lifeline") renderLifelineList();
@@ -864,12 +935,23 @@ document.querySelectorAll(".main-tab").forEach(tab => {
 });
 
 // ---- マスター管理 サブタブ ----
-document.querySelectorAll(".master-sub-tab").forEach(tab => {
+document.querySelectorAll("#section-master .master-sub-tab").forEach(tab => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".master-sub-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll("#section-master .master-sub-tab").forEach(t => t.classList.remove("active"));
     tab.classList.add("active");
-    document.querySelectorAll(".master-panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll("#section-master .master-panel").forEach(p => p.classList.remove("active"));
     document.getElementById("masterPanel-" + tab.dataset.master).classList.add("active");
+  });
+});
+
+// ---- 地域貢献 サブタブ(活動実績/寄付記録) ----
+document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll("#section-donation .master-sub-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const isActivity = tab.dataset.donationview === "activity";
+    document.getElementById("donationViewActivity").style.display = isActivity ? "block" : "none";
+    document.getElementById("donationViewDonation").style.display = isActivity ? "none" : "block";
   });
 });
 
@@ -2631,6 +2713,197 @@ document.getElementById("jpegBtnNoiseCheck").addEventListener("click", () => {
   exportTableAsJpeg("騒音チェック記録", ["検査日","検査場所","dB","判定"], rows, "騒音チェック記録");
 });
 
+// ---- 活動種類マスター ----
+function subscribeActivityTypes() {
+  db.collection(ACTIVITY_TYPE_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+    allActivityTypes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderActivityTypeList();
+    populateActivitySelect();
+    renderActivityList();
+  });
+}
+function renderActivityTypeList() {
+  const el = document.getElementById("activityTypeList");
+  if (!allActivityTypes.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ活動が登録されていません</div>'; return; }
+  el.innerHTML = allActivityTypes.map(a => `
+    <div class="master-item">
+      <div class="master-item-info"><span>${escapeHtml(a.name)}${a.target ? `（月間目標${a.target}回）` : ""}</span></div>
+      <div class="master-item-actions"><button onclick="deleteActivityType('${a.id}')">削除</button></div>
+    </div>
+  `).join("");
+}
+window.deleteActivityType = function(id) {
+  if (!confirm("この活動を削除しますか？")) return;
+  db.collection(ACTIVITY_TYPE_COLLECTION).doc(id).delete();
+};
+document.getElementById("addActivityTypeBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newActivityType").value.trim();
+  const target = Number(document.getElementById("newActivityTypeTarget").value) || null;
+  if (!name) { alert("活動名を入力してください"); return; }
+  await db.collection(ACTIVITY_TYPE_COLLECTION).add({ name, target });
+  document.getElementById("newActivityType").value = "";
+  document.getElementById("newActivityTypeTarget").value = "";
+});
+function populateActivitySelect(selectedName) {
+  const el = document.getElementById("activityName");
+  const current = selectedName !== undefined ? selectedName : el.value;
+  el.innerHTML = `<option value="">選択してください</option>` + allActivityTypes.map(a =>
+    `<option value="${escapeHtml(a.name)}" ${a.name===current?"selected":""}>${escapeHtml(a.name)}</option>`
+  ).join("");
+}
+function findActivityType(name) { return allActivityTypes.find(a => a.name === name); }
+
+// ================= 活動実績 =================
+function subscribeActivityRecords() {
+  db.collection(ACTIVITY_RECORD_COLLECTION).onSnapshot(snapshot => {
+    allActivityRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderActivityList();
+  }, err => {
+    document.getElementById("activityListContainer").innerHTML = `<div class="empty-state">読み込みエラー: ${err.message}</div>`;
+  });
+}
+
+const activityOverlay = document.getElementById("activityModalOverlay");
+const activityFormEl = document.getElementById("activityForm");
+
+document.getElementById("addActivityBtn").addEventListener("click", () => {
+  activityFormEl.reset();
+  document.getElementById("activityEditId").value = "";
+  document.getElementById("activityModalTitle").textContent = "活動実績を追加";
+  document.getElementById("activityDeleteBtnInModal").style.display = "none";
+  populateActivitySelect("");
+  activityOverlay.classList.add("open");
+});
+document.getElementById("activityCancelBtn").addEventListener("click", () => activityOverlay.classList.remove("open"));
+activityOverlay.addEventListener("click", (e) => { if (e.target === activityOverlay) activityOverlay.classList.remove("open"); });
+
+window.openEditActivity = function(id) {
+  const r = allActivityRecords.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById("activityEditId").value = id;
+  document.getElementById("activityYearMonth").value = r.yearMonth || "";
+  populateActivitySelect(r.activityName || "");
+  document.getElementById("activityCount").value = r.count !== undefined ? r.count : "";
+  document.getElementById("activityNotes").value = r.notes || "";
+  document.getElementById("activityModalTitle").textContent = "活動実績を編集";
+  document.getElementById("activityDeleteBtnInModal").style.display = "block";
+  activityOverlay.classList.add("open");
+};
+document.getElementById("activityDeleteBtnInModal").addEventListener("click", () => {
+  const id = document.getElementById("activityEditId").value;
+  if (!id) return;
+  if (!confirm("この活動実績を削除しますか？")) return;
+  db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).delete();
+  activityOverlay.classList.remove("open");
+});
+window.deleteActivity = function(id) {
+  if (!confirm("この活動実績を削除しますか？")) return;
+  db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).delete();
+};
+
+activityFormEl.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("activityEditId").value;
+  const data = {
+    yearMonth: document.getElementById("activityYearMonth").value,
+    activityName: document.getElementById("activityName").value,
+    count: Number(document.getElementById("activityCount").value) || 0,
+    notes: document.getElementById("activityNotes").value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if (!data.activityName) { alert("活動名を選択してください"); return; }
+  try {
+    if (id) {
+      await db.collection(ACTIVITY_RECORD_COLLECTION).doc(id).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(ACTIVITY_RECORD_COLLECTION).add(data);
+    }
+    activityOverlay.classList.remove("open");
+  } catch (err) { alert("保存エラー: " + err.message); }
+});
+
+function activityAchieved(r) {
+  const type = findActivityType(r.activityName);
+  if (!type || !type.target) return null;
+  return (r.count||0) >= type.target;
+}
+
+function renderActivityYearTabs() {
+  const years = Array.from(new Set(allActivityRecords.map(r => (r.yearMonth||"").slice(0,4)).filter(Boolean))).sort((a,b) => b.localeCompare(a));
+  const el = document.getElementById("activityYearTabs");
+  el.innerHTML = `<div class="year-filter-tab ${currentActivityYear==='all'?'active':''}" onclick="setActivityYear('all')">すべて</div>` +
+    years.map(y => `<div class="year-filter-tab ${currentActivityYear===y?'active':''}" onclick="setActivityYear('${y}')">${y}年</div>`).join("");
+}
+window.setActivityYear = function(y) {
+  currentActivityYear = y;
+  renderActivityYearTabs();
+  renderActivityList();
+};
+
+function renderActivityList() {
+  const container = document.getElementById("activityListContainer");
+  if (!container) return;
+  renderActivityYearTabs();
+  let filtered = allActivityRecords;
+  if (currentActivityYear !== "all") filtered = filtered.filter(r => (r.yearMonth||"").startsWith(currentActivityYear));
+  if (currentActivitySearch.trim()) {
+    const q = currentActivitySearch.trim().toLowerCase();
+    filtered = filtered.filter(r => (r.activityName||"").toLowerCase().includes(q));
+  }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動実績がありません</div>'; return; }
+
+  filtered = [...filtered].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
+
+  const groups = {};
+  filtered.forEach(r => {
+    const y = (r.yearMonth||"未設定").slice(0,4) || "未設定";
+    if (!groups[y]) groups[y] = [];
+    groups[y].push(r);
+  });
+  const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  container.innerHTML = years.map(y => {
+    const records = groups[y];
+    const totalCount = records.reduce((sum,r) => sum + (r.count||0), 0);
+    const rowsHtml = records.map(r => {
+      const achieved = activityAchieved(r);
+      return `
+        <div class="event-card" style="border-left-color:${achieved===false?'#ef4444':'#059669'};">
+          <div class="event-date">${r.yearMonth || "-"}</div>
+          <div class="event-title">${escapeHtml(r.activityName)}　${r.count}回
+            ${achieved !== null ? `<span class="mark-badge" style="background:${achieved?'#059669':'#ef4444'};">${achieved?'〇 達成':'× 未達成'}</span>` : ""}
+          </div>
+          ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
+          <div class="event-actions">
+            <button class="btn-edit" onclick="openEditActivity('${r.id}')">編集</button>
+            <button class="btn-delete" onclick="deleteActivity('${r.id}')">削除</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+    return `
+      <div class="year-group-label">${y}年（年間合計 ${totalCount}回）</div>
+      ${rowsHtml}
+    `;
+  }).join("");
+}
+document.getElementById("activitySearchInput").addEventListener("input", (e) => { currentActivitySearch = e.target.value; renderActivityList(); });
+document.getElementById("jpegBtnActivity").addEventListener("click", () => {
+  let list = [...allActivityRecords];
+  if (currentActivityYear !== "all") list = list.filter(r => (r.yearMonth||"").startsWith(currentActivityYear));
+  if (currentActivitySearch.trim()) {
+    const q = currentActivitySearch.trim().toLowerCase();
+    list = list.filter(r => (r.activityName||"").toLowerCase().includes(q));
+  }
+  list.sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
+  const rows = list.map(r => {
+    const achieved = activityAchieved(r);
+    return [r.yearMonth||"-", escapeHtml(r.activityName||"-"), String(r.count||0), achieved===null?"-":(achieved?"達成":"未達成")];
+  });
+  exportTableAsJpeg("地域貢献 活動実績", ["年月","活動名","回数","判定"], rows, "地域貢献活動実績");
+});
+
 // ================= 寄付記録 =================
 function subscribeDonations() {
   db.collection(DONATION_COLLECTION).onSnapshot(snapshot => {
@@ -2910,6 +3183,8 @@ subscribeLifelineTypes();
 subscribeLifelineRecords();
 subscribeFreonEquips();
 subscribeFreonRecords();
+subscribeActivityTypes();
+subscribeActivityRecords();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
