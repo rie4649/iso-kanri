@@ -494,8 +494,9 @@
       </div>
       <div class="field">
         <label>タイトル</label>
-        <input type="text" id="eventTitle" list="activityNameDatalist" autocomplete="off" placeholder="出来事のタイトル（活動名の候補から選ぶか自由入力）" required>
+        <input type="text" id="eventTitle" list="activityNameDatalist" autocomplete="off" placeholder="出来事のタイトル（下のボタンから選ぶか自由入力）" required>
         <datalist id="activityNameDatalist"></datalist>
+        <div id="activityNameChips" class="year-filter-tabs" style="padding:8px 0 0;"></div>
       </div>
       <div class="field">
         <label>内容・メモ</label>
@@ -2693,16 +2694,25 @@ async function subscribeActivityTypes() {
 }
 function renderActivityTypeList() {
   const el = document.getElementById("activityTypeList");
-  if (!allActivityTypes.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ活動が登録されていません</div>'; return; }
-  el.innerHTML = allActivityTypes.map(a => `
-    <div class="master-item">
-      <div class="master-item-info"><span>${escapeHtml(a.name)}</span></div>
-      <div class="master-item-actions"><button onclick="deleteActivityType('${a.id}')">削除</button></div>
-    </div>
-  `).join("");
+  if (!allActivityTypes.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ活動が登録されていません</div>';
+  } else {
+    el.innerHTML = allActivityTypes.map(a => `
+      <div class="master-item">
+        <div class="master-item-info"><span>${escapeHtml(a.name)}</span></div>
+        <div class="master-item-actions"><button onclick="deleteActivityType('${a.id}')">削除</button></div>
+      </div>
+    `).join("");
+  }
   const datalistEl = document.getElementById("activityNameDatalist");
   if (datalistEl) {
     datalistEl.innerHTML = allActivityTypes.map(a => `<option value="${escapeHtml(a.name)}">`).join("");
+  }
+  const chipsEl = document.getElementById("activityNameChips");
+  if (chipsEl) {
+    chipsEl.innerHTML = allActivityTypes.map(a =>
+      `<div class="year-filter-tab" onclick="document.getElementById('eventTitle').value='${escapeHtml(a.name).replace(/'/g, "\\'")}';">${escapeHtml(a.name)}</div>`
+    ).join("");
   }
 }
 window.deleteActivityType = function(id) {
@@ -2712,8 +2722,12 @@ window.deleteActivityType = function(id) {
 document.getElementById("addActivityTypeBtn").addEventListener("click", async () => {
   const name = document.getElementById("newActivityType").value.trim();
   if (!name) { alert("活動名を入力してください"); return; }
-  await db.collection(ACTIVITY_TYPE_COLLECTION).add({ name });
-  document.getElementById("newActivityType").value = "";
+  try {
+    await db.collection(ACTIVITY_TYPE_COLLECTION).add({ name });
+    document.getElementById("newActivityType").value = "";
+  } catch (err) {
+    alert("追加エラー: " + err.message);
+  }
 });
 function findActivityType(name) { return allActivityTypes.find(a => a.name === name); }
 
