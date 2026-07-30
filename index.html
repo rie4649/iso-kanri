@@ -286,7 +286,7 @@
 
   <div id="donationViewActivitySummary" style="display:none;">
     <div class="toolbar-row">
-      <div class="search-box"><input type="text" id="activitySummarySearchInput" placeholder="活動名で検索"></div>
+      <div class="search-box"><input type="text" id="activitySummarySearchInput" placeholder="マーク名で検索"></div>
       <button class="jpeg-btn" id="jpegBtnActivitySummary">🖨️ JPEG</button>
     </div>
     <div class="list" id="activitySummaryContainer"><div class="loading">読み込み中...</div></div>
@@ -294,7 +294,7 @@
 
   <div id="donationViewActivity">
     <div class="toolbar-row">
-      <div class="search-box"><input type="text" id="activitySearchInput" placeholder="活動名で検索"></div>
+      <div class="search-box"><input type="text" id="activitySearchInput" placeholder="タイトル・マーク名で検索"></div>
       <button class="jpeg-btn" id="jpegBtnActivity">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="activityYearTabs"></div>
@@ -351,9 +351,11 @@
   <div class="master-sub-tabs">
     <div class="master-sub-tab active" data-master="mark">🏷️ 出来事マーク</div>
     <div class="master-sub-tab" data-master="waterItem">🧪 検査項目</div>
+    <div class="master-sub-tab" data-master="testLocation">📍 検査場所</div>
     <div class="master-sub-tab" data-master="metalItem">🔩 金属品目</div>
     <div class="master-sub-tab" data-master="cleanZone">🧹 検査ゾーン</div>
     <div class="master-sub-tab" data-master="dieselVehicle">⛽ 車両名</div>
+    <div class="master-sub-tab" data-master="gasStand">🏪 スタンド</div>
     <div class="master-sub-tab" data-master="lifelineType">⚡ ライフライン種別</div>
     <div class="master-sub-tab" data-master="freonEquip">🌡️ 対象機器</div>
     <div class="master-sub-tab" data-master="activityType">🤝 活動名</div>
@@ -370,6 +372,10 @@
         <label style="margin-bottom:0;">色</label>
         <input type="color" id="newMarkColor" value="#4338ca" style="width:50px;height:38px;padding:2px;border:1px solid #d9d9e3;border-radius:8px;">
       </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="newMarkCountsAsActivity" style="width:auto;">
+        <label style="margin-bottom:0;">🤝地域貢献の活動実績としてカウントする</label>
+      </div>
       <button type="button" class="submit-btn" id="addMarkBtn">追加</button>
     </div>
   </div>
@@ -382,6 +388,17 @@
         <input type="text" id="newWaterItem" placeholder="例：pH、濁度、残留塩素">
       </div>
       <button type="button" class="submit-btn" id="addWaterItemBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="master-panel" id="masterPanel-testLocation">
+    <div id="testLocationList" style="margin-top:14px;"></div>
+    <div class="add-master-form">
+      <div class="field">
+        <label>検査場所名</label>
+        <input type="text" id="newTestLocation" placeholder="例：関根商店圧縮機前">
+      </div>
+      <button type="button" class="submit-btn" id="addTestLocationBtn">追加</button>
     </div>
   </div>
 
@@ -419,6 +436,17 @@
         <input type="text" id="newDieselVehicle" placeholder="例：4tダンプ、2tユニック">
       </div>
       <button type="button" class="submit-btn" id="addDieselVehicleBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="master-panel" id="masterPanel-gasStand">
+    <div id="gasStandList" style="margin-top:14px;"></div>
+    <div class="add-master-form">
+      <div class="field">
+        <label>スタンド名</label>
+        <input type="text" id="newGasStand" placeholder="例：〇〇石油上田店">
+      </div>
+      <button type="button" class="submit-btn" id="addGasStandBtn">追加</button>
     </div>
   </div>
 
@@ -535,12 +563,16 @@
       </div>
       <div class="field">
         <label>検査場所</label>
-        <input type="text" id="waterTestLocation" placeholder="検査場所">
+        <select id="waterTestLocation"><option value="">選択してください</option></select>
+        <div class="field-hint">一覧にない場合は⚙️マスター管理の「検査場所」から追加してください</div>
       </div>
       <div class="field">
-        <label>検査項目</label>
-        <div id="waterTestItemsContainer"></div>
-        <button type="button" class="jpeg-btn" style="width:100%;margin-top:8px;" id="addWaterTestItemRowBtn">＋ 項目を追加</button>
+        <label>時間</label>
+        <input type="time" id="waterTestTime">
+      </div>
+      <div class="field-row">
+        <div class="field"><label>水温（℃）</label><input type="number" step="0.1" id="waterTestTemp" placeholder="例：18.5"></div>
+        <div class="field"><label>PH</label><input type="number" step="0.01" id="waterTestPh" placeholder="例：7.2"></div>
       </div>
       <div class="field">
         <label>備考</label>
@@ -567,7 +599,8 @@
       </div>
       <div class="field">
         <label>検査場所</label>
-        <input type="text" id="noiseCheckLocation" placeholder="例：関根商店圧縮機前">
+        <select id="noiseCheckLocation"><option value="">選択してください</option></select>
+        <div class="field-hint">一覧にない場合は⚙️マスター管理の「検査場所」から追加してください</div>
       </div>
       <div class="field">
         <label>測定値（dB）</label>
@@ -703,10 +736,6 @@
         <div id="lifelineTypesContainer"></div>
         <button type="button" class="jpeg-btn" style="width:100%;margin-top:8px;" id="addLifelineTypeRowBtn">＋ 種別を追加</button>
       </div>
-      <div class="field">
-        <label>備考</label>
-        <textarea id="lifelineNotes" placeholder="メモ"></textarea>
-      </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="lifelineCancelBtn">キャンセル</button>
         <button type="button" class="btn-cancel btn-delete-inline" id="lifelineDeleteBtnInModal" style="display:none;">削除</button>
@@ -770,17 +799,27 @@ const firebaseConfig = {
   appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
 };
 firebase.initializeApp(firebaseConfig);
+
+// すべての未処理エラーを可視化(スマホでもコンソールが見れないため)
+window.addEventListener("unhandledrejection", (event) => {
+  alert("エラーが発生しました: " + (event.reason && event.reason.message ? event.reason.message : event.reason));
+});
+window.addEventListener("error", (event) => {
+  alert("エラーが発生しました: " + event.message);
+});
 const db = firebase.firestore();
 const EVENT_COLLECTION = "isoEvents";
 const MARK_COLLECTION = "eventMarks";
 const WATERTEST_COLLECTION = "waterTests";
 const WATERTEST_ITEM_COLLECTION = "waterTestItems";
+const TEST_LOCATION_COLLECTION = "testLocations";
 const NOISECHECK_COLLECTION = "noiseChecks";
 const METAL_ITEM_COLLECTION = "metalItems";
 const METAL_RECORD_COLLECTION = "metalRecords";
 const CLEAN_ZONE_COLLECTION = "cleanlinessZones";
 const CLEAN_CHECK_COLLECTION = "cleanlinessChecks";
 const DIESEL_VEHICLE_COLLECTION = "dieselVehicles";
+const GAS_STAND_COLLECTION = "gasStands";
 const DIESEL_RECORD_COLLECTION = "dieselRecords";
 const DIESEL_TARGET_COLLECTION = "dieselTargets";
 const DIESEL_CO2_FACTOR = 2.58; // kg-CO2 / L (軽油の標準排出係数)
@@ -800,12 +839,14 @@ let allEvents = [];
 let allMarks = [];
 let allWaterTests = [];
 let allWaterItems = [];
+let allTestLocations = [];
 let allNoiseChecks = [];
 let allMetalItems = [];
 let allMetalRecords = [];
 let allCleanZones = [];
 let allCleanChecks = [];
 let allDieselVehicles = [];
+let allGasStands = [];
 let allDieselRecords = [];
 let allDieselTargets = [];
 let allLifelineTypes = [];
@@ -1111,6 +1152,8 @@ function subscribeMarks() {
     renderMarkList();
     renderCalendar();
     renderEventList();
+    renderActivityList();
+    renderActivitySummary();
   });
 }
 function findMark(name) { return allMarks.find(m => m.name === name); }
@@ -1129,11 +1172,20 @@ function renderMarkList() {
       <div class="master-item-info">
         <span class="mark-swatch" style="background:${escapeHtml(m.color||'#4338ca')};"></span>
         <span>${escapeHtml(m.name)}</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#8b8b9e;margin-left:8px;">
+          <input type="checkbox" style="width:auto;" ${m.countsAsActivity?"checked":""} onchange="toggleMarkCountsAsActivity('${m.id}', this.checked)">
+          地域貢献
+        </label>
       </div>
       <div class="master-item-actions"><button onclick="deleteMark('${m.id}')">削除</button></div>
     </div>
   `).join("");
 }
+window.toggleMarkCountsAsActivity = async function(id, checked) {
+  try {
+    await db.collection(MARK_COLLECTION).doc(id).update({ countsAsActivity: checked });
+  } catch (err) { alert("更新エラー: " + err.message); }
+};
 window.deleteMark = function(id) {
   if (!confirm("このマークを削除しますか？")) return;
   db.collection(MARK_COLLECTION).doc(id).delete();
@@ -1141,10 +1193,14 @@ window.deleteMark = function(id) {
 document.getElementById("addMarkBtn").addEventListener("click", async () => {
   const name = document.getElementById("newMarkName").value.trim();
   const color = document.getElementById("newMarkColor").value || "#4338ca";
+  const countsAsActivity = document.getElementById("newMarkCountsAsActivity").checked;
   if (!name) { alert("マーク名を入力してください"); return; }
-  await db.collection(MARK_COLLECTION).add({ name, color });
-  document.getElementById("newMarkName").value = "";
-  document.getElementById("newMarkColor").value = "#4338ca";
+  try {
+    await db.collection(MARK_COLLECTION).add({ name, color, countsAsActivity });
+    document.getElementById("newMarkName").value = "";
+    document.getElementById("newMarkColor").value = "#4338ca";
+    document.getElementById("newMarkCountsAsActivity").checked = false;
+  } catch (err) { alert("追加エラー: " + err.message); }
 });
 
 // ================= 水質検査 =================
@@ -1179,9 +1235,52 @@ window.deleteWaterItem = function(id) {
 document.getElementById("addWaterItemBtn").addEventListener("click", async () => {
   const name = document.getElementById("newWaterItem").value.trim();
   if (!name) { alert("検査項目名を入力してください"); return; }
-  await db.collection(WATERTEST_ITEM_COLLECTION).add({ name });
-  document.getElementById("newWaterItem").value = "";
+  try {
+    await db.collection(WATERTEST_ITEM_COLLECTION).add({ name });
+    document.getElementById("newWaterItem").value = "";
+  } catch (err) { alert("追加エラー: " + err.message); }
 });
+
+// ---- 検査場所マスター ----
+function subscribeTestLocations() {
+  db.collection(TEST_LOCATION_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+    allTestLocations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderTestLocationList();
+    populateTestLocationSelects();
+  });
+}
+function renderTestLocationList() {
+  const el = document.getElementById("testLocationList");
+  if (!allTestLocations.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ検査場所が登録されていません</div>'; return; }
+  el.innerHTML = allTestLocations.map(loc => `
+    <div class="master-item">
+      <div class="master-item-info"><span>${escapeHtml(loc.name)}</span></div>
+      <div class="master-item-actions"><button onclick="deleteTestLocation('${loc.id}')">削除</button></div>
+    </div>
+  `).join("");
+}
+window.deleteTestLocation = function(id) {
+  if (!confirm("この検査場所を削除しますか？")) return;
+  db.collection(TEST_LOCATION_COLLECTION).doc(id).delete();
+};
+document.getElementById("addTestLocationBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newTestLocation").value.trim();
+  if (!name) { alert("検査場所名を入力してください"); return; }
+  try {
+    await db.collection(TEST_LOCATION_COLLECTION).add({ name });
+    document.getElementById("newTestLocation").value = "";
+  } catch (err) { alert("追加エラー: " + err.message); }
+});
+function populateTestLocationSelects() {
+  ["waterTestLocation", "noiseCheckLocation"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = el.value;
+    el.innerHTML = `<option value="">選択してください</option>` + allTestLocations.map(loc =>
+      `<option value="${escapeHtml(loc.name)}" ${loc.name===current?"selected":""}>${escapeHtml(loc.name)}</option>`
+    ).join("");
+  });
+}
 
 // ---- 金属品目マスター ----
 function subscribeMetalItems() {
@@ -1458,8 +1557,41 @@ window.deleteDieselVehicle = function(id) {
 document.getElementById("addDieselVehicleBtn").addEventListener("click", async () => {
   const name = document.getElementById("newDieselVehicle").value.trim();
   if (!name) { alert("車両名を入力してください"); return; }
-  await db.collection(DIESEL_VEHICLE_COLLECTION).add({ name });
-  document.getElementById("newDieselVehicle").value = "";
+  try {
+    await db.collection(DIESEL_VEHICLE_COLLECTION).add({ name });
+    document.getElementById("newDieselVehicle").value = "";
+  } catch (err) { alert("追加エラー: " + err.message); }
+});
+
+// ---- スタンドマスター ----
+function subscribeGasStands() {
+  db.collection(GAS_STAND_COLLECTION).orderBy("name").onSnapshot(snapshot => {
+    allGasStands = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderGasStandList();
+    renderDieselList();
+  });
+}
+function renderGasStandList() {
+  const el = document.getElementById("gasStandList");
+  if (!allGasStands.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだスタンドが登録されていません</div>'; return; }
+  el.innerHTML = allGasStands.map(s => `
+    <div class="master-item">
+      <div class="master-item-info"><span>${escapeHtml(s.name)}</span></div>
+      <div class="master-item-actions"><button onclick="deleteGasStand('${s.id}')">削除</button></div>
+    </div>
+  `).join("");
+}
+window.deleteGasStand = function(id) {
+  if (!confirm("このスタンドを削除しますか？")) return;
+  db.collection(GAS_STAND_COLLECTION).doc(id).delete();
+};
+document.getElementById("addGasStandBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newGasStand").value.trim();
+  if (!name) { alert("スタンド名を入力してください"); return; }
+  try {
+    await db.collection(GAS_STAND_COLLECTION).add({ name });
+    document.getElementById("newGasStand").value = "";
+  } catch (err) { alert("追加エラー: " + err.message); }
 });
 
 // ================= 軽油使用量・CO2 =================
@@ -1483,6 +1615,7 @@ function addDieselVehicleRow(prefill) {
   const row = document.createElement("div");
   row.className = "water-item-row";
   const options = allDieselVehicles.map(v => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`).join("");
+  const standOptions = allGasStands.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join("");
   row.innerHTML = `
     <div class="field">
       <label>車両</label>
@@ -1492,7 +1625,14 @@ function addDieselVehicleRow(prefill) {
       </select>
     </div>
     <div class="field">
-      <label>使用量(L)</label>
+      <label>スタンド</label>
+      <select class="diesel-stand-name">
+        <option value="">選択</option>
+        ${standOptions}
+      </select>
+    </div>
+    <div class="field">
+      <label>数量(L)</label>
       <input type="number" step="0.1" class="diesel-vehicle-liters" placeholder="例：150">
     </div>
     <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove()">✕</button>
@@ -1500,6 +1640,7 @@ function addDieselVehicleRow(prefill) {
   container.appendChild(row);
   if (prefill) {
     row.querySelector(".diesel-vehicle-name").value = prefill.name || "";
+    row.querySelector(".diesel-stand-name").value = prefill.stand || "";
     row.querySelector(".diesel-vehicle-liters").value = prefill.liters || "";
   }
 }
@@ -1508,6 +1649,7 @@ document.getElementById("addDieselVehicleRowBtn").addEventListener("click", () =
 function collectDieselVehicles() {
   return Array.from(document.querySelectorAll("#dieselVehiclesContainer .water-item-row")).map(row => ({
     name: row.querySelector(".diesel-vehicle-name").value,
+    stand: row.querySelector(".diesel-stand-name").value,
     liters: Number(row.querySelector(".diesel-vehicle-liters").value) || 0
   })).filter(v => v.name);
 }
@@ -1640,17 +1782,21 @@ function renderDieselList() {
       ? `<div class="water-test-item-line"><span>次年度目標</span><span>${target.targetLiters.toLocaleString()} L（実績比 ${totalLiters > 0 ? ((totalLiters/target.targetLiters)*100).toFixed(0) : "-"}%）</span></div>`
       : "";
 
-    const monthRowsHtml = records.map(r => `
+    const monthRowsHtml = records.map(r => {
+      const vehiclesText = (r.vehicles||[]).map(v => `${v.name}${v.stand?"（"+v.stand+"）":""}: ${v.liters}L`).join("・");
+      return `
       <div class="event-card" style="border-left-color:#0369a1;">
         <div class="event-date">${r.yearMonth || "-"}</div>
         <div class="event-title">${Number(r.totalLiters||0).toLocaleString()} L</div>
+        ${vehiclesText ? `<div class="event-notes">${escapeHtml(vehiclesText)}</div>` : ""}
         ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
         <div class="event-actions">
           <button class="btn-edit" onclick="openEditDiesel('${r.id}')">編集</button>
           <button class="btn-delete" onclick="deleteDiesel('${r.id}')">削除</button>
         </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
 
     return `
       <div class="year-group-label">${y}年
@@ -1750,27 +1896,39 @@ function addLifelineTypeRow(prefill) {
   const container = document.getElementById("lifelineTypesContainer");
   const row = document.createElement("div");
   row.className = "water-item-row";
-  const options = allLifelineTypes.map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}（${t.unit||""}）</option>`).join("");
+  row.style.flexDirection = "column";
+  row.style.alignItems = "stretch";
+  const rowId = "row" + Math.random().toString(36).slice(2);
+  const chipsHtml = allLifelineTypes.map(t => `
+    <div class="year-filter-tab lifeline-type-chip" data-name="${escapeHtml(t.name)}" onclick="selectLifelineTypeChip(this)">${escapeHtml(t.name)}（${escapeHtml(t.unit||"")}）</div>
+  `).join("");
   row.innerHTML = `
+    <input type="hidden" class="lifeline-type-name" value="">
     <div class="field">
       <label>種別</label>
-      <select class="lifeline-type-name">
-        <option value="">選択</option>
-        ${options}
-      </select>
+      <div class="year-filter-tabs" style="padding:0;">${chipsHtml}</div>
     </div>
     <div class="field">
       <label>使用量</label>
       <input type="number" step="0.1" class="lifeline-type-usage" placeholder="例：320">
     </div>
-    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove()">✕</button>
+    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove()" style="align-self:flex-end;">✕ この種別を削除</button>
   `;
   container.appendChild(row);
   if (prefill) {
     row.querySelector(".lifeline-type-name").value = prefill.name || "";
     row.querySelector(".lifeline-type-usage").value = prefill.usage || "";
+    row.querySelectorAll(".lifeline-type-chip").forEach(chip => {
+      if (chip.dataset.name === prefill.name) chip.classList.add("active");
+    });
   }
 }
+window.selectLifelineTypeChip = function(chip) {
+  const row = chip.closest(".water-item-row");
+  row.querySelectorAll(".lifeline-type-chip").forEach(c => c.classList.remove("active"));
+  chip.classList.add("active");
+  row.querySelector(".lifeline-type-name").value = chip.dataset.name;
+};
 document.getElementById("addLifelineTypeRowBtn").addEventListener("click", () => addLifelineTypeRow());
 
 function collectLifelineTypes() {
@@ -1802,7 +1960,6 @@ window.openEditLifeline = function(id) {
   if (!r) return;
   document.getElementById("lifelineEditId").value = id;
   document.getElementById("lifelineYearMonth").value = r.yearMonth || "";
-  document.getElementById("lifelineNotes").value = r.notes || "";
   document.getElementById("lifelineTypesContainer").innerHTML = "";
   (r.types && r.types.length ? r.types : [{}]).forEach(t => addLifelineTypeRow(t));
   document.getElementById("lifelineModalTitle").textContent = "ライフライン使用量を編集";
@@ -1829,7 +1986,6 @@ lifelineFormEl.addEventListener("submit", async (e) => {
   const data = {
     yearMonth: document.getElementById("lifelineYearMonth").value,
     types,
-    notes: document.getElementById("lifelineNotes").value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
@@ -2317,50 +2473,6 @@ document.getElementById("jpegBtnMetal").addEventListener("click", () => {
   exportTableAsJpeg("進捗記録金属拾い上げ実績", ["年度","年月","品目内訳","金額"], rows, "進捗記録金属拾い上げ実績");
 });
 
-// ---- 検査項目の行(フォーム内で動的に追加/削除) ----
-function addWaterTestItemRow(prefill) {
-  const container = document.getElementById("waterTestItemsContainer");
-  const row = document.createElement("div");
-  row.className = "water-item-row";
-  const itemOptions = allWaterItems.map(i => `<option value="${escapeHtml(i.name)}">${escapeHtml(i.name)}</option>`).join("");
-  row.innerHTML = `
-    <div class="field">
-      <label>項目</label>
-      <select class="wt-item-name">
-        <option value="">選択</option>
-        ${itemOptions}
-      </select>
-    </div>
-    <div class="field">
-      <label>数値</label>
-      <input type="text" class="wt-item-value" placeholder="例：7.2">
-    </div>
-    <div class="field">
-      <label>判定</label>
-      <select class="wt-item-judgement">
-        <option value="pass">合格</option>
-        <option value="fail">不合格</option>
-      </select>
-    </div>
-    <button type="button" class="water-item-remove-btn" onclick="this.closest('.water-item-row').remove()">✕</button>
-  `;
-  container.appendChild(row);
-  if (prefill) {
-    row.querySelector(".wt-item-name").value = prefill.name || "";
-    row.querySelector(".wt-item-value").value = prefill.value || "";
-    row.querySelector(".wt-item-judgement").value = prefill.judgement || "pass";
-  }
-}
-document.getElementById("addWaterTestItemRowBtn").addEventListener("click", () => addWaterTestItemRow());
-
-function collectWaterTestItems() {
-  return Array.from(document.querySelectorAll("#waterTestItemsContainer .water-item-row")).map(row => ({
-    name: row.querySelector(".wt-item-name").value,
-    value: row.querySelector(".wt-item-value").value.trim(),
-    judgement: row.querySelector(".wt-item-judgement").value
-  })).filter(it => it.name);
-}
-
 const waterTestOverlay = document.getElementById("waterTestModalOverlay");
 const waterTestFormEl = document.getElementById("waterTestForm");
 
@@ -2370,9 +2482,7 @@ document.getElementById("addWaterTestBtn").addEventListener("click", () => {
   document.getElementById("waterTestEditId").value = "";
   document.getElementById("waterTestModalTitle").textContent = "水質検査を追加";
   document.getElementById("waterTestDeleteBtnInModal").style.display = "none";
-  document.getElementById("waterTestItemsContainer").innerHTML = "";
-  addWaterTestItemRow();
-  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
+  populateTestLocationSelects();
   waterTestOverlay.classList.add("open");
 });
 document.getElementById("waterTestCancelBtn").addEventListener("click", () => waterTestOverlay.classList.remove("open"));
@@ -2383,10 +2493,12 @@ window.openEditWaterTest = function(id) {
   if (!t) return;
   document.getElementById("waterTestEditId").value = id;
   document.getElementById("waterTestDate").value = t.date || "";
+  populateTestLocationSelects();
   document.getElementById("waterTestLocation").value = t.location || "";
+  document.getElementById("waterTestTime").value = t.time || "";
+  document.getElementById("waterTestTemp").value = t.temp !== undefined && t.temp !== null ? t.temp : "";
+  document.getElementById("waterTestPh").value = t.ph !== undefined && t.ph !== null ? t.ph : "";
   document.getElementById("waterTestNotes").value = t.notes || "";
-  document.getElementById("waterTestItemsContainer").innerHTML = "";
-  (t.items && t.items.length ? t.items : [{}]).forEach(it => addWaterTestItemRow(it));
   document.getElementById("waterTestModalTitle").textContent = "水質検査を編集";
   document.getElementById("waterTestDeleteBtnInModal").style.display = "block";
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
@@ -2407,13 +2519,14 @@ window.deleteWaterTest = function(id) {
 waterTestFormEl.addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = document.getElementById("waterTestEditId").value;
-  const items = collectWaterTestItems();
-  const overallJudgement = items.length ? (items.every(it => it.judgement === "pass") ? "pass" : "fail") : "";
+  const tempVal = document.getElementById("waterTestTemp").value;
+  const phVal = document.getElementById("waterTestPh").value;
   const data = {
     date: document.getElementById("waterTestDate").value,
-    location: document.getElementById("waterTestLocation").value.trim(),
-    items,
-    overallJudgement,
+    location: document.getElementById("waterTestLocation").value,
+    time: document.getElementById("waterTestTime").value,
+    temp: tempVal ? Number(tempVal) : null,
+    ph: phVal ? Number(phVal) : null,
     notes: document.getElementById("waterTestNotes").value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -2461,31 +2574,31 @@ function renderWaterTestList() {
   });
   const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
 
-  container.innerHTML = years.map(y => `
-    <div class="year-group-label">${y}年</div>
-    ${groups[y].map(t => {
-      const itemsHtml = (t.items||[]).map(it => `
-        <div class="water-test-item-line">
-          <span>${escapeHtml(it.name)}${it.value ? "：" + escapeHtml(it.value) : ""}</span>
-          <span class="${it.judgement === 'fail' ? 'water-judgement-fail' : 'water-judgement-pass'}">${it.judgement === 'fail' ? '不合格' : '合格'}</span>
+  container.innerHTML = years.map(y => {
+    const list = groups[y];
+    const temps = list.map(t => t.temp).filter(v => v !== null && v !== undefined);
+    const phs = list.map(t => t.ph).filter(v => v !== null && v !== undefined);
+    const avgTemp = temps.length ? (temps.reduce((a,b)=>a+b,0)/temps.length).toFixed(1) : null;
+    const avgPh = phs.length ? (phs.reduce((a,b)=>a+b,0)/phs.length).toFixed(2) : null;
+    return `
+    <div class="year-group-label">${y}年${avgTemp!==null||avgPh!==null?`　（年間平均：${avgTemp!==null?"水温"+avgTemp+"℃":""}${avgTemp!==null&&avgPh!==null?" / ":""}${avgPh!==null?"PH"+avgPh:""}）`:""}</div>
+    ${list.map(t => `
+      <div class="event-card" style="border-left-color:#0d9488;">
+        <div class="event-date">${t.date || "-"}${t.time ? "　" + escapeHtml(t.time) : ""}</div>
+        <div class="event-title">${escapeHtml(t.location || "検査場所未設定")}</div>
+        <div class="water-test-card-items">
+          <div class="water-test-item-line"><span>水温</span><span>${t.temp!==null&&t.temp!==undefined?t.temp+"℃":"-"}</span></div>
+          <div class="water-test-item-line"><span>PH</span><span>${t.ph!==null&&t.ph!==undefined?t.ph:"-"}</span></div>
         </div>
-      `).join("");
-      return `
-        <div class="event-card" style="border-left-color:${t.overallJudgement==='fail' ? '#ef4444' : '#0d9488'};">
-          <div class="event-date">${t.date || "-"}</div>
-          <div class="event-title">${escapeHtml(t.location || "検査場所未設定")}
-            ${t.overallJudgement ? `<span class="mark-badge" style="background:${t.overallJudgement==='fail'?'#ef4444':'#0d9488'};">${t.overallJudgement==='fail'?'不合格':'合格'}</span>` : ""}
-          </div>
-          ${itemsHtml ? `<div class="water-test-card-items">${itemsHtml}</div>` : ""}
-          ${t.notes ? `<div class="event-notes">${escapeHtml(t.notes)}</div>` : ""}
-          <div class="event-actions">
-            <button class="btn-edit" onclick="openEditWaterTest('${t.id}')">編集</button>
-            <button class="btn-delete" onclick="deleteWaterTest('${t.id}')">削除</button>
-          </div>
+        ${t.notes ? `<div class="event-notes">${escapeHtml(t.notes)}</div>` : ""}
+        <div class="event-actions">
+          <button class="btn-edit" onclick="openEditWaterTest('${t.id}')">編集</button>
+          <button class="btn-delete" onclick="deleteWaterTest('${t.id}')">削除</button>
         </div>
-      `;
-    }).join("")}
-  `).join("");
+      </div>
+    `).join("")}
+  `;
+  }).join("");
 }
 document.getElementById("waterTestSearchInput").addEventListener("input", (e) => { currentWaterTestSearch = e.target.value; renderWaterTestList(); });
 document.getElementById("jpegBtnWaterTest").addEventListener("click", () => {
@@ -2496,14 +2609,11 @@ document.getElementById("jpegBtnWaterTest").addEventListener("click", () => {
     list = list.filter(t => (t.location||"").toLowerCase().includes(q));
   }
   list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
-  const rows = [];
-  list.forEach(t => {
-    const itemsText = (t.items||[]).map(it => `${it.name}${it.value?"("+it.value+")":""}:${it.judgement==='fail'?'不合格':'合格'}`).join("・");
-    rows.push([t.date||"-", escapeHtml(t.location||"-"), t.overallJudgement==='fail'?"不合格":(t.overallJudgement==='pass'?"合格":"-"), escapeHtml(itemsText)]);
-  });
-  exportTableAsJpeg("水質検査記録", ["検査日","検査場所","総合判定","検査項目"], rows, "水質検査記録");
+  const rows = list.map(t => [t.date||"-", t.time||"-", escapeHtml(t.location||"-"), t.temp!==null&&t.temp!==undefined?String(t.temp):"-", t.ph!==null&&t.ph!==undefined?String(t.ph):"-"]);
+  exportTableAsJpeg("水質検査記録", ["検査日","時間","検査場所","水温(℃)","PH"], rows, "水質検査記録");
 });
 
+// ================= 騒音チェック =================
 // ================= 騒音チェック =================
 function noiseJudge(db) {
   if (db === null || db === undefined || db === "") return null;
@@ -2543,6 +2653,7 @@ document.getElementById("addNoiseCheckBtn").addEventListener("click", () => {
   document.getElementById("noiseCheckEditId").value = "";
   document.getElementById("noiseCheckModalTitle").textContent = "騒音チェックを追加";
   document.getElementById("noiseCheckDeleteBtnInModal").style.display = "none";
+  populateTestLocationSelects();
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   noiseCheckOverlay.classList.add("open");
 });
@@ -2554,6 +2665,7 @@ window.openEditNoiseCheck = function(id) {
   if (!n) return;
   document.getElementById("noiseCheckEditId").value = id;
   document.getElementById("noiseCheckDate").value = n.date || "";
+  populateTestLocationSelects();
   document.getElementById("noiseCheckLocation").value = n.location || "";
   document.getElementById("noiseCheckDb").value = n.db !== undefined ? n.db : "";
   document.getElementById("noiseCheckNotes").value = n.notes || "";
@@ -2734,8 +2846,8 @@ function findActivityType(name) { return allActivityTypes.find(a => a.name === n
 // ================= 活動実績（年間記録から自動集計） =================
 // 年間記録のタイトルが活動名マスターと一致するものを、活動実績として自動的に拾い上げる
 function matchingActivityEvents() {
-  const activityNames = new Set(allActivityTypes.map(a => a.name));
-  return allEvents.filter(ev => activityNames.has(ev.title));
+  const flaggedMarkNames = new Set(allMarks.filter(m => m.countsAsActivity).map(m => m.name));
+  return allEvents.filter(ev => flaggedMarkNames.has(ev.mark));
 }
 
 function renderActivityYearTabs() {
@@ -2759,9 +2871,9 @@ function renderActivityList() {
   if (currentActivityYear !== "all") filtered = filtered.filter(ev => metalFiscalYear((ev.date||"").slice(0,7)) === currentActivityYear);
   if (currentActivitySearch.trim()) {
     const q = currentActivitySearch.trim().toLowerCase();
-    filtered = filtered.filter(ev => (ev.title||"").toLowerCase().includes(q));
+    filtered = filtered.filter(ev => (ev.title||"").toLowerCase().includes(q) || (ev.mark||"").toLowerCase().includes(q));
   }
-  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動実績がありません（📋年間記録でタイトルに活動名を選んで入力してください）</div>'; return; }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動実績がありません（📋年間記録でマークを選んで入力し、⚙️マスター管理の「出来事マーク」で「地域貢献」にチェックを入れてください）</div>'; return; }
 
   filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
 
@@ -2777,9 +2889,12 @@ function renderActivityList() {
     const records = groups[fy];
     return `
       <div class="year-group-label">${fy}年度（${records.length}件）</div>
-      ${records.map(ev => `
-        <div class="event-card" style="border-left-color:#059669;">
+      ${records.map(ev => {
+        const mark = findMark(ev.mark);
+        return `
+        <div class="event-card" style="border-left-color:${mark?escapeHtml(mark.color):'#059669'};">
           <div class="event-date">${ev.date || "-"}</div>
+          ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
           <div class="event-title">${escapeHtml(ev.title)}</div>
           ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
           <div class="event-actions">
@@ -2787,7 +2902,8 @@ function renderActivityList() {
             <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
           </div>
         </div>
-      `).join("")}
+      `;
+      }).join("")}
     `;
   }).join("");
 }
@@ -2797,26 +2913,26 @@ document.getElementById("jpegBtnActivity").addEventListener("click", () => {
   if (currentActivityYear !== "all") list = list.filter(ev => metalFiscalYear((ev.date||"").slice(0,7)) === currentActivityYear);
   if (currentActivitySearch.trim()) {
     const q = currentActivitySearch.trim().toLowerCase();
-    list = list.filter(ev => (ev.title||"").toLowerCase().includes(q));
+    list = list.filter(ev => (ev.title||"").toLowerCase().includes(q) || (ev.mark||"").toLowerCase().includes(q));
   }
   list.sort((a,b) => (b.date||"").localeCompare(a.date||""));
-  const rows = list.map(ev => [ev.date||"-", escapeHtml(ev.title||"-"), escapeHtml(ev.notes||"")]);
-  exportTableAsJpeg("地域貢献 活動実績", ["日付","活動名","内容・メモ"], rows, "地域貢献活動実績");
+  const rows = list.map(ev => [ev.date||"-", escapeHtml(ev.mark||"-"), escapeHtml(ev.title||"-"), escapeHtml(ev.notes||"")]);
+  exportTableAsJpeg("地域貢献 活動実績", ["日付","マーク","タイトル","内容・メモ"], rows, "地域貢献活動実績");
 });
 
 let currentActivitySummarySearch = "";
 function renderActivitySummary() {
   const container = document.getElementById("activitySummaryContainer");
   if (!container) return;
-  let types = allActivityTypes;
+  let types = allMarks.filter(m => m.countsAsActivity);
   if (currentActivitySummarySearch.trim()) {
     const q = currentActivitySummarySearch.trim().toLowerCase();
     types = types.filter(t => (t.name||"").toLowerCase().includes(q));
   }
-  if (types.length === 0) { container.innerHTML = '<div class="empty-state">該当する活動がありません</div>'; return; }
+  if (types.length === 0) { container.innerHTML = '<div class="empty-state">「地域貢献」としてカウントするマークがありません（⚙️マスター管理の「出来事マーク」でチェックを入れてください）</div>'; return; }
 
   container.innerHTML = types.map(t => {
-    const records = allEvents.filter(ev => ev.title === t.name);
+    const records = allEvents.filter(ev => ev.mark === t.name);
     const totalCount = records.length;
 
     const byYear = {};
@@ -2830,7 +2946,7 @@ function renderActivitySummary() {
       : `<div class="vehicle-chip none">記録がまだありません</div>`;
 
     return `
-      <div class="card" style="border-left-color:#059669;">
+      <div class="card" style="border-left-color:${escapeHtml(t.color||'#059669')};">
         <div class="card-top">
           <div class="card-title">${escapeHtml(t.name)}</div>
           <div class="badge status-ok">合計 ${totalCount}回</div>
@@ -2842,14 +2958,14 @@ function renderActivitySummary() {
 }
 document.getElementById("activitySummarySearchInput").addEventListener("input", (e) => { currentActivitySummarySearch = e.target.value; renderActivitySummary(); });
 document.getElementById("jpegBtnActivitySummary").addEventListener("click", () => {
-  let types = allActivityTypes;
+  let types = allMarks.filter(m => m.countsAsActivity);
   if (currentActivitySummarySearch.trim()) {
     const q = currentActivitySummarySearch.trim().toLowerCase();
     types = types.filter(t => (t.name||"").toLowerCase().includes(q));
   }
   const rows = [];
   types.forEach(t => {
-    const records = allEvents.filter(ev => ev.title === t.name);
+    const records = allEvents.filter(ev => ev.mark === t.name);
     const byYear = {};
     records.forEach(ev => {
       const fy = metalFiscalYear((ev.date||"").slice(0,7));
@@ -2859,7 +2975,7 @@ document.getElementById("jpegBtnActivitySummary").addEventListener("click", () =
     if (years.length === 0) { rows.push([escapeHtml(t.name), "-", "0"]); return; }
     years.forEach(y => rows.push([escapeHtml(t.name), y + "年度", String(byYear[y])]));
   });
-  exportTableAsJpeg("地域貢献 活動ごとのまとめ", ["活動名","年度","回数"], rows, "地域貢献活動ごとまとめ");
+  exportTableAsJpeg("地域貢献 活動ごとのまとめ", ["マーク","年度","回数"], rows, "地域貢献活動ごとまとめ");
 });
 
 
@@ -3002,6 +3118,7 @@ subscribeEvents();
 subscribeMarks();
 subscribeWaterTests();
 subscribeWaterItems();
+subscribeTestLocations();
 subscribeNoiseChecks();
 subscribeMetalItems();
 subscribeMetalRecords();
@@ -3009,6 +3126,7 @@ subscribeDonations();
 subscribeCleanZones();
 subscribeCleanChecks();
 subscribeDieselVehicles();
+subscribeGasStands();
 subscribeDieselRecords();
 subscribeDieselTargets();
 subscribeLifelineTypes();
