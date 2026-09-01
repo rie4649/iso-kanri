@@ -11,6 +11,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -224,6 +225,21 @@
   .status-table th, .status-table td { border: 1px solid #ececf3; padding: 6px 8px; text-align: center; white-space: nowrap; }
   .status-table th { background: #eef0ff; color: #4338ca; }
   .status-table td.done { background: #dcfce7; color: #15803d; font-weight: 700; cursor: pointer; }
+  .status-table td.rowhead .rowPrint { margin-left:6px; background:#eef0ff; color:#4338ca; border:none; border-radius:6px; padding:2px 6px; font-size:11px; cursor:pointer; }
+  /* 添付ファイル */
+  .attach-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .attach-chip { display:inline-flex; align-items:center; gap:4px; background:#e0f2fe; color:#075985; border:1px solid #7dd3fc; border-radius:8px; padding:5px 9px; font-size:12px; text-decoration:none; max-width:100%; }
+  .attach-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px; }
+  .attach-chip.pending { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+  .attach-chip .attach-x { background:none; border:none; color:#b91c1c; font-size:14px; cursor:pointer; padding:0 2px; }
+  .attach-pick { display:block; width:100%; padding:10px; border:1.5px dashed #7dd3fc; border-radius:8px; background:#f0f9ff; color:#075985; font-size:13px; font-weight:700; text-align:center; cursor:pointer; margin-top:6px; }
+  /* フロン点検 詳細 */
+  .fr-detail-row { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px dashed #e0e0ec; font-size:13.5px; }
+  .fr-detail-row .ok { color:#15803d; font-weight:800; }
+  .fr-detail-row .ng { color:#b91c1c; font-weight:800; }
+  .fr-qchips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .fr-qchips button { border:1px solid #d9d9e3; background:#fff; border-radius:14px; padding:5px 11px; font-size:12px; }
+  .fr-qchips button.act { background:#0d9488; color:#fff; border-color:#0d9488; }
   .status-table td.undone { color: #c3c3d1; cursor: pointer; }
   .status-table td.rowhead { text-align: left; background: #fafafa; font-weight: 600; }
 
@@ -417,7 +433,7 @@
       <button class="jpeg-btn" id="jpegBtnFreonStatus">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="freonStatusYearTabs"></div>
-    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">3か月に1回以上の簡易点検の実施状況です（年度は8月〜翌7月。✅をタップで記録を開く、⬜をタップで追加）</div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">3か月に1回以上の簡易点検の実施状況です（年度は8月〜翌7月）。✅をタップすると点検内容が開き、そこから🖨️点検票が出せます。⬜をタップで追加、機器名の🖨️で年間点検票（4回分を1枚に）</div>
     <div class="status-table-wrap"><table class="status-table" id="freonStatusTable"></table></div>
   </div>
   <button class="fab" id="addFreonBtn" style="background:#0d9488;">＋</button>
@@ -757,6 +773,12 @@
         <label>備考</label>
         <textarea id="waterTestNotes" placeholder="メモ"></textarea>
       </div>
+      <div class="field">
+        <label>📎 添付書類（検査成績書のPDF・写真など）</label>
+        <div class="attach-list" id="waterAttachList"></div>
+        <label class="attach-pick">＋ ファイルを選ぶ（PDF・画像、複数OK）<input type="file" id="waterAttachInput" accept="application/pdf,image/*" multiple style="display:none;"></label>
+        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">「保存」を押したときにアップロードされます。写真は自動で縮小して保存します</div>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="waterTestCancelBtn">キャンセル</button>
         <button type="button" class="btn-cancel btn-delete-inline" id="waterTestDeleteBtnInModal" style="display:none;">削除</button>
@@ -980,6 +1002,20 @@
   </div>
 </div>
 
+<!-- フロン点検 詳細（実施状況から開く） -->
+<div class="modal-overlay" id="freonDetailOverlay">
+  <div class="modal">
+    <h2 id="freonDetailTitle">🌡️ 簡易点検の内容</h2>
+    <div class="fr-qchips" id="freonDetailChips"></div>
+    <div id="freonDetailBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" id="freonDetailCloseBtn">閉じる</button>
+      <button type="button" class="btn-cancel" style="background:#eef0ff;color:#4338ca;" id="freonDetailEditBtn">✏️ 編集</button>
+      <button type="button" class="btn-save" style="background:#0d9488;" id="freonDetailPrintBtn">🖨️ 点検票</button>
+    </div>
+  </div>
+</div>
+
 <!-- 安全衛生パトロール 追加/編集モーダル -->
 <div class="modal-overlay" id="safetyModalOverlay">
   <div class="modal">
@@ -1174,6 +1210,8 @@ window.addEventListener("error", (event) => {
   alert("エラーが発生しました: " + event.message);
 });
 const db = firebase.firestore();
+let storageRef = null;
+try { storageRef = firebase.storage().ref(); } catch (e) { console.warn("Storage未初期化", e); }
 const EVENT_COLLECTION = "isoEvents";
 const MARK_COLLECTION = "eventMarks";
 const WATERTEST_COLLECTION = "waterTests";
@@ -1289,6 +1327,9 @@ let currentSafetyStatusFY = null;
 let freonModalItems = [];
 let safetyModalItems = [];
 let waterModalItems = [];
+let waterModalAttachments = []; // 保存済み添付 [{name,path,url,type,size}]
+let waterModalNewFiles = [];    // これから上げるFile
+let waterModalRemoved = [];     // 削除する保存済み添付(path)
 let allCompMachines = [];
 let allCompItems = [];
 let allCompRecords = [];
@@ -2737,6 +2778,8 @@ function renderFreonList() {
           ${freonNgItemsLine(r)}
           ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
           <div class="event-actions">
+            <button class="btn-edit" onclick="openFreonDetail(['${r.id}'])">🔍 内容</button>
+            <button class="btn-edit" onclick="exportFreonSheet('${r.id}')">🖨️ 点検票</button>
             <button class="btn-edit" onclick="openEditFreon('${r.id}')">編集</button>
             <button class="btn-delete" onclick="deleteFreon('${r.id}')">削除</button>
           </div>
@@ -3040,6 +3083,8 @@ document.getElementById("addWaterTestBtn").addEventListener("click", () => {
   populateTestLocationSelects();
   waterModalItems = [];
   renderWaterModalItems();
+  waterModalAttachments = []; waterModalNewFiles = []; waterModalRemoved = [];
+  renderWaterAttachList();
   waterTestOverlay.classList.add("open");
 });
 document.getElementById("waterTestCancelBtn").addEventListener("click", () => waterTestOverlay.classList.remove("open"));
@@ -3058,6 +3103,8 @@ window.openEditWaterTest = function(id) {
   document.getElementById("waterTestNotes").value = t.notes || "";
   waterModalItems = (t.items || []).map(it => ({ name: it.name, value: it.value || "" }));
   renderWaterModalItems();
+  waterModalAttachments = (t.attachments || []).slice(); waterModalNewFiles = []; waterModalRemoved = [];
+  renderWaterAttachList();
   document.getElementById("waterTestModalTitle").textContent = "水質検査を編集";
   document.getElementById("waterTestDeleteBtnInModal").style.display = "block";
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
@@ -3075,8 +3122,68 @@ window.deleteWaterTest = async function(id) {
   try {
     await db.collection(WATERTEST_COLLECTION).doc(id).delete();
     if (t && t.eventId) await db.collection(EVENT_COLLECTION).doc(t.eventId).delete().catch(() => {});
+    if (t && t.attachments && storageRef) for (const a of t.attachments) { try { await storageRef.child(a.path).delete(); } catch (e) {} }
   } catch (err) { alert("削除エラー: " + err.message); }
 };
+
+// ---- 水質検査: 添付ファイル(Firebase Storage) ----
+function renderWaterAttachList() {
+  const el = document.getElementById("waterAttachList");
+  if (!el) return;
+  const saved = waterModalAttachments.filter(a => !waterModalRemoved.includes(a.path));
+  el.innerHTML = saved.map(a => `
+    <span class="attach-chip"><a href="${a.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(a.name)}</span></a><button type="button" class="attach-x" title="削除" onclick="removeWaterAttachment('${escapeHtml(a.path)}')">✕</button></span>
+  `).join("") + waterModalNewFiles.map((f, i) => `
+    <span class="attach-chip pending">${f.type && f.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(f.name)}</span><small>(未保存)</small><button type="button" class="attach-x" title="取り消し" onclick="removeWaterNewFile(${i})">✕</button></span>
+  `).join("") || '<div class="field-hint" style="color:#8b8b9e;font-size:12px;">まだ添付はありません</div>';
+}
+window.removeWaterAttachment = function(path) {
+  if (!confirm("この添付を削除しますか？（保存を押すと確定します）")) return;
+  waterModalRemoved.push(path);
+  renderWaterAttachList();
+};
+window.removeWaterNewFile = function(i) { waterModalNewFiles.splice(i, 1); renderWaterAttachList(); };
+document.getElementById("waterAttachInput").addEventListener("change", (e) => {
+  Array.from(e.target.files || []).forEach(f => waterModalNewFiles.push(f));
+  e.target.value = "";
+  renderWaterAttachList();
+});
+// 写真は長辺1600pxに縮小してJPEG化(容量節約)。PDFなどはそのまま
+function shrinkImageIfNeeded(file) {
+  return new Promise(resolve => {
+    if (!file.type || !file.type.startsWith("image/")) { resolve({ blob: file, name: file.name, type: file.type || "application/octet-stream" }); return; }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1600;
+      let w = img.width, h = img.height;
+      if (w <= max && h <= max && file.size < 900 * 1024) { URL.revokeObjectURL(url); resolve({ blob: file, name: file.name, type: file.type }); return; }
+      const sc = Math.min(1, max / Math.max(w, h));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      cv.toBlob(b => { URL.revokeObjectURL(url); resolve({ blob: b || file, name: file.name.replace(/\.[^.]+$/, "") + ".jpg", type: "image/jpeg" }); }, "image/jpeg", 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve({ blob: file, name: file.name, type: file.type }); };
+    img.src = url;
+  });
+}
+async function uploadWaterAttachments(docId) {
+  if (!waterModalNewFiles.length && !waterModalRemoved.length) return null;
+  if (!storageRef) throw new Error("Storageが使えません(Firebaseコンソールで Storage を有効にしてください)");
+  let list = waterModalAttachments.filter(a => !waterModalRemoved.includes(a.path));
+  for (const path of waterModalRemoved) { try { await storageRef.child(path).delete(); } catch (e) {} }
+  for (const f of waterModalNewFiles) {
+    const { blob, name, type } = await shrinkImageIfNeeded(f);
+    const safe = name.replace(/[\/\\#?%*:|"<>]/g, "_");
+    const path = `waterTests/${docId}/${Date.now()}_${safe}`;
+    const ref = storageRef.child(path);
+    await ref.put(blob, { contentType: type });
+    const url = await ref.getDownloadURL();
+    list.push({ name, path, url, type, size: blob.size, uploadedAt: Date.now() });
+  }
+  return list;
+}
 
 waterTestFormEl.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -3104,7 +3211,11 @@ waterTestFormEl.addEventListener("submit", async (e) => {
     notes: evParts.join("／"),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
+  const saveBtn = waterTestFormEl.querySelector(".btn-save");
+  const hasFiles = waterModalNewFiles.length || waterModalRemoved.length;
   try {
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = hasFiles ? "アップロード中…" : "保存中…"; }
+    let docId = id;
     if (id) {
       await db.collection(WATERTEST_COLLECTION).doc(id).update(data);
       const t = allWaterTests.find(x => x.id === id);
@@ -3118,11 +3229,22 @@ waterTestFormEl.addEventListener("submit", async (e) => {
       }
     } else {
       const ref = await db.collection(WATERTEST_COLLECTION).add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      docId = ref.id;
       const evRef = await db.collection(EVENT_COLLECTION).add({ ...evData, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       await ref.update({ eventId: evRef.id });
     }
+    // 添付ファイルのアップロード(記録は先に保存済みなので、失敗しても記録は残る)
+    if (hasFiles) {
+      try {
+        const list = await uploadWaterAttachments(docId);
+        if (list) await db.collection(WATERTEST_COLLECTION).doc(docId).update({ attachments: list });
+      } catch (upErr) {
+        alert("記録は保存しましたが、添付のアップロードに失敗しました: " + upErr.message);
+      }
+    }
     waterTestOverlay.classList.remove("open");
   } catch (err) { alert("保存エラー: " + err.message); }
+  finally { if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "保存"; } }
 });
 
 function renderWaterTestYearTabs() {
@@ -3176,6 +3298,7 @@ function renderWaterTestList() {
           ${(t.items||[]).map(it => `<div class="water-test-item-line"><span>${escapeHtml(it.name)}</span><span>${escapeHtml(it.value||"-")}</span></div>`).join("")}
         </div>
         ${t.notes ? `<div class="event-notes">${escapeHtml(t.notes)}</div>` : ""}
+        ${(t.attachments||[]).length ? `<div class="attach-list">${(t.attachments||[]).map(a => `<a class="attach-chip" href="${a.url}" target="_blank" rel="noopener">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(a.name)}</span></a>`).join("")}</div>` : ""}
         <div class="event-actions">
           <button class="btn-edit" onclick="openEditWaterTest('${t.id}')">編集</button>
           <button class="btn-delete" onclick="deleteWaterTest('${t.id}')">削除</button>
@@ -3937,6 +4060,128 @@ function freonNgItemsLine(r) {
   return ng.length ? `<div class="event-notes" style="color:#b91c1c;">否：${ng.map(i => escapeHtml(i.name)).join("、")}</div>` : "";
 }
 
+// ---- フロン：点検内容の詳細モーダル ----
+let freonDetailIds = [];
+let freonDetailCur = null;
+const freonDetailOverlay = document.getElementById("freonDetailOverlay");
+window.openFreonDetail = function(ids, cur) {
+  freonDetailIds = Array.isArray(ids) ? ids : [ids];
+  freonDetailCur = cur || freonDetailIds[0];
+  const r = allFreonRecords.find(x => x.id === freonDetailCur);
+  if (!r) return;
+  const eq = findFreonEquip(r.equipment);
+  const co2 = freonCo2Kg(r);
+  document.getElementById("freonDetailTitle").textContent = `🌡️ ${r.equipment || "-"}　${r.date || ""}`;
+  document.getElementById("freonDetailChips").innerHTML = freonDetailIds.length > 1
+    ? freonDetailIds.map(id => { const x = allFreonRecords.find(y => y.id === id); return x ? `<button type="button" class="${id===freonDetailCur?'act':''}" onclick="openFreonDetail(${JSON.stringify(freonDetailIds).replace(/"/g,'&quot;')}, '${id}')">${x.date}</button>` : ""; }).join("")
+    : "";
+  const items = (r.items || []);
+  document.getElementById("freonDetailBody").innerHTML = `
+    <div class="fr-detail-row"><span>点検結果</span><span class="${r.result==='abnormal'?'ng':'ok'}">${r.result==='abnormal'?"異常あり":"異常なし"}</span></div>
+    <div class="fr-detail-row"><span>点検者</span><span>${escapeHtml(r.inspector||"-")}</span></div>
+    <div class="fr-detail-row"><span>冷媒／GWP／充填量</span><span>${eq?escapeHtml(eq.refrigerant||"-"):"-"}／${eq?eq.gwp||0:0}／${eq?eq.chargeKg||0:0}kg</span></div>
+    <div style="font-size:12.5px;font-weight:700;color:#55556b;margin:12px 0 4px;">点検項目</div>
+    ${items.length ? items.map((it,i) => `<div class="fr-detail-row"><span>${i+1}. ${escapeHtml(it.name)}</span><span class="${it.ok?'ok':'ng'}">${it.ok?"良":"否"}</span></div>`).join("") : '<div class="field-hint" style="color:#8b8b9e;">項目の記録はありません</div>'}
+    <div class="fr-detail-row" style="margin-top:8px;"><span>回収量／漏えい量</span><span>${r.recoveredG||0}g／${r.leakedG||0}g</span></div>
+    <div class="fr-detail-row"><span>CO2換算量</span><span>${(co2/1000).toFixed(4)} トンCO2</span></div>
+    ${r.notes ? `<div class="event-notes" style="margin-top:8px;">${escapeHtml(r.notes)}</div>` : ""}
+  `;
+  document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
+  freonDetailOverlay.classList.add("open");
+};
+document.getElementById("freonDetailCloseBtn").addEventListener("click", () => freonDetailOverlay.classList.remove("open"));
+freonDetailOverlay.addEventListener("click", (e) => { if (e.target === freonDetailOverlay) freonDetailOverlay.classList.remove("open"); });
+document.getElementById("freonDetailEditBtn").addEventListener("click", () => { if (freonDetailCur) openEditFreon(freonDetailCur); });
+document.getElementById("freonDetailPrintBtn").addEventListener("click", () => { if (freonDetailCur) exportFreonSheet(freonDetailCur); });
+
+// ---- フロン：簡易点検記録票(1回分)のJPEG ----
+function freonSheetHeader(title, sub) {
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;">
+      <div style="font-size:19px;font-weight:800;border-bottom:2px solid #1a1a2e;padding-bottom:2px;">${escapeHtml(title)}</div>
+      <div style="font-size:12.5px;font-weight:700;">${escapeHtml(sub||"")}</div>
+    </div>`;
+}
+async function renderSheetJpeg(html, filename, width) {
+  if (!window.html2canvas) { alert("JPEG出力の準備中です。少し待ってから再度お試しください。"); return; }
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed"; wrapper.style.left = "-99999px"; wrapper.style.top = "0";
+  wrapper.style.background = "#ffffff"; wrapper.style.padding = "30px"; wrapper.style.width = (width||820) + "px";
+  wrapper.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+  wrapper.style.color = "#1a1a2e";
+  wrapper.innerHTML = html;
+  document.body.appendChild(wrapper);
+  try {
+    const canvas = await html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2 });
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = canvas.toDataURL("image/jpeg", 0.92);
+    link.click();
+  } finally { document.body.removeChild(wrapper); }
+}
+const FR_TD = "border:1px solid #1a1a2e;padding:6px 10px;font-size:12.5px;";
+const FR_TH = FR_TD + "background:#f4f4fb;font-weight:700;";
+window.exportFreonSheet = async function(id) {
+  const r = allFreonRecords.find(x => x.id === id);
+  if (!r) return;
+  const eq = findFreonEquip(r.equipment);
+  const items = (r.items && r.items.length) ? r.items : allFreonCheckItems.map(it => ({ name: it.name, ok: true }));
+  let html = freonSheetHeader("フロン排出抑制法 簡易点検記録票", "株式会社関根商店");
+  html += `<table style="border-collapse:collapse;width:100%;margin-bottom:12px;">
+    <tr><th style="${FR_TH}width:110px;">点検日</th><td style="${FR_TD}">${escapeHtml(r.date||"")}</td><th style="${FR_TH}width:110px;">点検者</th><td style="${FR_TD}">${escapeHtml(r.inspector||"")}</td></tr>
+    <tr><th style="${FR_TH}">対象機器</th><td style="${FR_TD}">${escapeHtml(r.equipment||"")}</td><th style="${FR_TH}">冷媒／GWP</th><td style="${FR_TD}">${eq?escapeHtml(eq.refrigerant||"-"):"-"}／${eq?eq.gwp||0:0}${eq&&eq.chargeKg?`（充填${eq.chargeKg}kg）`:""}</td></tr>
+  </table>
+  <div style="font-size:12px;margin-bottom:6px;">※3か月に1回以上、目視等による簡易点検を実施する。</div>
+  <table style="border-collapse:collapse;width:100%;margin-bottom:12px;">
+    <tr><th style="${FR_TH}width:40px;text-align:center;">No.</th><th style="${FR_TH}">点検項目</th><th style="${FR_TH}width:60px;text-align:center;">良</th><th style="${FR_TH}width:60px;text-align:center;">否</th></tr>`;
+  items.forEach((it, i) => {
+    html += `<tr><td style="${FR_TD}text-align:center;">${i+1}</td><td style="${FR_TD}">${escapeHtml(it.name)}</td><td style="${FR_TD}text-align:center;font-size:16px;">${it.ok?"○":""}</td><td style="${FR_TD}text-align:center;font-size:16px;color:#b91c1c;">${it.ok?"":"✕"}</td></tr>`;
+  });
+  html += `</table>
+  <table style="border-collapse:collapse;width:100%;margin-bottom:12px;">
+    <tr><th style="${FR_TH}width:110px;">点検結果</th><td style="${FR_TD}font-weight:800;${r.result==='abnormal'?'color:#b91c1c;':''}">${r.result==='abnormal'?"異常あり":"異常なし"}</td>
+        <th style="${FR_TH}width:110px;">回収量／漏えい量</th><td style="${FR_TD}">${r.recoveredG||0}g／${r.leakedG||0}g（CO2換算 ${(freonCo2Kg(r)/1000).toFixed(4)}トン）</td></tr>
+    <tr><th style="${FR_TH}">備考</th><td style="${FR_TD}min-height:40px;" colspan="3">${escapeHtml(r.notes||"")}</td></tr>
+  </table>`;
+  await renderSheetJpeg(html, `フロン簡易点検票_${(r.equipment||"").replace(/\s/g,"")}_${r.date||""}.jpg`, 820);
+};
+
+// ---- フロン：機器ごとの年間点検票(四半期4回分を1枚に) ----
+window.exportFreonYearSheet = async function(ei) {
+  const eq = allFreonEquips[ei];
+  if (!eq) return;
+  const fy = currentFreonStatusFY;
+  const recsByQ = FREON_QUARTERS.map(q => allFreonRecords.filter(r =>
+    r.equipment === eq.name && metalFiscalYear((r.date || "").slice(0, 7)) === fy && q.months.includes(Number((r.date || "").slice(5, 7)))
+  ).sort((a, b) => (b.date || "").localeCompare(a.date || ""))[0] || null);
+  if (!recsByQ.some(Boolean)) { alert(`${fy}年度の「${eq.name}」の点検記録がありません`); return; }
+  const names = [];
+  allFreonCheckItems.forEach(it => { if (!names.includes(it.name)) names.push(it.name); });
+  recsByQ.forEach(r => (r && r.items || []).forEach(it => { if (!names.includes(it.name)) names.push(it.name); }));
+  let html = freonSheetHeader(`フロン排出抑制法 簡易点検記録票（${fy}年度）`, "株式会社関根商店");
+  html += `<table style="border-collapse:collapse;width:100%;margin-bottom:12px;">
+    <tr><th style="${FR_TH}width:110px;">対象機器</th><td style="${FR_TD}">${escapeHtml(eq.name)}</td><th style="${FR_TH}width:110px;">冷媒／GWP</th><td style="${FR_TD}">${escapeHtml(eq.refrigerant||"-")}／${eq.gwp||0}${eq.chargeKg?`（充填${eq.chargeKg}kg）`:""}</td></tr>
+  </table>
+  <table style="border-collapse:collapse;width:100%;">
+    <tr><th style="${FR_TH}">点検項目</th>${FREON_QUARTERS.map(q => `<th style="${FR_TH}text-align:center;width:120px;">${q.label}</th>`).join("")}</tr>
+    <tr><th style="${FR_TH}">点検日</th>${recsByQ.map(r => `<td style="${FR_TD}text-align:center;">${r?escapeHtml(r.date):"－"}</td>`).join("")}</tr>
+    <tr><th style="${FR_TH}">点検者</th>${recsByQ.map(r => `<td style="${FR_TD}text-align:center;">${r?escapeHtml(r.inspector||""):""}</td>`).join("")}</tr>`;
+  names.forEach((n, i) => {
+    html += `<tr><td style="${FR_TD}">${i+1}. ${escapeHtml(n)}</td>` + recsByQ.map(r => {
+      if (!r) return `<td style="${FR_TD}"></td>`;
+      const it = (r.items||[]).find(x => x.name === n);
+      if (!it) return `<td style="${FR_TD}text-align:center;color:#9a9ab0;">－</td>`;
+      return `<td style="${FR_TD}text-align:center;font-size:16px;${it.ok?'':'color:#b91c1c;'}">${it.ok?"○":"✕"}</td>`;
+    }).join("") + `</tr>`;
+  });
+  html += `<tr><th style="${FR_TH}">点検結果</th>${recsByQ.map(r => `<td style="${FR_TD}text-align:center;font-weight:800;${r&&r.result==='abnormal'?'color:#b91c1c;':''}">${r?(r.result==='abnormal'?"異常あり":"異常なし"):""}</td>`).join("")}</tr>
+    <tr><th style="${FR_TH}">回収／漏えい(g)</th>${recsByQ.map(r => `<td style="${FR_TD}text-align:center;">${r?`${r.recoveredG||0}／${r.leakedG||0}`:""}</td>`).join("")}</tr>
+    <tr><th style="${FR_TH}">備考</th>${recsByQ.map(r => `<td style="${FR_TD}font-size:11px;">${r?escapeHtml(r.notes||""):""}</td>`).join("")}</tr>
+  </table>
+  <div style="font-size:11px;color:#55556b;margin-top:8px;">○＝良　✕＝否　－＝当時未登録の項目　※3か月に1回以上の簡易点検（年度は8月〜翌7月）</div>`;
+  await renderSheetJpeg(html, `フロン簡易点検票_${eq.name.replace(/\s/g,"")}_${fy}年度.jpg`, 900);
+};
+
 // ---- フロン：実施状況（機器×四半期） ----
 function renderFreonStatus() {
   const table = document.getElementById("freonStatusTable");
@@ -3955,14 +4200,14 @@ function renderFreonStatus() {
   }
   let html = "<tr><th style='text-align:left;'>機器</th>" + FREON_QUARTERS.map(q => `<th>${q.label}</th>`).join("") + "</tr>";
   allFreonEquips.forEach((eq, ei) => {
-    html += `<tr><td class="rowhead">${escapeHtml(eq.name)}</td>`;
+    html += `<tr><td class="rowhead">${escapeHtml(eq.name)}<button type="button" class="rowPrint" title="この機器の年間点検票" onclick="exportFreonYearSheet(${ei})">🖨️</button></td>`;
     FREON_QUARTERS.forEach(q => {
       const recs = allFreonRecords.filter(r =>
         r.equipment === eq.name &&
         metalFiscalYear((r.date || "").slice(0, 7)) === currentFreonStatusFY &&
         q.months.includes(Number((r.date || "").slice(5, 7)))
       ).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-      if (recs.length) html += `<td class="done" onclick="openEditFreon('${recs[0].id}')">✅${recs.length > 1 ? ` ${recs.length}件` : ""}</td>`;
+      if (recs.length) html += `<td class="done" onclick="openFreonDetail(${JSON.stringify(recs.map(r => r.id)).replace(/"/g, '&quot;')})">✅${recs.length > 1 ? ` ${recs.length}件` : ""}<div style="font-size:10px;font-weight:normal;color:#166534;">${recs.map(r => (r.date||"").slice(5).replace("-","/")).join(" ")}</div></td>`;
       else html += `<td class="undone" onclick="openAddFreonForEquip(${ei})">⬜</td>`;
     });
     html += "</tr>";
