@@ -777,7 +777,7 @@
         <label>📎 添付書類（検査成績書のPDF・写真など）</label>
         <div class="attach-list" id="waterAttachList"></div>
         <label class="attach-pick">＋ ファイルを選ぶ（PDF・画像、複数OK）<input type="file" id="waterAttachInput" accept="application/pdf,image/*" multiple style="display:none;"></label>
-        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">「保存」を押したときにアップロードされます。写真は自動で縮小して保存します</div>
+        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">「保存」を押したときに保存されます。写真は自動で縮小します。PDFは1ファイル約700KBまで（Firebase Storageを有効にすると上限なし）</div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="waterTestCancelBtn">キャンセル</button>
@@ -1216,6 +1216,8 @@ const EVENT_COLLECTION = "isoEvents";
 const MARK_COLLECTION = "eventMarks";
 const WATERTEST_COLLECTION = "waterTests";
 const WATERTEST_ITEM_COLLECTION = "waterTestItems";
+const WATERTEST_FILE_COLLECTION = "waterTestFiles"; // Storageが使えないときの添付本体(base64)
+const INLINE_FILE_MAX = 720 * 1024;
 const TEST_LOCATION_COLLECTION = "testLocations";
 const NOISECHECK_COLLECTION = "noiseChecks";
 const METAL_ITEM_COLLECTION = "metalItems";
@@ -3122,7 +3124,7 @@ window.deleteWaterTest = async function(id) {
   try {
     await db.collection(WATERTEST_COLLECTION).doc(id).delete();
     if (t && t.eventId) await db.collection(EVENT_COLLECTION).doc(t.eventId).delete().catch(() => {});
-    if (t && t.attachments && storageRef) for (const a of t.attachments) { try { await storageRef.child(a.path).delete(); } catch (e) {} }
+    if (t && t.attachments) for (const a of t.attachments) { try { if (a.fileId) await db.collection(WATERTEST_FILE_COLLECTION).doc(a.fileId).delete(); else if (a.path && storageRef) await storageRef.child(a.path).delete(); } catch (e) {} }
   } catch (err) { alert("削除エラー: " + err.message); }
 };
 
@@ -3130,13 +3132,34 @@ window.deleteWaterTest = async function(id) {
 function renderWaterAttachList() {
   const el = document.getElementById("waterAttachList");
   if (!el) return;
-  const saved = waterModalAttachments.filter(a => !waterModalRemoved.includes(a.path));
+  const saved = waterModalAttachments.filter(a => !waterModalRemoved.includes(attachKey(a)));
   el.innerHTML = saved.map(a => `
-    <span class="attach-chip"><a href="${a.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(a.name)}</span></a><button type="button" class="attach-x" title="削除" onclick="removeWaterAttachment('${escapeHtml(a.path)}')">✕</button></span>
+    <span class="attach-chip">${attachLinkHtml(a)}<button type="button" class="attach-x" title="削除" onclick="removeWaterAttachment('${escapeHtml(attachKey(a))}')">✕</button></span>
   `).join("") + waterModalNewFiles.map((f, i) => `
     <span class="attach-chip pending">${f.type && f.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(f.name)}</span><small>(未保存)</small><button type="button" class="attach-x" title="取り消し" onclick="removeWaterNewFile(${i})">✕</button></span>
   `).join("") || '<div class="field-hint" style="color:#8b8b9e;font-size:12px;">まだ添付はありません</div>';
 }
+function attachKey(a) { return a.fileId ? "inline:" + a.fileId : a.path; }
+function attachLinkHtml(a) {
+  const icon = a.type && a.type.startsWith("image/") ? "🖼️" : "📄";
+  const st = "color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;";
+  if (a.fileId) return `<a href="#" onclick="openInlineAttachment('${a.fileId}');return false;" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
+  return `<a href="${a.url}" target="_blank" rel="noopener" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
+}
+// Firestoreに入れた添付(base64)を開く
+window.openInlineAttachment = async function(fileId) {
+  const w = window.open("", "_blank"); // 先に開いておく(スマホのポップアップ制限対策)
+  try {
+    const d = await db.collection(WATERTEST_FILE_COLLECTION).doc(fileId).get();
+    if (!d.exists) throw new Error("ファイルが見つかりません");
+    const f = d.data();
+    const bin = atob(f.data);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/octet-stream" }));
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch (e) { if (w) w.close(); alert("開けませんでした: " + e.message); }
+};
 window.removeWaterAttachment = function(path) {
   if (!confirm("この添付を削除しますか？（保存を押すと確定します）")) return;
   waterModalRemoved.push(path);
@@ -3168,20 +3191,46 @@ function shrinkImageIfNeeded(file) {
     img.src = url;
   });
 }
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1]);
+    r.onerror = () => reject(new Error("読み込み失敗"));
+    r.readAsDataURL(blob);
+  });
+}
+let storageUsable = true; // 一度失敗したらこの画面ではFirestore方式に切り替える
 async function uploadWaterAttachments(docId) {
   if (!waterModalNewFiles.length && !waterModalRemoved.length) return null;
-  if (!storageRef) throw new Error("Storageが使えません(Firebaseコンソールで Storage を有効にしてください)");
-  let list = waterModalAttachments.filter(a => !waterModalRemoved.includes(a.path));
-  for (const path of waterModalRemoved) { try { await storageRef.child(path).delete(); } catch (e) {} }
+  let list = waterModalAttachments.filter(a => !waterModalRemoved.includes(attachKey(a)));
+  for (const key of waterModalRemoved) {
+    try {
+      if (key.startsWith("inline:")) await db.collection(WATERTEST_FILE_COLLECTION).doc(key.slice(7)).delete();
+      else if (storageRef) await storageRef.child(key).delete();
+    } catch (e) {}
+  }
+  const errors = [];
   for (const f of waterModalNewFiles) {
     const { blob, name, type } = await shrinkImageIfNeeded(f);
     const safe = name.replace(/[\/\\#?%*:|"<>]/g, "_");
-    const path = `waterTests/${docId}/${Date.now()}_${safe}`;
-    const ref = storageRef.child(path);
-    await ref.put(blob, { contentType: type });
-    const url = await ref.getDownloadURL();
-    list.push({ name, path, url, type, size: blob.size, uploadedAt: Date.now() });
+    // ① Firebase Storage(有効なら)
+    if (storageRef && storageUsable) {
+      try {
+        const path = `waterTests/${docId}/${Date.now()}_${safe}`;
+        const ref = storageRef.child(path);
+        await ref.put(blob, { contentType: type });
+        const url = await ref.getDownloadURL();
+        list.push({ name, path, url, type, size: blob.size, uploadedAt: Date.now() });
+        continue;
+      } catch (e) { console.warn("Storage失敗→Firestore方式に切替", e); storageUsable = false; }
+    }
+    // ② Firestoreに埋め込み(約700KBまで)
+    if (blob.size > INLINE_FILE_MAX) { errors.push(`${name}(${Math.round(blob.size/1024)}KB)は大きすぎます。約700KB以下にするか、Firebase Storageを有効にしてください`); continue; }
+    const data = await blobToBase64(blob);
+    const ref = await db.collection(WATERTEST_FILE_COLLECTION).add({ testId: docId, name, type, size: blob.size, data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    list.push({ name, fileId: ref.id, type, size: blob.size, uploadedAt: Date.now() });
   }
+  if (errors.length) alert("一部の添付を保存できませんでした:\n" + errors.join("\n"));
   return list;
 }
 
@@ -3298,7 +3347,7 @@ function renderWaterTestList() {
           ${(t.items||[]).map(it => `<div class="water-test-item-line"><span>${escapeHtml(it.name)}</span><span>${escapeHtml(it.value||"-")}</span></div>`).join("")}
         </div>
         ${t.notes ? `<div class="event-notes">${escapeHtml(t.notes)}</div>` : ""}
-        ${(t.attachments||[]).length ? `<div class="attach-list">${(t.attachments||[]).map(a => `<a class="attach-chip" href="${a.url}" target="_blank" rel="noopener">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(a.name)}</span></a>`).join("")}</div>` : ""}
+        ${(t.attachments||[]).length ? `<div class="attach-list">${(t.attachments||[]).map(a => `<span class="attach-chip">${attachLinkHtml(a)}</span>`).join("")}</div>` : ""}
         <div class="event-actions">
           <button class="btn-edit" onclick="openEditWaterTest('${t.id}')">編集</button>
           <button class="btn-delete" onclick="deleteWaterTest('${t.id}')">削除</button>
