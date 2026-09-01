@@ -306,6 +306,7 @@
     <button class="jpeg-btn" id="jpegBtnWaterTest">🖨️ JPEG</button>
   </div>
   <div class="year-filter-tabs" id="waterTestYearTabs"></div>
+  <div class="field-hint" id="waterAttachUsage" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;"></div>
   <div class="list" id="waterTestListContainer"><div class="loading">読み込み中...</div></div>
   <button class="fab" id="addWaterTestBtn" style="background:#0d9488;">＋</button>
 </div>
@@ -3308,8 +3309,19 @@ window.setWaterTestYear = function(y) {
   renderWaterTestList();
 };
 
+function renderWaterAttachUsage() {
+  const el = document.getElementById("waterAttachUsage");
+  if (!el) return;
+  let bytes = 0, n = 0;
+  allWaterTests.forEach(t => (t.attachments||[]).forEach(a => { bytes += Number(a.size)||0; n++; }));
+  if (!n) { el.textContent = ""; return; }
+  const mb = bytes / (1024*1024);
+  const pct = (mb / 1024 * 100);
+  el.textContent = `📎 添付 ${n}件・合計 ${mb < 1 ? Math.round(bytes/1024) + "KB" : mb.toFixed(1) + "MB"}（無料枠1GBの${pct < 0.1 ? "0.1%未満" : pct.toFixed(1) + "%"}）`;
+}
 function renderWaterTestList() {
   renderWaterTestYearTabs();
+  renderWaterAttachUsage();
   const container = document.getElementById("waterTestListContainer");
   let filtered = allWaterTests;
   if (currentWaterTestYear !== "all") filtered = filtered.filter(t => (t.date||"").startsWith(currentWaterTestYear));
