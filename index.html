@@ -1290,6 +1290,7 @@
         <select id="sdgsGoalCalc" style="width:100%;padding:10px;border:1px solid #d9d9e3;border-radius:8px;font-size:14px;background:#fff;">
           <option value="sum">実績を合計する（回数・量の積み上げ）</option>
           <option value="avg3">年ごとの値の3年平均（ブリケット率など）</option>
+          <option value="yearly">年ごとの値をそのまま記録（水質pHなど・平均も合計もしない）</option>
         </select>
       </div>
       <div class="field">
@@ -5346,6 +5347,17 @@ function renderSdgsList() {
         <span>${p.year}年　${escapeHtml(p.note || "")}</span>
         <span>${Number(p.value || 0).toLocaleString()} ${escapeHtml(g.unit || "")}　<span style="cursor:pointer;" onclick="deleteSdgsProgress('${p.id}')">🗑</span></span>
       </div>`).join("");
+    } else if (g.calc === "yearly") {
+      // 年ごとの値をそのまま記録（平均も合計もしない）
+      progress = allSdgsProgress.filter(p => p.goalId === g.id && p.year).sort((a, b) => Number(b.year) - Number(a.year));
+      const latest = progress.length ? progress[0] : null;
+      pctRaw = null; pct = null;
+      mainLine = `<div class="water-test-item-line"><span>最新の記録</span><span>${latest ? `${latest.year}年　${Number(latest.value).toLocaleString()} ${escapeHtml(g.unit || "")}${latest.note ? "（" + escapeHtml(latest.note) + "）" : ""}` : "（＋進捗を追加から年ごとの値を記録できます）"}</span></div>`;
+      logHtml = progress.slice(0, 8).map(p => `
+      <div class="water-test-item-line">
+        <span>${p.year}年　${escapeHtml(p.note || "")}</span>
+        <span>${Number(p.value || 0).toLocaleString()} ${escapeHtml(g.unit || "")}　<span style="cursor:pointer;" onclick="deleteSdgsProgress('${p.id}')">🗑</span></span>
+      </div>`).join("");
     } else {
       progress = allSdgsProgress.filter(p => p.goalId === g.id && !p.year).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
       sum = progress.reduce((s, p) => s + (Number(p.value) || 0), 0);
@@ -5360,7 +5372,7 @@ function renderSdgsList() {
     }
     return `
       <div class="event-card" style="border-left-color:#16a34a;">
-        <div class="event-date">${g.fy ? g.fy + "年度" : "年度未設定"}${isAvg3 ? '　<span style="color:#16a34a;font-weight:700;">三年間平均</span>' : ""}</div>
+        <div class="event-date">${g.fy ? g.fy + "年度" : "年度未設定"}${isAvg3 ? '　<span style="color:#16a34a;font-weight:700;">三年間平均</span>' : g.calc === "yearly" ? '　<span style="color:#0369a1;font-weight:700;">年ごとの記録</span>' : ""}</div>
         <div class="event-title">${escapeHtml(g.name || "-")}</div>
         <div class="water-test-card-items">
           ${(g.indicator || "").trim() ? `<div class="water-test-item-line"><span>指標</span><span>${escapeHtml(g.indicator)}</span></div>` : ""}
@@ -5457,7 +5469,7 @@ window.openAddSdgsProgress = function(goalId) {
   sdgsProgressFormEl.reset();
   document.getElementById("sdgsProgressGoalId").value = goalId;
   const g = allSdgsGoals.find(x => x.id === goalId);
-  const isAvg3 = g && g.calc === "avg3";
+  const isAvg3 = g && (g.calc === "avg3" || g.calc === "yearly");
   document.getElementById("sdgsProgressDateField").style.display = isAvg3 ? "none" : "block";
   document.getElementById("sdgsProgressDate").required = !isAvg3;
   document.getElementById("sdgsProgressYearField").style.display = isAvg3 ? "block" : "none";
@@ -5478,7 +5490,7 @@ sdgsProgressFormEl.addEventListener("submit", async (e) => {
   const goalId = document.getElementById("sdgsProgressGoalId").value;
   if (!goalId) return;
   const g = allSdgsGoals.find(x => x.id === goalId);
-  const isAvg3 = g && g.calc === "avg3";
+  const isAvg3 = g && (g.calc === "avg3" || g.calc === "yearly");
   const val = document.getElementById("sdgsProgressValue").value;
   try {
     if (isAvg3) {
@@ -6495,7 +6507,7 @@ async function seedSdgsDefaults(){
       },
       {
         kw: "水質",
-        goal: { fy: "2024-2025", name: "目標11：住み続けられる街づくりを｜地域環境保全のための水質分析・油水分離槽の管理", calc: "avg3", indicator: "水質pH 目標7.0〜8.0の範囲維持", targetValue: null, unit: "pH", notes: "3年間すべて目標範囲内を維持しており水質管理体制の安定性を確認。定期分析と記録管理が有効に機能。今後は社員教育・マニュアル整備でさらなる安定化と予防的管理を目指す（日々の記録は水質検査タブ）" },
+        goal: { fy: "2024-2025", name: "目標11：住み続けられる街づくりを｜地域環境保全のための水質分析・油水分離槽の管理", calc: "yearly", indicator: "水質pH 目標7.0〜8.0の範囲維持", targetValue: null, unit: "pH", notes: "3年間すべて目標範囲内を維持しており水質管理体制の安定性を確認。定期分析と記録管理が有効に機能。今後は社員教育・マニュアル整備でさらなる安定化と予防的管理を目指す（日々の記録は水質検査タブ）" },
         progress: [
           { year: 2023, value: 7.9, note: "達成（範囲内）" },
           { year: 2024, value: 7.5, note: "達成（範囲内）" }
