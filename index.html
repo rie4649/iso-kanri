@@ -531,6 +531,61 @@
   </div>
 </div>
 
+<!-- ================= 会社情報（沿革・組織図）セクション ================= -->
+<div class="section" id="section-company">
+  <div class="master-sub-tabs">
+    <div class="master-sub-tab active" data-companyview="history">📜 沿革</div>
+    <div class="master-sub-tab" data-companyview="org">🏢 組織図</div>
+  </div>
+  <div id="companyHistoryPanel">
+    <div class="toolbar-row" style="justify-content:flex-end;">
+      <button class="jpeg-btn" id="jpegBtnHistory">🖨️ JPEG</button>
+    </div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">会社の節目（許可取得・認証・表彰・設備導入など）の記録です。＋で追加（末尾に入ります）、✏️で修正</div>
+    <div class="list" id="historyListContainer"><div class="loading">読み込み中...</div></div>
+    <button class="fab" id="addHistoryBtn" style="background:#0369a1;">＋</button>
+  </div>
+  <div id="companyOrgPanel" style="display:none;">
+    <div class="toolbar-row" style="justify-content:flex-end;gap:8px;">
+      <button class="jpeg-btn" id="editOrgBtn">✏️ 組織図を編集</button>
+      <button class="jpeg-btn" id="jpegBtnOrg">🖨️ JPEG</button>
+    </div>
+    <div id="orgPrintArea"><div class="loading">読み込み中...</div></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="historyModalOverlay">
+  <div class="modal">
+    <h2 id="historyModalTitle">沿革を追加</h2>
+    <input type="hidden" id="historyEditIndex" value="">
+    <div class="field"><label>年月</label><input type="text" id="historyDate" placeholder="例：令和8年9月"></div>
+    <div class="field"><label>内容</label><input type="text" id="historyText" placeholder="例：産業廃棄物収集運搬業許可取得（○○県）"></div>
+    <div class="modal-actions">
+      <button type="button" id="historyDeleteBtn" style="background:#fee2e2;color:#b91c1c;flex:0 0 auto;">🗑</button>
+      <button type="button" id="historyCancelBtn" style="background:#ececf1;color:#55556b;">キャンセル</button>
+      <button type="button" id="historySaveBtn" style="background:#0369a1;color:#fff;">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="orgModalOverlay">
+  <div class="modal">
+    <h2>組織図を編集</h2>
+    <div class="field">
+      <label>役員の段（1行＝1段。同じ段に複数入れるときは「・」で区切る）</label>
+      <textarea id="orgUpperText" rows="6" style="width:100%;font-size:14px;padding:10px;border:1px solid #d9d9e3;border-radius:10px;box-sizing:border-box;"></textarea>
+    </div>
+    <div class="field">
+      <label>部門（1行目が部門名、続く行がその中身。部門と部門の間は空行）</label>
+      <textarea id="orgDeptsText" rows="12" style="width:100%;font-size:14px;padding:10px;border:1px solid #d9d9e3;border-radius:10px;box-sizing:border-box;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="orgCancelBtn" style="background:#ececf1;color:#55556b;">キャンセル</button>
+      <button type="button" id="orgSaveBtn" style="background:#0369a1;color:#fff;">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= マスター管理セクション ================= -->
 <div class="section" id="section-master">
   <div class="master-sub-tabs">
@@ -4009,6 +4064,7 @@ const SECTION_DEFS = [
   { key: "safety", icon: "🦺", name: "安全災害対策" },
   { key: "sdgs", icon: "🌱", name: "SDGs" },
   { key: "manual", icon: "📖", name: "環境手順書" },
+  { key: "company", icon: "🏢", name: "会社情報（沿革・組織図）" },
   { key: "master", icon: "⚙️", name: "マスター管理" }
 ];
 
@@ -4046,6 +4102,7 @@ window.openSection = function(sec) {
   else if (sec === "safety") { renderSafetyList(); renderSafetyStatus(); }
   else if (sec === "sdgs") renderSdgsList();
   else if (sec === "manual") renderManualList();
+  else if (sec === "company") renderCompanyInfo();
 };
 document.getElementById("homeBtn").addEventListener("click", () => openSection("home"));
 
@@ -5845,6 +5902,211 @@ document.getElementById("bulkManualStartBtn").addEventListener("click", async ()
   startBtn.textContent = "アップロード開始";
   document.getElementById("bulkManualModalOverlay").classList.remove("open");
   drawManualList();
+});
+
+// ================= 会社情報（沿革・組織図） =================
+const COMPANY_COLLECTION = "companyInfo";
+const DEFAULT_HISTORY = [
+{date:"昭和49年9月",text:"有限会社関根商店　設立"},
+{date:"昭和59年12月",text:"天井クレーン設置4.66ｔ"},
+{date:"昭和59年12月",text:"トラックスケール設置"},
+{date:"昭和63年8月",text:"産業廃棄物収集運搬業許可取得（群馬県）"},
+{date:"平成10年2月",text:"産業廃棄物収集運搬業許可取得（長野県）"},
+{date:"平成16年9月",text:"産業廃棄物処分業許可取得（長野県）"},
+{date:"平成16年10月",text:"ISO14001認証取得"},
+{date:"平成17年8月",text:"産業廃棄物収集運搬業許可取得（埼玉県）"},
+{date:"平成18年6月",text:"産業廃棄物収集運搬業許可取得（山梨県）"},
+{date:"平成19年10月",text:"株式会社関根商店に移行"},
+{date:"平成20年6月",text:"天井クレーン設置4.95ｔ"},
+{date:"平成21年4月",text:"産業廃棄物収集運搬業許可取得（新潟県）"},
+{date:"平成22年4月",text:"電子マニフェストシステムJWNET加入"},
+{date:"平成27年3月",text:"ブリケットマシン導入"},
+{date:"平成29年7月",text:"上田市丸子倉庫取得"},
+{date:"令和4年8月",text:"一般建設業許可取得"},
+{date:"令和5年4月",text:"長野県SDGｓ推進事業登録　第16期"},
+{date:"令和5年5月",text:"優良事業所表彰（長野県資源循環保全協会）"},
+{date:"令和6年3月",text:"東御倉庫取得"},
+{date:"令和6年6月",text:"地方優良事業所表彰（全国産業資源循環連合会）"},
+{date:"令和7年3月",text:"健康経営優良法人2025　中小規模法人部門取得"},
+{date:"令和8年3月",text:"健康経営優良法人2026　中小規模法人部門取得"},
+{date:"令和8年4月",text:"公益財団法人産業廃棄物処理事業振興財団　さんぱいくん加入"},
+{date:"令和8年7月",text:"新設倉庫設置"}
+];
+const DEFAULT_ORG = {
+  upper: [["株主総会"],["監査役","取締役会"],["代表取締役会長","代表取締役社長"],["専務","常務","業務"],["工場長"]],
+  depts: [
+    {name:"現場部門",items:["収集運搬","機械作業（機械移動含む）","中間処理（圧縮）"]},
+    {name:"事務部門",items:["総務","労務"]},
+    {name:"管理部門",items:["内部監査（環境管理・ＩＳＯ推進委員）","安全衛生管理","整備管理"]}
+  ]
+};
+let companyHistory = null;
+let companyOrg = null;
+async function loadCompanyInfo(){
+  const [hSnap, oSnap] = await Promise.all([
+    db.collection(COMPANY_COLLECTION).doc("history").get(),
+    db.collection(COMPANY_COLLECTION).doc("orgChart").get()
+  ]);
+  if (hSnap.exists) { companyHistory = hSnap.data().items || []; }
+  else { companyHistory = DEFAULT_HISTORY.slice(); await db.collection(COMPANY_COLLECTION).doc("history").set({ items: companyHistory }); }
+  if (oSnap.exists) { companyOrg = oSnap.data(); }
+  else { companyOrg = JSON.parse(JSON.stringify(DEFAULT_ORG)); await db.collection(COMPANY_COLLECTION).doc("orgChart").set(companyOrg); }
+}
+async function renderCompanyInfo(){
+  const hBox = document.getElementById("historyListContainer");
+  const oBox = document.getElementById("orgPrintArea");
+  if (companyHistory === null) {
+    hBox.innerHTML = '<div class="loading">読み込み中...</div>';
+    oBox.innerHTML = '<div class="loading">読み込み中...</div>';
+    try { await loadCompanyInfo(); } catch (e) { hBox.innerHTML = '<div class="loading">読み込みに失敗しました</div>'; return; }
+  }
+  drawHistoryList();
+  drawOrgChart();
+}
+function drawHistoryList(){
+  const box = document.getElementById("historyListContainer");
+  if (!companyHistory || !companyHistory.length) { box.innerHTML = '<div class="loading">まだ記録がありません</div>'; return; }
+  box.innerHTML = companyHistory.map((h, i) => `
+    <div style="background:#fff;border-radius:10px;padding:10px 14px;margin-bottom:6px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;align-items:center;gap:10px;">
+      <div style="flex:0 0 110px;font-size:12.5px;font-weight:700;color:#0369a1;">${escapeHtml(h.date)}</div>
+      <div style="flex:1;font-size:13.5px;">${escapeHtml(h.text)}</div>
+      <button onclick="openHistoryModal(${i})" style="border:none;background:#f1f5f9;border-radius:8px;padding:7px 9px;cursor:pointer;">✏️</button>
+    </div>`).join("");
+}
+async function saveCompanyHistory(){
+  await db.collection(COMPANY_COLLECTION).doc("history").set({ items: companyHistory });
+  drawHistoryList();
+}
+window.openHistoryModal = function(i){
+  const isNew = (i === null || i === undefined);
+  document.getElementById("historyModalTitle").textContent = isNew ? "沿革を追加" : "沿革を編集";
+  document.getElementById("historyEditIndex").value = isNew ? "" : String(i);
+  document.getElementById("historyDate").value = isNew ? "" : (companyHistory[i].date || "");
+  document.getElementById("historyText").value = isNew ? "" : (companyHistory[i].text || "");
+  document.getElementById("historyDeleteBtn").style.display = isNew ? "none" : "block";
+  document.getElementById("historyModalOverlay").classList.add("open");
+};
+document.getElementById("addHistoryBtn").addEventListener("click", () => openHistoryModal(null));
+document.getElementById("historyCancelBtn").addEventListener("click", () => document.getElementById("historyModalOverlay").classList.remove("open"));
+document.getElementById("historyDeleteBtn").addEventListener("click", async () => {
+  const idx = document.getElementById("historyEditIndex").value;
+  if (idx === "") return;
+  if (!confirm("この行を削除しますか？")) return;
+  companyHistory.splice(Number(idx), 1);
+  try { await saveCompanyHistory(); } catch (e) { alert("削除できませんでした: " + e.message); }
+  document.getElementById("historyModalOverlay").classList.remove("open");
+});
+document.getElementById("historySaveBtn").addEventListener("click", async () => {
+  const date = document.getElementById("historyDate").value.trim();
+  const text = document.getElementById("historyText").value.trim();
+  if (!date || !text) { alert("年月と内容を入力してください"); return; }
+  const idx = document.getElementById("historyEditIndex").value;
+  if (idx === "") companyHistory.push({ date, text });
+  else companyHistory[Number(idx)] = { date, text };
+  try { await saveCompanyHistory(); } catch (e) { alert("保存できませんでした: " + e.message); return; }
+  document.getElementById("historyModalOverlay").classList.remove("open");
+});
+// ---- 組織図 ----
+const ORG_LEVEL_COLORS = ["#bbf7d0", "#bbf7d0", "#e9d5ff", "#ddd6fe", "#bfdbfe"];
+const ORG_DEPT_COLOR = "#99f6e4";
+function drawOrgChart(){
+  const box = document.getElementById("orgPrintArea");
+  if (!companyOrg) { box.innerHTML = '<div class="loading">読み込み中...</div>'; return; }
+  let html = '<div style="background:#fff;border-radius:12px;padding:22px 10px;box-shadow:0 1px 4px rgba(0,0,0,.06);">';
+  html += '<div style="text-align:center;font-size:17px;font-weight:800;margin-bottom:16px;">株式会社関根商店　組織図</div>';
+  (companyOrg.upper || []).forEach((level, i) => {
+    if (i > 0) html += '<div style="width:2px;height:14px;background:#94a3b8;margin:0 auto;"></div>';
+    const color = ORG_LEVEL_COLORS[Math.min(i, ORG_LEVEL_COLORS.length - 1)];
+    html += '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">' +
+      level.map(n => `<div style="background:${color};padding:8px 16px;border-radius:6px;font-size:13.5px;font-weight:700;">${escapeHtml(n)}</div>`).join("") +
+      '</div>';
+  });
+  html += '<div style="border-top:2px dashed #22d3ee;margin:18px 6px;"></div>';
+  html += '<div style="display:flex;justify-content:space-around;gap:10px;flex-wrap:wrap;align-items:flex-start;">';
+  (companyOrg.depts || []).forEach(d => {
+    html += `<div style="flex:1;min-width:140px;">
+      <div style="background:${ORG_DEPT_COLOR};padding:8px 12px;border-radius:6px;font-size:13.5px;font-weight:700;text-align:center;">${escapeHtml(d.name)}</div>
+      <div style="border-left:2px solid #94a3b8;margin:8px 0 0 14px;padding-left:10px;">` +
+      (d.items || []).map(it => `<div style="font-size:12.5px;padding:4px 0;">${escapeHtml(it)}</div>`).join("") +
+      `</div></div>`;
+  });
+  html += '</div></div>';
+  box.innerHTML = html;
+}
+document.getElementById("editOrgBtn").addEventListener("click", () => {
+  if (!companyOrg) return;
+  document.getElementById("orgUpperText").value = (companyOrg.upper || []).map(l => l.join("・")).join("\n");
+  document.getElementById("orgDeptsText").value = (companyOrg.depts || []).map(d => [d.name].concat(d.items || []).join("\n")).join("\n\n");
+  document.getElementById("orgModalOverlay").classList.add("open");
+});
+document.getElementById("orgCancelBtn").addEventListener("click", () => document.getElementById("orgModalOverlay").classList.remove("open"));
+document.getElementById("orgSaveBtn").addEventListener("click", async () => {
+  const upper = document.getElementById("orgUpperText").value.split("\n").map(s => s.trim()).filter(Boolean)
+    .map(line => line.split("・").map(s => s.trim()).filter(Boolean));
+  const depts = document.getElementById("orgDeptsText").value.split(/\n\s*\n/).map(block => {
+    const lines = block.split("\n").map(s => s.trim()).filter(Boolean);
+    if (!lines.length) return null;
+    return { name: lines[0], items: lines.slice(1) };
+  }).filter(Boolean);
+  if (!upper.length && !depts.length) { alert("内容を入力してください"); return; }
+  companyOrg = { upper, depts };
+  try { await db.collection(COMPANY_COLLECTION).doc("orgChart").set(companyOrg); }
+  catch (e) { alert("保存できませんでした: " + e.message); return; }
+  document.getElementById("orgModalOverlay").classList.remove("open");
+  drawOrgChart();
+});
+// ---- サブタブ切替 ----
+document.querySelectorAll("#section-company .master-sub-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll("#section-company .master-sub-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const v = tab.dataset.companyview;
+    document.getElementById("companyHistoryPanel").style.display = (v === "history") ? "block" : "none";
+    document.getElementById("companyOrgPanel").style.display = (v === "org") ? "block" : "none";
+  });
+});
+// ---- JPEG出力 ----
+document.getElementById("jpegBtnHistory").addEventListener("click", async () => {
+  if (!window.html2canvas) { alert("JPEG出力の準備中です。少し待ってから再度お試しください。"); return; }
+  if (!companyHistory) return;
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed"; wrapper.style.left = "-99999px"; wrapper.style.top = "0";
+  wrapper.style.background = "#ffffff"; wrapper.style.padding = "28px"; wrapper.style.width = "700px";
+  wrapper.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+  wrapper.innerHTML = '<div style="font-size:20px;font-weight:800;text-align:center;margin-bottom:16px;">株式会社関根商店　沿革</div>' +
+    '<table style="width:100%;border-collapse:collapse;">' +
+    companyHistory.map(h => `<tr>
+      <td style="border:1px solid #cbd5e1;padding:7px 10px;width:130px;font-weight:700;font-size:13px;white-space:nowrap;">${escapeHtml(h.date)}</td>
+      <td style="border:1px solid #cbd5e1;padding:7px 10px;font-size:13px;">${escapeHtml(h.text)}</td>
+    </tr>`).join("") + '</table>';
+  document.body.appendChild(wrapper);
+  try {
+    const canvas = await html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2 });
+    const link = document.createElement("a");
+    link.download = "沿革_株式会社関根商店.jpg";
+    link.href = canvas.toDataURL("image/jpeg", 0.92);
+    link.click();
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+});
+document.getElementById("jpegBtnOrg").addEventListener("click", async () => {
+  if (!window.html2canvas) { alert("JPEG出力の準備中です。少し待ってから再度お試しください。"); return; }
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed"; wrapper.style.left = "-99999px"; wrapper.style.top = "0";
+  wrapper.style.background = "#ffffff"; wrapper.style.padding = "20px"; wrapper.style.width = "700px";
+  wrapper.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+  wrapper.innerHTML = document.getElementById("orgPrintArea").innerHTML;
+  document.body.appendChild(wrapper);
+  try {
+    const canvas = await html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2 });
+    const link = document.createElement("a");
+    link.download = "組織図_株式会社関根商店.jpg";
+    link.href = canvas.toDataURL("image/jpeg", 0.92);
+    link.click();
+  } finally {
+    document.body.removeChild(wrapper);
+  }
 });
 
 if ('serviceWorker' in navigator) {
