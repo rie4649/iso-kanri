@@ -5933,7 +5933,7 @@ const DEFAULT_HISTORY = [
 {date:"令和8年7月",text:"新設倉庫設置"}
 ];
 const DEFAULT_ORG = {
-  upper: [["株主総会"],["監査役","取締役会"],["代表取締役会長","代表取締役社長"],["専務","常務","業務"],["工場長"]],
+  upper: ["株主総会","監査役・取締役会","代表取締役会長・代表取締役社長","専務・常務・業務","工場長"],
   depts: [
     {name:"現場部門",items:["収集運搬","機械作業（機械移動含む）","中間処理（圧縮）"]},
     {name:"事務部門",items:["総務","労務"]},
@@ -6017,8 +6017,9 @@ function drawOrgChart(){
   (companyOrg.upper || []).forEach((level, i) => {
     if (i > 0) html += '<div style="width:2px;height:14px;background:#94a3b8;margin:0 auto;"></div>';
     const color = ORG_LEVEL_COLORS[Math.min(i, ORG_LEVEL_COLORS.length - 1)];
+    const names = Array.isArray(level) ? level : String(level).split("・").map(s => s.trim()).filter(Boolean);
     html += '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">' +
-      level.map(n => `<div style="background:${color};padding:8px 16px;border-radius:6px;font-size:13.5px;font-weight:700;">${escapeHtml(n)}</div>`).join("") +
+      names.map(n => `<div style="background:${color};padding:8px 16px;border-radius:6px;font-size:13.5px;font-weight:700;">${escapeHtml(n)}</div>`).join("") +
       '</div>';
   });
   html += '<div style="border-top:2px dashed #22d3ee;margin:18px 6px;"></div>';
@@ -6035,14 +6036,13 @@ function drawOrgChart(){
 }
 document.getElementById("editOrgBtn").addEventListener("click", () => {
   if (!companyOrg) return;
-  document.getElementById("orgUpperText").value = (companyOrg.upper || []).map(l => l.join("・")).join("\n");
+  document.getElementById("orgUpperText").value = (companyOrg.upper || []).map(l => Array.isArray(l) ? l.join("・") : l).join("\n");
   document.getElementById("orgDeptsText").value = (companyOrg.depts || []).map(d => [d.name].concat(d.items || []).join("\n")).join("\n\n");
   document.getElementById("orgModalOverlay").classList.add("open");
 });
 document.getElementById("orgCancelBtn").addEventListener("click", () => document.getElementById("orgModalOverlay").classList.remove("open"));
 document.getElementById("orgSaveBtn").addEventListener("click", async () => {
-  const upper = document.getElementById("orgUpperText").value.split("\n").map(s => s.trim()).filter(Boolean)
-    .map(line => line.split("・").map(s => s.trim()).filter(Boolean));
+  const upper = document.getElementById("orgUpperText").value.split("\n").map(s => s.trim()).filter(Boolean);
   const depts = document.getElementById("orgDeptsText").value.split(/\n\s*\n/).map(block => {
     const lines = block.split("\n").map(s => s.trim()).filter(Boolean);
     if (!lines.length) return null;
