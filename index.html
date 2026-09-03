@@ -444,6 +444,7 @@
 <div class="section" id="section-safety">
   <div class="master-sub-tabs">
     <div class="master-sub-tab active" data-safetyview="patrol">🦺 安全衛生パトロール</div>
+    <div class="master-sub-tab" data-safetyview="training">🎓 教育訓練</div>
   </div>
   <div id="safetyViewPatrol">
     <div class="master-sub-tabs" style="padding-top:12px;">
@@ -464,6 +465,16 @@
       <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">月1回の実施状況です（年度は8月〜翌7月。✅をタップで記録を開く、⬜をタップで追加）</div>
       <div class="status-table-wrap"><table class="status-table" id="safetyStatusTable"></table></div>
     </div>
+  </div>
+  <div id="safetyViewTraining" style="display:none;">
+    <div class="toolbar-row" style="padding-top:12px;">
+      <div class="search-box"><input type="text" id="trainingSearchInput" placeholder="テーマ・参加者で検索"></div>
+      <button class="jpeg-btn" id="jpegBtnTraining">🖨️ JPEG</button>
+    </div>
+    <div class="year-filter-tabs" id="trainingYearTabs"></div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">教育訓練と定期テスト（安全教育）の記録です。定期テストは対象の環境手順書と紐付きます。改訂「あり」で保存したら、環境手順書タブで版数・改定日の更新を忘れずに</div>
+    <div class="list" id="trainingListContainer"><div class="loading">読み込み中...</div></div>
+    <button class="fab" id="addTrainingBtn" style="background:#0e7490;">＋</button>
   </div>
   <button class="fab" id="addSafetyBtn" style="background:#f59e0b;">＋</button>
 </div>
@@ -551,6 +562,41 @@
       <button class="jpeg-btn" id="jpegBtnOrg">🖨️ JPEG</button>
     </div>
     <div id="orgPrintArea"><div class="loading">読み込み中...</div></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="trainingModalOverlay">
+  <div class="modal">
+    <h2 id="trainingModalTitle">教育訓練を追加</h2>
+    <input type="hidden" id="trainingEditId">
+    <div class="field-row">
+      <div class="field"><label>実施日</label><input type="date" id="trainingDate"></div>
+      <div class="field"><label>種別</label><select id="trainingKind"><option value="training">教育訓練</option><option value="test">定期テスト（安全教育）</option></select></div>
+    </div>
+    <div class="field"><label>テーマ・内容</label><input type="text" id="trainingTheme" placeholder="例：フォークリフトの安全管理"></div>
+    <div class="field"><label>対象者・参加者</label><input type="text" id="trainingParticipants" placeholder="例：作業員全員／石原・宮嶋"></div>
+    <div class="field-row">
+      <div class="field"><label>実施者</label><input type="text" id="trainingInstructor" placeholder="例：環境管理責任者"></div>
+      <div class="field"><label>教材</label><input type="text" id="trainingMaterials" placeholder="例：ヒヤリハット事例資料"></div>
+    </div>
+    <div class="field"><label>実施内容・結果</label><textarea id="trainingNotes" rows="5" style="width:100%;font-size:14px;padding:10px;border:1px solid #d9d9e3;border-radius:10px;box-sizing:border-box;" placeholder="実施した内容、結果、理解確認の方法など"></textarea></div>
+    <div id="trainingTestFields" style="display:none;">
+      <div class="field"><label>対象手順書（環境手順書から選択）</label><select id="trainingManual"><option value="">選択してください</option></select></div>
+      <div class="field-row">
+        <div class="field"><label>手順書改訂の必要性</label><select id="trainingRevision"><option value="none">改訂の必要なし</option><option value="needed">改訂が必要（あり）</option></select></div>
+        <div class="field" id="trainingRevisionNoteField" style="display:none;"><label>改訂内容</label><input type="text" id="trainingRevisionNote" placeholder="例：（7）電気設備の安全確認を追加"></div>
+      </div>
+    </div>
+    <div class="field"><label>添付（資料PDF・実施時の写真）</label>
+      <div id="trainingAttachList"></div>
+      <label class="attach-pick">📎 ファイルを選ぶ<input type="file" id="trainingAttachInput" multiple accept="application/pdf,image/*" style="display:none;"></label>
+      <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">「保存」を押したときに保存されます。写真は自動で縮小します。PDFは1ファイル約700KBまで</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="trainingDeleteBtn" style="background:#fee2e2;color:#b91c1c;flex:0 0 auto;">🗑</button>
+      <button type="button" id="trainingCancelBtn" style="background:#ececf1;color:#55556b;">キャンセル</button>
+      <button type="button" id="trainingSaveBtn" style="background:#0e7490;color:#fff;">保存</button>
+    </div>
   </div>
 </div>
 
@@ -6102,6 +6148,306 @@ document.getElementById("jpegBtnOrg").addEventListener("click", async () => {
     const canvas = await html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2 });
     const link = document.createElement("a");
     link.download = "組織図_株式会社関根商店.jpg";
+    link.href = canvas.toDataURL("image/jpeg", 0.92);
+    link.click();
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+});
+
+// ================= 教育訓練・定期テスト（安全教育） =================
+const TRAINING_COLLECTION = "trainingRecords";
+const TRAINING_FILE_COLLECTION = "trainingFiles";
+const DEFAULT_TRAININGS = [
+{date:"2025-11-05",kind:"test",theme:"電気設備の安全点検（地震想定リスク点検）",participants:"石原あゆみ、宮嶋みゆき",instructor:"環境管理責任者（川村理絵）",materials:"電気設備点検チェックリスト（地震想定）",notes:"日常点検における電気設備の安全性を確認し、地震発生（震度5強想定）を想定したリスク点検を実施。配線・ケーブル、受変電設備（キュービクル）、屋外設備、非常用電源、漏電遮断器、接地線、分電盤、落下リスクなど全項目良好。ISO14001 8.2（緊急事態への準備及び対応）に対応。本テストを受けて緊-03手順書に「（7）電気設備の安全確認」を追加済み",manualId:"",manualLabel:"緊-03 自然災害・地震対策手順書",revisionNeeded:"none",revisionNote:""},
+{date:"2025-12-23",kind:"training",theme:"フォークリフトの安全管理（運転・作業環境・荷役・駐車停止）",participants:"作業員全員（理解確認：松下・伊部）",instructor:"環境管理責任者（川村理絵）",materials:"フォークリフト安全講習ヒヤリハット事例資料",notes:"フォークリフト事故の主要原因を6分類（①人との接触・巻き込み ②荷崩れ・落下 ③通路環境の不備 ④視界不良 ⑤フォーク差し込みミス ⑥油膜・床面滑り）し、それぞれの事例・原因・対策を整理。受講者の代表者2名以上に理解したかを確認する方式で実施",manualId:"",manualLabel:"",revisionNeeded:"",revisionNote:""}
+];
+let trainingCache = null;
+let trainingYearFilter = "all";
+async function loadTrainings(){
+  let snap = await db.collection(TRAINING_COLLECTION).get();
+  if (snap.empty) {
+    const batch = db.batch();
+    DEFAULT_TRAININGS.forEach(t => {
+      const ref = db.collection(TRAINING_COLLECTION).doc();
+      batch.set(ref, Object.assign({}, t, { attachments: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    });
+    await batch.commit();
+    snap = await db.collection(TRAINING_COLLECTION).get();
+  }
+  trainingCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  trainingCache.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+function trainingAttachLinkHtml(a){
+  const icon = a.type && a.type.startsWith("image/") ? "🖼️" : "📄";
+  const st = "color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;";
+  if (a.fileId) return `<a href="#" onclick="openTrainingInline('${a.fileId}');return false;" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
+  return `<a href="${a.url}" target="_blank" rel="noopener" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
+}
+window.openTrainingInline = async function(fileId){
+  const w = window.open("", "_blank");
+  try {
+    const d = await db.collection(TRAINING_FILE_COLLECTION).doc(fileId).get();
+    if (!d.exists) throw new Error("ファイルが見つかりません");
+    const f = d.data();
+    const bin = atob(f.data);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/octet-stream" }));
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch (e) { if (w) w.close(); alert("開けませんでした: " + e.message); }
+};
+async function renderTrainingList(){
+  const box = document.getElementById("trainingListContainer");
+  if (trainingCache === null) {
+    box.innerHTML = '<div class="loading">読み込み中...</div>';
+    try { await loadTrainings(); } catch (e) { box.innerHTML = '<div class="loading">読み込みに失敗しました</div>'; return; }
+  }
+  if (!manualsCache.length) { try { await loadManuals(); } catch (e) {} }
+  drawTrainingYearTabs();
+  drawTrainingList();
+}
+function drawTrainingYearTabs(){
+  const years = Array.from(new Set(trainingCache.map(t => (t.date || "").slice(0, 4)).filter(Boolean))).sort().reverse();
+  const box = document.getElementById("trainingYearTabs");
+  box.innerHTML = ['<button class="year-tab' + (trainingYearFilter === "all" ? " active" : "") + '" onclick="setTrainingYear(\'all\')">全て</button>']
+    .concat(years.map(y => '<button class="year-tab' + (trainingYearFilter === y ? " active" : "") + '" onclick="setTrainingYear(\'' + y + '\')">' + y + '年</button>')).join("");
+}
+window.setTrainingYear = function(y){ trainingYearFilter = y; drawTrainingYearTabs(); drawTrainingList(); };
+function trainingKindBadge(kind){
+  return kind === "test"
+    ? '<span style="background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">定期テスト</span>'
+    : '<span style="background:#dbeafe;color:#1e40af;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">教育訓練</span>';
+}
+function drawTrainingList(){
+  const q = (document.getElementById("trainingSearchInput").value || "").trim();
+  const box = document.getElementById("trainingListContainer");
+  const items = trainingCache.filter(t =>
+    (trainingYearFilter === "all" || (t.date || "").slice(0, 4) === trainingYearFilter) &&
+    (!q || (t.theme || "").includes(q) || (t.participants || "").includes(q))
+  );
+  if (!items.length) { box.innerHTML = '<div class="loading">記録がありません</div>'; return; }
+  box.innerHTML = items.map(t => {
+    const att = (t.attachments || []).map(a => `<span class="attach-chip">${trainingAttachLinkHtml(a)}</span>`).join("");
+    let testInfo = "";
+    if (t.kind === "test") {
+      const rev = t.revisionNeeded === "needed"
+        ? '<span style="background:#fee2e2;color:#b91c1c;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">改訂あり' + (t.revisionNote ? "：" + escapeHtml(t.revisionNote) : "") + '</span>'
+        : '<span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">改訂の必要なし</span>';
+      testInfo = `<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:#55556b;">` +
+        (t.manualLabel ? `<span>対象：${escapeHtml(t.manualLabel)}</span>` : "") + rev + `</div>`;
+    }
+    return `<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:12px;color:#8b8b9e;font-weight:700;">${escapeHtml(t.date || "")}</span>
+            ${trainingKindBadge(t.kind)}
+          </div>
+          <div style="font-size:14.5px;font-weight:700;margin-top:3px;">${escapeHtml(t.theme || "")}</div>
+          <div style="font-size:12.5px;color:#55556b;margin-top:3px;">対象：${escapeHtml(t.participants || "")}${t.instructor ? "　実施：" + escapeHtml(t.instructor) : ""}</div>
+          ${testInfo}
+          ${att ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">${att}</div>` : ""}
+        </div>
+        <button onclick="openTrainingModal('${t.id}')" style="border:none;background:#f1f5f9;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;">✏️</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+document.getElementById("trainingSearchInput").addEventListener("input", drawTrainingList);
+let trainingModalAttachments = [], trainingModalNewFiles = [], trainingModalRemoved = [];
+function renderTrainingAttachList(){
+  const box = document.getElementById("trainingAttachList");
+  const saved = trainingModalAttachments.filter(a => !trainingModalRemoved.includes(attachKey(a)));
+  let html = saved.map(a => `
+    <span class="attach-chip">${trainingAttachLinkHtml(a)}<button type="button" class="attach-x" title="削除" onclick="removeTrainingAttachment('${escapeHtml(attachKey(a))}')">✕</button></span>`).join("");
+  html += trainingModalNewFiles.map((f, i) => `
+    <span class="attach-chip pending">📎 <span>${escapeHtml(f.name)}</span><button type="button" class="attach-x" title="取消" onclick="removeTrainingNewFile(${i})">✕</button></span>`).join("");
+  box.innerHTML = html || '<div style="font-size:12px;color:#c0c0cc;">添付はありません</div>';
+}
+window.removeTrainingAttachment = function(key){
+  if (!confirm("この添付を削除しますか？（保存を押すと確定します）")) return;
+  trainingModalRemoved.push(key);
+  renderTrainingAttachList();
+};
+window.removeTrainingNewFile = function(i){ trainingModalNewFiles.splice(i, 1); renderTrainingAttachList(); };
+document.getElementById("trainingAttachInput").addEventListener("change", (e) => {
+  Array.from(e.target.files || []).forEach(f => trainingModalNewFiles.push(f));
+  e.target.value = "";
+  renderTrainingAttachList();
+});
+async function uploadTrainingAttachments(docId){
+  if (!trainingModalNewFiles.length && !trainingModalRemoved.length) return null;
+  let list = trainingModalAttachments.filter(a => !trainingModalRemoved.includes(attachKey(a)));
+  for (const key of trainingModalRemoved) {
+    try {
+      if (key.startsWith("inline:")) await db.collection(TRAINING_FILE_COLLECTION).doc(key.slice(7)).delete();
+      else if (storageRef) await storageRef.child(key).delete();
+    } catch (e) {}
+  }
+  const errors = [];
+  for (const f of trainingModalNewFiles) {
+    const { blob, name, type } = await shrinkImageIfNeeded(f);
+    const safe = name.replace(/[\/\\#?%*:|"<>]/g, "_");
+    if (storageRef && storageUsable) {
+      try {
+        const path = `trainings/${docId}/${Date.now()}_${safe}`;
+        const ref = storageRef.child(path);
+        await ref.put(blob, { contentType: type });
+        const url = await ref.getDownloadURL();
+        list.push({ name, path, url, type, size: blob.size, uploadedAt: Date.now() });
+        continue;
+      } catch (e) { console.warn("Storage失敗→Firestore方式に切替", e); storageUsable = false; }
+    }
+    if (blob.size > INLINE_FILE_MAX) { errors.push(`${name}(${Math.round(blob.size/1024)}KB)は大きすぎます。約700KB以下にしてください`); continue; }
+    const data = await blobToBase64(blob);
+    const ref = await db.collection(TRAINING_FILE_COLLECTION).add({ trainingId: docId, name, type, size: blob.size, data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    list.push({ name, fileId: ref.id, type, size: blob.size, uploadedAt: Date.now() });
+  }
+  if (errors.length) alert("一部の添付を保存できませんでした:\n" + errors.join("\n"));
+  return list;
+}
+function fillTrainingManualOptions(selectedId, selectedLabel){
+  const sel = document.getElementById("trainingManual");
+  sel.innerHTML = '<option value="">選択してください</option>' +
+    manualsCache.map(m => {
+      const label = String(m.no) + " " + (m.name || "");
+      const isSel = (selectedId && m.id === selectedId) || (!selectedId && selectedLabel && label === selectedLabel);
+      return `<option value="${m.id}" ${isSel ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    }).join("");
+}
+function toggleTrainingTestFields(){
+  const isTest = document.getElementById("trainingKind").value === "test";
+  document.getElementById("trainingTestFields").style.display = isTest ? "block" : "none";
+}
+document.getElementById("trainingKind").addEventListener("change", toggleTrainingTestFields);
+document.getElementById("trainingRevision").addEventListener("change", () => {
+  document.getElementById("trainingRevisionNoteField").style.display =
+    document.getElementById("trainingRevision").value === "needed" ? "block" : "none";
+});
+window.openTrainingModal = async function(id){
+  if (!manualsCache.length) { try { await loadManuals(); } catch (e) {} }
+  const t = id ? trainingCache.find(x => x.id === id) : null;
+  document.getElementById("trainingModalTitle").textContent = t ? "記録を編集" : "記録を追加";
+  document.getElementById("trainingEditId").value = id || "";
+  document.getElementById("trainingDate").value = t ? (t.date || "") : new Date().toISOString().slice(0, 10);
+  document.getElementById("trainingKind").value = t ? (t.kind || "training") : "training";
+  document.getElementById("trainingTheme").value = t ? (t.theme || "") : "";
+  document.getElementById("trainingParticipants").value = t ? (t.participants || "") : "";
+  document.getElementById("trainingInstructor").value = t ? (t.instructor || "") : "";
+  document.getElementById("trainingMaterials").value = t ? (t.materials || "") : "";
+  document.getElementById("trainingNotes").value = t ? (t.notes || "") : "";
+  fillTrainingManualOptions(t ? t.manualId : "", t ? t.manualLabel : "");
+  document.getElementById("trainingRevision").value = (t && t.revisionNeeded === "needed") ? "needed" : "none";
+  document.getElementById("trainingRevisionNote").value = t ? (t.revisionNote || "") : "";
+  document.getElementById("trainingRevisionNoteField").style.display = (t && t.revisionNeeded === "needed") ? "block" : "none";
+  toggleTrainingTestFields();
+  document.getElementById("trainingDeleteBtn").style.display = t ? "block" : "none";
+  trainingModalAttachments = t ? (t.attachments || []).slice() : [];
+  trainingModalNewFiles = []; trainingModalRemoved = [];
+  renderTrainingAttachList();
+  document.getElementById("trainingModalOverlay").classList.add("open");
+};
+document.getElementById("addTrainingBtn").addEventListener("click", () => openTrainingModal(null));
+document.getElementById("trainingCancelBtn").addEventListener("click", () => document.getElementById("trainingModalOverlay").classList.remove("open"));
+document.getElementById("trainingDeleteBtn").addEventListener("click", async () => {
+  const id = document.getElementById("trainingEditId").value;
+  if (!id) return;
+  const t = trainingCache.find(x => x.id === id);
+  if (!confirm(`「${t ? t.theme : ""}」の記録を削除しますか？添付も削除されます`)) return;
+  try {
+    if (t && t.attachments) for (const a of t.attachments) {
+      try { if (a.fileId) await db.collection(TRAINING_FILE_COLLECTION).doc(a.fileId).delete(); else if (a.path && storageRef) await storageRef.child(a.path).delete(); } catch (e) {}
+    }
+    await db.collection(TRAINING_COLLECTION).doc(id).delete();
+    trainingCache = trainingCache.filter(x => x.id !== id);
+    document.getElementById("trainingModalOverlay").classList.remove("open");
+    drawTrainingYearTabs(); drawTrainingList();
+  } catch (e) { alert("削除できませんでした: " + e.message); }
+});
+document.getElementById("trainingSaveBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("trainingSaveBtn");
+  const id = document.getElementById("trainingEditId").value;
+  const date = document.getElementById("trainingDate").value;
+  const theme = document.getElementById("trainingTheme").value.trim();
+  if (!date || !theme) { alert("実施日とテーマを入力してください"); return; }
+  const kind = document.getElementById("trainingKind").value;
+  const manualSel = document.getElementById("trainingManual");
+  const data = {
+    date, kind, theme,
+    participants: document.getElementById("trainingParticipants").value.trim(),
+    instructor: document.getElementById("trainingInstructor").value.trim(),
+    materials: document.getElementById("trainingMaterials").value.trim(),
+    notes: document.getElementById("trainingNotes").value.trim(),
+    manualId: kind === "test" ? manualSel.value : "",
+    manualLabel: kind === "test" && manualSel.value ? manualSel.options[manualSel.selectedIndex].text : "",
+    revisionNeeded: kind === "test" ? document.getElementById("trainingRevision").value : "",
+    revisionNote: kind === "test" && document.getElementById("trainingRevision").value === "needed" ? document.getElementById("trainingRevisionNote").value.trim() : "",
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  btn.disabled = true; btn.textContent = "保存中...";
+  try {
+    let docId = id;
+    if (id) {
+      await db.collection(TRAINING_COLLECTION).doc(id).set(data, { merge: true });
+    } else {
+      data.attachments = [];
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await db.collection(TRAINING_COLLECTION).add(data);
+      docId = ref.id;
+    }
+    const newList = await uploadTrainingAttachments(docId);
+    if (newList !== null) await db.collection(TRAINING_COLLECTION).doc(docId).set({ attachments: newList }, { merge: true });
+    document.getElementById("trainingModalOverlay").classList.remove("open");
+    trainingCache = null;
+    await renderTrainingList();
+    if (data.kind === "test" && data.revisionNeeded === "needed") {
+      alert("手順書の改訂が「あり」で保存されました。\n📖環境手順書タブで、対象手順書の版数・改定日の更新を忘れずに！");
+    }
+  } catch (e) {
+    alert("保存できませんでした: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "保存";
+  }
+});
+// 安全災害対策の上段タブ切替（パトロール／教育訓練）
+document.querySelectorAll("#section-safety .master-sub-tab[data-safetyview]").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll("#section-safety .master-sub-tab[data-safetyview]").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const v = tab.dataset.safetyview;
+    document.getElementById("safetyViewPatrol").style.display = (v === "patrol") ? "block" : "none";
+    document.getElementById("safetyViewTraining").style.display = (v === "training") ? "block" : "none";
+    document.getElementById("addSafetyBtn").style.display = (v === "patrol") ? "block" : "none";
+    if (v === "training") renderTrainingList();
+  });
+});
+// 教育訓練のJPEG出力（表示中の年の一覧）
+document.getElementById("jpegBtnTraining").addEventListener("click", async () => {
+  if (!window.html2canvas) { alert("JPEG出力の準備中です。少し待ってから再度お試しください。"); return; }
+  if (!trainingCache) return;
+  const items = trainingCache.filter(t => trainingYearFilter === "all" || (t.date || "").slice(0, 4) === trainingYearFilter)
+    .slice().sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const title = "教育訓練・定期テスト記録簿" + (trainingYearFilter === "all" ? "" : "　" + trainingYearFilter + "年");
+  const wrapper = document.createElement("div");
+  wrapper.style.position = "fixed"; wrapper.style.left = "-99999px"; wrapper.style.top = "0";
+  wrapper.style.background = "#ffffff"; wrapper.style.padding = "28px"; wrapper.style.width = "760px";
+  wrapper.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif";
+  wrapper.innerHTML = '<div style="font-size:19px;font-weight:800;text-align:center;margin-bottom:14px;">株式会社関根商店　' + escapeHtml(title) + '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:11.5px;">' +
+    '<tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1;padding:6px;">実施日</th><th style="border:1px solid #cbd5e1;padding:6px;">種別</th><th style="border:1px solid #cbd5e1;padding:6px;">テーマ・内容</th><th style="border:1px solid #cbd5e1;padding:6px;">対象者</th><th style="border:1px solid #cbd5e1;padding:6px;">対象手順書・改訂</th></tr>' +
+    items.map(t => '<tr>' +
+      '<td style="border:1px solid #cbd5e1;padding:6px;white-space:nowrap;">' + escapeHtml(t.date || "") + '</td>' +
+      '<td style="border:1px solid #cbd5e1;padding:6px;white-space:nowrap;">' + (t.kind === "test" ? "定期テスト" : "教育訓練") + '</td>' +
+      '<td style="border:1px solid #cbd5e1;padding:6px;">' + escapeHtml(t.theme || "") + '</td>' +
+      '<td style="border:1px solid #cbd5e1;padding:6px;">' + escapeHtml(t.participants || "") + '</td>' +
+      '<td style="border:1px solid #cbd5e1;padding:6px;">' + (t.kind === "test" ? escapeHtml(t.manualLabel || "") + (t.revisionNeeded === "needed" ? "／改訂あり" + (t.revisionNote ? "：" + escapeHtml(t.revisionNote) : "") : "／改訂の必要なし") : "—") + '</td>' +
+      '</tr>').join("") + '</table>';
+  document.body.appendChild(wrapper);
+  try {
+    const canvas = await html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2 });
+    const link = document.createElement("a");
+    link.download = title.replace(/\s/g, "_") + ".jpg";
     link.href = canvas.toDataURL("image/jpeg", 0.92);
     link.click();
   } finally {
