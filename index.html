@@ -479,6 +479,43 @@
   <button class="fab" id="addSdgsGoalBtn" style="background:#16a34a;">＋</button>
 </div>
 
+<!-- ================= 環境手順書セクション ================= -->
+<div class="section" id="section-manual">
+  <div class="toolbar-row">
+    <div class="search-box"><input type="text" id="manualSearchInput" placeholder="手順書名・番号で検索"></div>
+  </div>
+  <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">ファイル名タップでPDFが開きます。✏️で改訂（版数・改定日の変更、PDF差し替え）。改訂すると旧版の情報が履歴に自動で残ります。点検ラクラクのQRページにもここの内容がそのまま表示されます</div>
+  <div class="list" id="manualListContainer"><div class="loading">読み込み中...</div></div>
+  <button class="fab" id="addManualBtn" style="background:#7c2d12;">＋</button>
+</div>
+
+<div class="modal-overlay" id="manualModalOverlay">
+  <div class="modal">
+    <h2 id="manualModalTitle">手順書を編集</h2>
+    <input type="hidden" id="manualEditId">
+    <div class="field-row">
+      <div class="field"><label>番号</label><input type="text" id="manualNo" placeholder="例：43 / 緊-09"></div>
+      <div class="field"><label>区分</label><select id="manualCategory"><option value="normal">通常</option><option value="emergency">緊急時対応</option></select></div>
+    </div>
+    <div class="field"><label>名称</label><input type="text" id="manualName" placeholder="手順書の名称"></div>
+    <div class="field-row">
+      <div class="field"><label>改定日</label><input type="text" id="manualRevDate" placeholder="例：令和8年9月10日"></div>
+      <div class="field"><label>版数</label><input type="text" id="manualVersion" placeholder="例：第2版"></div>
+    </div>
+    <div class="field"><label>添付（PDF・写真）</label>
+      <div id="manualAttachList"></div>
+      <label class="attach-pick">📎 ファイルを選ぶ<input type="file" id="manualAttachInput" multiple accept="application/pdf,image/*" style="display:none;"></label>
+      <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">「保存」を押したときに保存されます。写真は自動で縮小します。PDFは1ファイル約700KBまで</div>
+    </div>
+    <div class="field"><label>改訂履歴</label><div id="manualHistoryBox" style="font-size:12.5px;color:#55556b;">（まだ改訂はありません）</div></div>
+    <div class="modal-actions">
+      <button type="button" id="manualDeleteBtn" style="background:#fee2e2;color:#b91c1c;flex:0 0 auto;">🗑</button>
+      <button type="button" id="manualCancelBtn" style="background:#ececf1;color:#55556b;">キャンセル</button>
+      <button type="button" id="manualSaveBtn" style="background:#7c2d12;color:#fff;">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= マスター管理セクション ================= -->
 <div class="section" id="section-master">
   <div class="master-sub-tabs">
@@ -3956,6 +3993,7 @@ const SECTION_DEFS = [
   { key: "freon", icon: "🌡️", name: "フロン排出抑制法簡易点検記録" },
   { key: "safety", icon: "🦺", name: "安全災害対策" },
   { key: "sdgs", icon: "🌱", name: "SDGs" },
+  { key: "manual", icon: "📖", name: "環境手順書" },
   { key: "master", icon: "⚙️", name: "マスター管理" }
 ];
 
@@ -3992,6 +4030,7 @@ window.openSection = function(sec) {
   else if (sec === "freon") { renderFreonList(); renderFreonStatus(); }
   else if (sec === "safety") { renderSafetyList(); renderSafetyStatus(); }
   else if (sec === "sdgs") renderSdgsList();
+  else if (sec === "manual") renderManualList();
 };
 document.getElementById("homeBtn").addEventListener("click", () => openSection("home"));
 
@@ -5434,6 +5473,269 @@ subscribeCompItems();
 subscribeCompRecords();
 subscribeSdgsGoals();
 subscribeSdgsProgress();
+
+// ================= 環境手順書 =================
+const MANUAL_COLLECTION = "envManuals";
+const MANUAL_FILE_COLLECTION = "envManualFiles";
+const DEFAULT_MANUALS=[
+{no:"1",name:"社内5Sルール",revDate:"平成21年3月21日",version:"第2版",category:"normal"},
+{no:"2",name:"廃プラスチック・ビニールの手分別作業実施手順書",revDate:"令和7年8月1日",version:"第2版",category:"normal"},
+{no:"3",name:"車両管理ルール",revDate:"令和3年6月15日",version:"第3版",category:"normal"},
+{no:"4",name:"廃油収集・保管・運搬時の手順書",revDate:"令和3年6月15日",version:"第2版",category:"normal"},
+{no:"5",name:"廃棄物の収集・運搬時の管理手順書",revDate:"令和3年6月15日",version:"第1版",category:"normal"},
+{no:"6",name:"台貫の手順書",revDate:"令和3年6月15日",version:"第4版",category:"normal"},
+{no:"7",name:"マニフェストの管理手順書",revDate:"令和3年8月1日",version:"第4版",category:"normal"},
+{no:"8",name:"産業廃棄物（廃プラスチック）の収集・運搬の手順書",revDate:"平成21年3月21日",version:"第2版",category:"normal"},
+{no:"9",name:"産業廃棄物（金属）の排出の手順書",revDate:"平成21年4月22日",version:"第3版",category:"normal"},
+{no:"10",name:"変圧器（トランス）回収の際の手順書",revDate:"令和3年6月15日",version:"第2版",category:"normal"},
+{no:"11",name:"空ドラム缶回収の手順書",revDate:"平成25年8月3日",version:"第2版",category:"normal"},
+{no:"12",name:"廃棄物処理法による圧縮機の騒音チェック手順書",revDate:"令和6年2月29日",version:"第1版",category:"normal"},
+{no:"13",name:"可燃ごみ分別積込の手順書",revDate:"平成19年7月27日",version:"第1版",category:"normal"},
+{no:"14",name:"ミックスペーパー分別積込の手順書",revDate:"平成19年7月27日",version:"第1版",category:"normal"},
+{no:"15",name:"RPF向け紙資源積込の手順書",revDate:"平成19年7月27日",version:"第1版",category:"normal"},
+{no:"16",name:"油水分離槽の管理手順書",revDate:"令和3年6月15日",version:"第1版",category:"normal"},
+{no:"17",name:"家電リサイクル品回収時の手順書",revDate:"令和3年6月15日",version:"第2版",category:"normal"},
+{no:"18",name:"フォークリフト使用時の手順書",revDate:"令和3年6月15日",version:"第1版",category:"normal"},
+{no:"19",name:"PCBトランス保管の管理手順書",revDate:"令和3年6月15日",version:"第1版",category:"normal"},
+{no:"20",name:"金属切粉自動圧縮成形機の手順書及びセンダライ粉のブリケット化の手順書",revDate:"令和7年10月30日",version:"第1版",category:"normal"},
+{no:"21",name:"ガス切断使用時の手順書",revDate:"令和3年6月15日",version:"第1版",category:"normal"},
+{no:"22",name:"天井クレーン使用時の手順書",revDate:"平成21年3月24日",version:"第1版",category:"normal"},
+{no:"23",name:"雑金属内より有価取引できる物品を拾い上げ、資源とエネルギーの有効利用と適正なリサイクルを行う手順書",revDate:"平成22年9月1日",version:"第1版",category:"normal"},
+{no:"24",name:"情報セキュリティーの手順書",revDate:"令和6年12月24日",version:"第1版",category:"normal"},
+{no:"25",name:"フロン機器回収の手順書",revDate:"令和3年6月15日",version:"第2版",category:"normal"},
+{no:"26",name:"フロン含有機器点検の手順書",revDate:"令和5年3月23日",version:"第3版",category:"normal"},
+{no:"27",name:"蛍光管回収・出荷の手順書",revDate:"平成29年10月1日",version:"第1版",category:"normal"},
+{no:"28",name:"顧客ニーズに応える手順書",revDate:"平成30年2月1日",version:"第1版",category:"normal"},
+{no:"29",name:"放射線濃度測定の手順書",revDate:"令和3年6月15日",version:"第1版",category:"normal"},
+{no:"30",name:"アルコールチェックの手順書",revDate:"令和6年12月24日",version:"第2版",category:"normal"},
+{no:"31",name:"安全運転管理者の手順書",revDate:"令和5年3月2日",version:"第1版",category:"normal"},
+{no:"32",name:"自働車の積載量の手順書",revDate:"令和6年2月1日",version:"第1版",category:"normal"},
+{no:"33",name:"地球温暖化対策の手順書",revDate:"令和6年12月25日",version:"第2版",category:"normal"},
+{no:"34",name:"乾電池・ボタン電池・リチウムイオン電池・廃家電電気器具回収の手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"35",name:"パソコン回収の手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"36",name:"古物商手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"37",name:"金属くず商手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"38",name:"電子マニフェスト手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"39",name:"収集運搬業・処分業許可申請の手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"40",name:"一般廃棄物許可申請の手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"41",name:"建設業許可更新の手順書",revDate:"令和7年8月1日",version:"第1版",category:"normal"},
+{no:"42",name:"エネルギー水資源の効率的利用",revDate:"令和7年11月1日",version:"第1版",category:"normal"},
+{no:"緊-01",name:"油漏れ対策管理手順書",revDate:"令和4年3月23日",version:"第2版",category:"emergency"},
+{no:"緊-02",name:"飛散・落下対策管理手順書",revDate:"令和4年3月25日",version:"第1版",category:"emergency"},
+{no:"緊-03",name:"自然災害・地震対策手順書",revDate:"令和7年12月1日",version:"第1版",category:"emergency"},
+{no:"緊-04",name:"自然災害・風水害対策手順書",revDate:"令和4年3月28日",version:"第1版",category:"emergency"},
+{no:"緊-05",name:"災害・火災対策手順書",revDate:"令和6年12月24日",version:"第2版",category:"emergency"},
+{no:"緊-06",name:"感染症対策の手順書",revDate:"令和4年3月28日",version:"第2版",category:"emergency"},
+{no:"緊-07",name:"緊急時連絡体制の手順書",revDate:"令和4年4月7日",version:"第1版",category:"emergency"},
+{no:"緊-08",name:"気象変動の手順書",revDate:"令和8年2月23日",version:"第2版",category:"emergency"}
+];
+function manualSortKey(m){
+  const n = parseInt(String(m.no).replace(/[^0-9]/g, ""), 10);
+  const base = (m.category === "emergency") ? 1000 : 0;
+  return base + (isNaN(n) ? 999 : n);
+}
+let manualsCache = [];
+let manualsSeeded = false;
+async function loadManuals(){
+  let snap = await db.collection(MANUAL_COLLECTION).get();
+  if (snap.empty && !manualsSeeded) {
+    manualsSeeded = true;
+    const batch = db.batch();
+    DEFAULT_MANUALS.forEach(m => {
+      const ref = db.collection(MANUAL_COLLECTION).doc();
+      batch.set(ref, Object.assign({}, m, { history: [], attachments: [], createdAt: firebase.firestore.FieldValue.serverTimestamp() }));
+    });
+    await batch.commit();
+    snap = await db.collection(MANUAL_COLLECTION).get();
+  }
+  manualsCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+  manualsCache.sort((a, b) => manualSortKey(a) - manualSortKey(b));
+}
+function manualAttachLinkHtml(a){
+  const icon = a.type && a.type.startsWith("image/") ? "🖼️" : "📄";
+  const st = "color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;";
+  if (a.fileId) return `<a href="#" onclick="openManualInline('${a.fileId}');return false;" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
+  return `<a href="${a.url}" target="_blank" rel="noopener" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
+}
+window.openManualInline = async function(fileId){
+  const w = window.open("", "_blank");
+  try {
+    const d = await db.collection(MANUAL_FILE_COLLECTION).doc(fileId).get();
+    if (!d.exists) throw new Error("ファイルが見つかりません");
+    const f = d.data();
+    const bin = atob(f.data);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/octet-stream" }));
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch (e) { if (w) w.close(); alert("開けませんでした: " + e.message); }
+};
+async function renderManualList(){
+  const box = document.getElementById("manualListContainer");
+  box.innerHTML = '<div class="loading">読み込み中...</div>';
+  try { await loadManuals(); } catch (e) { box.innerHTML = '<div class="loading">読み込みに失敗しました</div>'; return; }
+  drawManualList();
+}
+function drawManualList(){
+  const q = (document.getElementById("manualSearchInput").value || "").trim();
+  const box = document.getElementById("manualListContainer");
+  const groups = [
+    { cat: "normal", title: "📘 通常の手順書" },
+    { cat: "emergency", title: "🚨 緊急時対応" }
+  ];
+  let html = "";
+  groups.forEach(g => {
+    const items = manualsCache.filter(m => (m.category || "normal") === g.cat && (!q || String(m.no).includes(q) || (m.name || "").includes(q)));
+    if (!items.length) return;
+    html += `<div style="font-weight:700;color:#55556b;margin:14px 0 6px;">${g.title}（${items.length}件）</div>`;
+    items.forEach(m => {
+      const att = (m.attachments || []).map(a => `<span class="attach-chip">${manualAttachLinkHtml(a)}</span>`).join("");
+      html += `<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:#8b8b9e;font-weight:700;">${escapeHtml(String(m.no))}　${escapeHtml(m.version || "")}　改定日 ${escapeHtml(m.revDate || "")}</div>
+            <div style="font-size:14.5px;font-weight:700;margin-top:2px;">${escapeHtml(m.name || "")}</div>
+            ${att ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">${att}</div>` : `<div style="font-size:12px;color:#c0c0cc;margin-top:4px;">PDF未登録</div>`}
+          </div>
+          <button onclick="openManualModal('${m.id}')" style="border:none;background:#f1f5f9;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:15px;">✏️</button>
+        </div>
+      </div>`;
+    });
+  });
+  box.innerHTML = html || '<div class="loading">該当する手順書がありません</div>';
+}
+document.getElementById("manualSearchInput").addEventListener("input", drawManualList);
+
+let manualModalAttachments = [], manualModalNewFiles = [], manualModalRemoved = [];
+function renderManualAttachList(){
+  const box = document.getElementById("manualAttachList");
+  const saved = manualModalAttachments.filter(a => !manualModalRemoved.includes(attachKey(a)));
+  let html = saved.map(a => `
+    <span class="attach-chip">${manualAttachLinkHtml(a)}<button type="button" class="attach-x" title="削除" onclick="removeManualAttachment('${escapeHtml(attachKey(a))}')">✕</button></span>
+  `).join("");
+  html += manualModalNewFiles.map((f, i) => `
+    <span class="attach-chip pending">📎 <span>${escapeHtml(f.name)}</span><button type="button" class="attach-x" title="取消" onclick="removeManualNewFile(${i})">✕</button></span>
+  `).join("");
+  box.innerHTML = html || '<div style="font-size:12px;color:#c0c0cc;">添付はありません</div>';
+}
+window.removeManualAttachment = function(key){
+  if (!confirm("この添付を削除しますか？（保存を押すと確定します）")) return;
+  manualModalRemoved.push(key);
+  renderManualAttachList();
+};
+window.removeManualNewFile = function(i){ manualModalNewFiles.splice(i, 1); renderManualAttachList(); };
+document.getElementById("manualAttachInput").addEventListener("change", (e) => {
+  Array.from(e.target.files || []).forEach(f => manualModalNewFiles.push(f));
+  e.target.value = "";
+  renderManualAttachList();
+});
+async function uploadManualAttachments(docId){
+  if (!manualModalNewFiles.length && !manualModalRemoved.length) return null;
+  let list = manualModalAttachments.filter(a => !manualModalRemoved.includes(attachKey(a)));
+  for (const key of manualModalRemoved) {
+    try {
+      if (key.startsWith("inline:")) await db.collection(MANUAL_FILE_COLLECTION).doc(key.slice(7)).delete();
+      else if (storageRef) await storageRef.child(key).delete();
+    } catch (e) {}
+  }
+  const errors = [];
+  for (const f of manualModalNewFiles) {
+    const { blob, name, type } = await shrinkImageIfNeeded(f);
+    const safe = name.replace(/[\/\\#?%*:|"<>]/g, "_");
+    if (storageRef && storageUsable) {
+      try {
+        const path = `envManuals/${docId}/${Date.now()}_${safe}`;
+        const ref = storageRef.child(path);
+        await ref.put(blob, { contentType: type });
+        const url = await ref.getDownloadURL();
+        list.push({ name, path, url, type, size: blob.size, uploadedAt: Date.now() });
+        continue;
+      } catch (e) { console.warn("Storage失敗→Firestore方式に切替", e); storageUsable = false; }
+    }
+    if (blob.size > INLINE_FILE_MAX) { errors.push(`${name}(${Math.round(blob.size/1024)}KB)は大きすぎます。約700KB以下にしてください`); continue; }
+    const data = await blobToBase64(blob);
+    const ref = await db.collection(MANUAL_FILE_COLLECTION).add({ manualId: docId, name, type, size: blob.size, data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    list.push({ name, fileId: ref.id, type, size: blob.size, uploadedAt: Date.now() });
+  }
+  if (errors.length) alert("一部の添付を保存できませんでした:\n" + errors.join("\n"));
+  return list;
+}
+window.openManualModal = function(id){
+  const m = id ? manualsCache.find(x => x.id === id) : null;
+  document.getElementById("manualModalTitle").textContent = m ? "手順書を編集" : "手順書を追加";
+  document.getElementById("manualEditId").value = id || "";
+  document.getElementById("manualNo").value = m ? m.no : "";
+  document.getElementById("manualCategory").value = m ? (m.category || "normal") : "normal";
+  document.getElementById("manualName").value = m ? (m.name || "") : "";
+  document.getElementById("manualRevDate").value = m ? (m.revDate || "") : "";
+  document.getElementById("manualVersion").value = m ? (m.version || "") : "第1版";
+  document.getElementById("manualDeleteBtn").style.display = m ? "block" : "none";
+  manualModalAttachments = m ? (m.attachments || []).slice() : [];
+  manualModalNewFiles = []; manualModalRemoved = [];
+  renderManualAttachList();
+  const hist = (m && m.history && m.history.length)
+    ? m.history.slice().reverse().map(h => `<div>・${escapeHtml(h.version || "")}（改定日 ${escapeHtml(h.revDate || "")}）までの内容 → ${escapeHtml(h.changedOn || "")}に改訂</div>`).join("")
+    : "（まだ改訂はありません）";
+  document.getElementById("manualHistoryBox").innerHTML = hist;
+  document.getElementById("manualModalOverlay").classList.add("open");
+};
+document.getElementById("addManualBtn").addEventListener("click", () => openManualModal(null));
+document.getElementById("manualCancelBtn").addEventListener("click", () => document.getElementById("manualModalOverlay").classList.remove("open"));
+document.getElementById("manualDeleteBtn").addEventListener("click", async () => {
+  const id = document.getElementById("manualEditId").value;
+  if (!id) return;
+  const m = manualsCache.find(x => x.id === id);
+  if (!confirm(`「${m ? m.name : ""}」を削除しますか？添付ファイルも削除されます`)) return;
+  try {
+    if (m && m.attachments) for (const a of m.attachments) {
+      try { if (a.fileId) await db.collection(MANUAL_FILE_COLLECTION).doc(a.fileId).delete(); else if (a.path && storageRef) await storageRef.child(a.path).delete(); } catch (e) {}
+    }
+    await db.collection(MANUAL_COLLECTION).doc(id).delete();
+    document.getElementById("manualModalOverlay").classList.remove("open");
+    await renderManualList();
+  } catch (e) { alert("削除できませんでした: " + e.message); }
+});
+document.getElementById("manualSaveBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("manualSaveBtn");
+  const id = document.getElementById("manualEditId").value;
+  const no = document.getElementById("manualNo").value.trim();
+  const name = document.getElementById("manualName").value.trim();
+  if (!no || !name) { alert("番号と名称を入力してください"); return; }
+  btn.disabled = true; btn.textContent = "保存中...";
+  try {
+    const data = {
+      no,
+      category: document.getElementById("manualCategory").value,
+      name,
+      revDate: document.getElementById("manualRevDate").value.trim(),
+      version: document.getElementById("manualVersion").value.trim(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    let docId = id;
+    if (id) {
+      const old = manualsCache.find(x => x.id === id);
+      if (old && (old.version !== data.version || old.revDate !== data.revDate)) {
+        const today = new Date();
+        const changedOn = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+        data.history = (old.history || []).concat([{ version: old.version || "", revDate: old.revDate || "", changedOn }]);
+      }
+      await db.collection(MANUAL_COLLECTION).doc(id).set(data, { merge: true });
+    } else {
+      data.history = []; data.attachments = [];
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await db.collection(MANUAL_COLLECTION).add(data);
+      docId = ref.id;
+    }
+    const newList = await uploadManualAttachments(docId);
+    if (newList !== null) await db.collection(MANUAL_COLLECTION).doc(docId).set({ attachments: newList }, { merge: true });
+    document.getElementById("manualModalOverlay").classList.remove("open");
+    await renderManualList();
+  } catch (e) {
+    alert("保存できませんでした: " + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "保存";
+  }
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
