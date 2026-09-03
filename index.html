@@ -4146,7 +4146,7 @@ window.openSection = function(sec) {
   else if (sec === "lifeline") renderLifelineList();
   else if (sec === "freon") { renderFreonList(); renderFreonStatus(); }
   else if (sec === "safety") { renderSafetyList(); renderSafetyStatus(); }
-  else if (sec === "sdgs") renderSdgsList();
+  else if (sec === "sdgs") { seedSdgsDefaults(); renderSdgsList(); }
   else if (sec === "manual") renderManualList();
   else if (sec === "company") renderCompanyInfo();
 };
@@ -6454,6 +6454,66 @@ document.getElementById("jpegBtnTraining").addEventListener("click", async () =>
     document.body.removeChild(wrapper);
   }
 });
+
+// ================= SDGs初期データ（2024-2025 SDGS目標値まとめ・ブリケット化分析報告書より） =================
+// 同種の目標がまだ登録されていないときだけ、一度だけ追加する（登録済みなら何もしない）
+let sdgsSeedTried = false;
+async function seedSdgsDefaults(){
+  if (sdgsSeedTried) return;
+  sdgsSeedTried = true;
+  try {
+    const snap = await db.collection(SDGS_GOAL_COLLECTION).get();
+    const existingNames = snap.docs.map(d => (d.data().name || ""));
+    const ts = () => firebase.firestore.FieldValue.serverTimestamp();
+    const defs = [
+      {
+        kw: "ブリケット",
+        goal: { fy: "2024-2025", name: "目標12：つくる責任 つかう責任｜鉄・非鉄金属のブリケット化による資源循環型リサイクル", calc: "avg3", indicator: "センダライ粉の再利用率（3年間平均）", targetValue: 80, unit: "%", notes: "センダライ粉をブリケット化し鋳造原料として再利用。2021年以降は設備更新・工程改善・協力会社連携により平均60%超の高水準期。次の目標：平均80%達成に向けて安定的に高水準を維持する仕組みづくり" },
+        progress: [
+          { year: 2013, value: 32, note: "2012-2013年度" },
+          { year: 2014, value: 36, note: "2013-2014年度" },
+          { year: 2015, value: 52, note: "2014-2015年度" },
+          { year: 2016, value: 20, note: "2015-2016年度" },
+          { year: 2017, value: 8.9, note: "2016-2017年度" },
+          { year: 2018, value: 7.3, note: "2017-2018年度" },
+          { year: 2019, value: 38, note: "2018-2019年度" },
+          { year: 2020, value: 19, note: "2019-2020年度" },
+          { year: 2021, value: 40, note: "2020-2021年度" },
+          { year: 2022, value: 72, note: "2021-2022年度" },
+          { year: 2023, value: 69.4, note: "2022-2023年度" },
+          { year: 2024, value: 44.7, note: "2023-2024年度" },
+          { year: 2025, value: 69.7, note: "2024-2025年度" }
+        ]
+      },
+      {
+        kw: "若年",
+        goal: { fy: "2024-2025", name: "目標8：働きがいも経済成長も｜若年層の雇用促進（35歳以下の正社員採用）", calc: "sum", indicator: "35歳以下の正社員採用数", targetValue: 5, unit: "人", notes: "2023〜2024年は採用数が増加し目標に近づいたが、2025年は採用ゼロ。採用活動の再活性化・広報戦略の見直し・若年層への魅力訴求強化が課題" },
+        progress: [
+          { date: "2024-04-01", value: 3, note: "2024年 採用3名" },
+          { date: "2025-03-31", value: 0, note: "2025年3月時点 採用0名" }
+        ]
+      },
+      {
+        kw: "水質",
+        goal: { fy: "2024-2025", name: "目標11：住み続けられる街づくりを｜地域環境保全のための水質分析・油水分離槽の管理", calc: "avg3", indicator: "水質pH 目標7.0〜8.0の範囲維持", targetValue: null, unit: "pH", notes: "3年間すべて目標範囲内を維持しており水質管理体制の安定性を確認。定期分析と記録管理が有効に機能。今後は社員教育・マニュアル整備でさらなる安定化と予防的管理を目指す（日々の記録は水質検査タブ）" },
+        progress: [
+          { year: 2023, value: 7.9, note: "達成（範囲内）" },
+          { year: 2024, value: 7.5, note: "達成（範囲内）" }
+        ]
+      }
+    ];
+    for (const def of defs) {
+      if (existingNames.some(n => n.includes(def.kw))) continue;
+      const ref = await db.collection(SDGS_GOAL_COLLECTION).add(Object.assign({}, def.goal, { createdAt: ts(), updatedAt: ts() }));
+      const batch = db.batch();
+      def.progress.forEach(p => {
+        const pr = db.collection(SDGS_PROGRESS_COLLECTION).doc();
+        batch.set(pr, Object.assign({ goalId: ref.id }, p, { createdAt: ts(), updatedAt: ts() }));
+      });
+      await batch.commit();
+    }
+  } catch (e) { console.warn("SDGs初期データ登録に失敗", e); }
+}
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
