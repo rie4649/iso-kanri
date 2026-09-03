@@ -3353,7 +3353,7 @@ function blobToBase64(blob) {
     r.readAsDataURL(blob);
   });
 }
-let storageUsable = true; // 一度失敗したらこの画面ではFirestore方式に切り替える
+let storageUsable = false; // Firebase Storageは未有効のためFirestore方式に直行（Storageを有効化したらtrueに変更）
 async function uploadWaterAttachments(docId) {
   if (!waterModalNewFiles.length && !waterModalRemoved.length) return null;
   let list = waterModalAttachments.filter(a => !waterModalRemoved.includes(attachKey(a)));
