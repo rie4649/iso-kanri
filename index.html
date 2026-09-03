@@ -483,10 +483,25 @@
 <div class="section" id="section-manual">
   <div class="toolbar-row">
     <div class="search-box"><input type="text" id="manualSearchInput" placeholder="手順書名・番号で検索"></div>
+    <button class="jpeg-btn" id="bulkManualBtn">📥 PDF一括登録</button>
   </div>
   <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">ファイル名タップでPDFが開きます。✏️で改訂（版数・改定日の変更、PDF差し替え）。改訂すると旧版の情報が履歴に自動で残ります。点検ラクラクのQRページにもここの内容がそのまま表示されます</div>
   <div class="list" id="manualListContainer"><div class="loading">読み込み中...</div></div>
   <button class="fab" id="addManualBtn" style="background:#7c2d12;">＋</button>
+</div>
+
+<div class="modal-overlay" id="bulkManualModalOverlay">
+  <div class="modal">
+    <h2>📥 PDF一括登録</h2>
+    <div class="field-hint" style="margin-bottom:8px;">ファイル名の先頭の番号で自動振り分けします（例：01.pdf → 手順書1、緊01.pdf → 緊-01）。番号のあとに名称が付いていても大丈夫です。同じ手順書にすでに同名のファイルがある場合は差し替えます。</div>
+    <label class="attach-pick">📎 PDFをまとめて選ぶ（全部一度に選択OK）<input type="file" id="bulkManualInput" multiple accept="application/pdf,image/*" style="display:none;"></label>
+    <div id="bulkManualPreview" style="margin-top:10px;font-size:13px;max-height:40vh;overflow-y:auto;"></div>
+    <div id="bulkManualProgress" style="margin-top:10px;font-size:13.5px;font-weight:700;color:#7c2d12;"></div>
+    <div class="modal-actions">
+      <button type="button" id="bulkManualCancelBtn" style="background:#ececf1;color:#55556b;">閉じる</button>
+      <button type="button" id="bulkManualStartBtn" style="background:#7c2d12;color:#fff;" disabled>アップロード開始</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="manualModalOverlay">
@@ -5735,6 +5750,101 @@ document.getElementById("manualSaveBtn").addEventListener("click", async () => {
   } finally {
     btn.disabled = false; btn.textContent = "保存";
   }
+});
+
+// ---- 環境手順書 PDF一括登録 ----
+let bulkFiles = []; // {file, manual|null}
+function matchManualByFilename(filename){
+  const base = filename.replace(/\.[^.]+$/, "");
+  const m = base.match(/^(緊)?[-_\s]*0*(\d+)/);
+  if (!m) return null;
+  const cat = m[1] ? "emergency" : "normal";
+  const num = parseInt(m[2], 10);
+  return manualsCache.find(x => (x.category || "normal") === cat && parseInt(String(x.no).replace(/[^0-9]/g, ""), 10) === num) || null;
+}
+function renderBulkPreview(){
+  const box = document.getElementById("bulkManualPreview");
+  if (!bulkFiles.length) { box.innerHTML = ""; document.getElementById("bulkManualStartBtn").disabled = true; return; }
+  let matched = 0;
+  let html = bulkFiles.map((bf, i) => {
+    const opts = manualsCache.map(m => `<option value="${m.id}" ${bf.manual && bf.manual.id === m.id ? "selected" : ""}>${escapeHtml(String(m.no))} ${escapeHtml(m.name || "")}</option>`).join("");
+    if (bf.manual) matched++;
+    const kb = Math.round(bf.file.size / 1024);
+    const sizeWarn = bf.file.size > INLINE_FILE_MAX ? ` <span style="color:#b91c1c;font-weight:700;">⚠${kb}KB（大きすぎるため飛ばします）</span>` : ` <span style="color:#8b8b9e;">${kb}KB</span>`;
+    return `<div style="border-bottom:1px solid #eee;padding:7px 0;">
+      <div style="font-weight:700;">${escapeHtml(bf.file.name)}${sizeWarn}</div>
+      <select onchange="bulkSetManual(${i}, this.value)" style="width:100%;margin-top:4px;font-size:13px;padding:6px;border:1px solid #d9d9e3;border-radius:8px;">
+        <option value="">— 振り分け先を選んでください —</option>${opts}
+      </select>
+    </div>`;
+  }).join("");
+  box.innerHTML = `<div style="margin-bottom:6px;color:#55556b;">${bulkFiles.length}ファイル中 ${matched}件を自動振り分けしました。違っていたら選び直せます</div>` + html;
+  document.getElementById("bulkManualStartBtn").disabled = false;
+}
+window.bulkSetManual = function(i, id){
+  bulkFiles[i].manual = manualsCache.find(m => m.id === id) || null;
+};
+document.getElementById("bulkManualBtn").addEventListener("click", async () => {
+  if (!manualsCache.length) { try { await loadManuals(); } catch (e) {} }
+  bulkFiles = [];
+  document.getElementById("bulkManualPreview").innerHTML = "";
+  document.getElementById("bulkManualProgress").textContent = "";
+  document.getElementById("bulkManualStartBtn").disabled = true;
+  document.getElementById("bulkManualStartBtn").textContent = "アップロード開始";
+  document.getElementById("bulkManualModalOverlay").classList.add("open");
+});
+document.getElementById("bulkManualCancelBtn").addEventListener("click", () => {
+  document.getElementById("bulkManualModalOverlay").classList.remove("open");
+});
+document.getElementById("bulkManualInput").addEventListener("change", (e) => {
+  Array.from(e.target.files || []).forEach(f => bulkFiles.push({ file: f, manual: matchManualByFilename(f.name) }));
+  e.target.value = "";
+  renderBulkPreview();
+});
+document.getElementById("bulkManualStartBtn").addEventListener("click", async () => {
+  const startBtn = document.getElementById("bulkManualStartBtn");
+  const progress = document.getElementById("bulkManualProgress");
+  const targets = bulkFiles.filter(bf => bf.manual && bf.file.size <= INLINE_FILE_MAX);
+  const skippedSize = bulkFiles.filter(bf => bf.file.size > INLINE_FILE_MAX);
+  const skippedNoTarget = bulkFiles.filter(bf => !bf.manual && bf.file.size <= INLINE_FILE_MAX);
+  if (!targets.length) { alert("アップロードできるファイルがありません（振り分け先未選択、またはサイズ超過）"); return; }
+  startBtn.disabled = true;
+  document.getElementById("bulkManualCancelBtn").disabled = true;
+  const errors = [];
+  let done = 0;
+  for (const bf of targets) {
+    done++;
+    progress.textContent = `${done}/${targets.length} アップロード中… ${bf.manual.name}`;
+    try {
+      const { blob, name, type } = await shrinkImageIfNeeded(bf.file);
+      if (blob.size > INLINE_FILE_MAX) { errors.push(`${bf.file.name}：サイズ超過`); continue; }
+      const data = await blobToBase64(blob);
+      const fileRef = await db.collection(MANUAL_FILE_COLLECTION).add({
+        manualId: bf.manual.id, name, type: type || "application/pdf", size: blob.size, data,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      // 同名の既存添付は差し替え（古い本体も削除）
+      let list = (bf.manual.attachments || []).slice();
+      const dup = list.filter(a => a.name === name);
+      for (const a of dup) { try { if (a.fileId) await db.collection(MANUAL_FILE_COLLECTION).doc(a.fileId).delete(); } catch (e) {} }
+      list = list.filter(a => a.name !== name);
+      list.push({ name, fileId: fileRef.id, type: type || "application/pdf", size: blob.size, uploadedAt: Date.now() });
+      await db.collection(MANUAL_COLLECTION).doc(bf.manual.id).set({ attachments: list, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      bf.manual.attachments = list;
+    } catch (e) {
+      errors.push(`${bf.file.name}：${e.message}`);
+    }
+  }
+  let msg = `✅ 完了！ ${targets.length - errors.length}件を登録しました`;
+  if (skippedSize.length) msg += `\n⚠ サイズ超過で飛ばしたもの（${skippedSize.length}件）: ` + skippedSize.map(b => b.file.name).join("、") + "\n→ Wordで「最小サイズ」でPDF化し直してこのボタンからもう一度どうぞ";
+  if (skippedNoTarget.length) msg += `\n⚠ 振り分け先が未選択（${skippedNoTarget.length}件）: ` + skippedNoTarget.map(b => b.file.name).join("、");
+  if (errors.length) msg += `\n❌ 失敗: ` + errors.join("、");
+  progress.textContent = "";
+  alert(msg);
+  document.getElementById("bulkManualCancelBtn").disabled = false;
+  startBtn.textContent = "アップロード開始";
+  document.getElementById("bulkManualModalOverlay").classList.remove("open");
+  drawManualList();
 });
 
 if ('serviceWorker' in navigator) {
