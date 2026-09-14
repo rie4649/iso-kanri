@@ -34,8 +34,46 @@
 <div class="wrap">
 <button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
 <div class="note">緑の枠は<b>e-Gov法令APIから自動取得した現行名称と改正情報</b>です。ページを開くたびに国のデータベースへ確認しに行くので、法律が改正されると「最新の改正公布」の日付が新しくなります。日付が変わっていたら「📖 全文」で中身を確認してください。</div>
+<button class="backBtn" style="background:#166534;margin-bottom:0;" onclick="openEval()">✅ 順守評価を記録する(年1回)</button>
+<div class="note" style="margin-top:6px;">全法令が○で始まるので、問題のある法令だけ×にして保存。各法令カードに最新の評価が表示されます。</div>
 <div id="lawList"></div>
+<div id="evalHistory"></div>
 </div>
+
+<!-- 順守評価モーダル -->
+<div id="evalBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;overflow:auto;padding:16px;" onclick="if(event.target===this)closeEval()">
+  <div style="background:#fff;border-radius:14px;padding:16px;max-width:560px;margin:20px auto;">
+    <h2 style="font-size:17px;margin-bottom:8px;">✅ 順守評価</h2>
+    <label style="display:block;font-size:13px;font-weight:bold;color:#52525b;margin:8px 0 4px;">評価日</label>
+    <input type="date" id="evalDate" style="width:100%;padding:10px;font-size:15px;border:1px solid #d4d4d8;border-radius:10px;">
+    <label style="display:block;font-size:13px;font-weight:bold;color:#52525b;margin:8px 0 4px;">評価者</label>
+    <input type="text" id="evalUser" placeholder="例: 理絵" style="width:100%;padding:10px;font-size:15px;border:1px solid #d4d4d8;border-radius:10px;">
+    <label style="display:block;font-size:13px;font-weight:bold;color:#52525b;margin:10px 0 4px;">各法令の順守状況(タップで○⇔×)</label>
+    <div id="evalList"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button style="flex:1;padding:12px;border:none;border-radius:10px;background:#e4e4e7;color:#3f3f46;font-size:15px;font-weight:bold;" onclick="closeEval()">キャンセル</button>
+      <button style="flex:1;padding:12px;border:none;border-radius:10px;background:#166534;color:#fff;font-size:15px;font-weight:bold;" onclick="saveEval()">保存</button>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:200;white-space:nowrap;"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.style.opacity=1; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.style.opacity=0,2500); }
+</script>
 
 <script>
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -103,12 +141,77 @@ LAWS.forEach((l,i)=>{
     ${l.official!==l.name ? `<div class="meta">正式名称: ${esc(l.official)}</div>` : ""}
     <div class="meta">${esc(l.num)}</div>
     <div class="act">${esc(l.act)}</div>
+    <div style="margin-top:8px;font-size:13px;" id="eval${i}"><span class="loading">順守評価を読み込み中…</span></div>
     <div class="egov" id="egov${i}"><span class="loading">🌐 e-Govから改正情報を取得中…</span></div>
     <a class="openBtn" href="https://laws.e-gov.go.jp/law/${l.id}" target="_blank">📖 全文を読む(e-Gov)</a>
   </div>`;
 });
 html += sourcesCard(lastCat);
 box.innerHTML = html;
+
+/* ---- 順守評価 ---- */
+let evals = [];
+let evalMarks = {};
+db.collection("isoHoreiEval").onSnapshot(snap=>{
+  evals = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  evals.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const latest = evals[0];
+  LAWS.forEach((l,i)=>{
+    const el = document.getElementById("eval"+i);
+    if(!el) return;
+    if(latest && latest.results && latest.results[l.name]){
+      const mark = latest.results[l.name];
+      el.innerHTML = mark==="○"
+        ? `✅ 順守評価: <b style="color:#166534;">○</b>(${esc(latest.date)} ${esc(latest.evaluator||"")})`
+        : `⚠️ 順守評価: <b style="color:#b91c1c;">×</b>(${esc(latest.date)} ${esc(latest.evaluator||"")})`;
+    } else {
+      el.innerHTML = `順守評価: まだ記録がありません`;
+    }
+  });
+  const h = document.getElementById("evalHistory");
+  h.innerHTML = evals.length ? `<div class="catHead">✅ 順守評価の履歴</div>` + evals.map(ev=>{
+    const ng = Object.values(ev.results||{}).filter(v=>v==="×").length;
+    return `<div class="law" style="border-left-color:#166534;display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;"><b>${esc(ev.date)}</b>　評価者: ${esc(ev.evaluator||"")}　${ng?`<span style="color:#b91c1c;font-weight:bold;">×${ng}件</span>`:`<span style="color:#166534;font-weight:bold;">全て○</span>`}</div>
+      <button onclick="openEval('${ev.id}')" style="border:none;border-radius:8px;background:#e0f2fe;color:#0369a1;padding:8px 14px;font-size:13px;font-weight:bold;">✏️</button>
+    </div>`;
+  }).join("") : "";
+}, err=>console.error(err));
+
+let editEvalId = null;
+window.openEval = function(id){
+  editEvalId = id || null;
+  const ev = id ? evals.find(x=>x.id===id) : null;
+  const d = new Date();
+  document.getElementById("evalDate").value = ev ? ev.date : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  document.getElementById("evalUser").value = ev ? (ev.evaluator||"") : (evals[0]?.evaluator||"");
+  evalMarks = {};
+  LAWS.forEach(l=>{ evalMarks[l.name] = (ev && ev.results && ev.results[l.name]) || "○"; });
+  renderEvalList();
+  document.getElementById("evalBg").style.display = "block";
+};
+function renderEvalList(){
+  document.getElementById("evalList").innerHTML = LAWS.map(l=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f1f1f2;">
+      <div style="flex:1;font-size:14px;font-weight:bold;">${esc(l.name)}</div>
+      <button onclick="toggleEval('${esc(l.name)}')" style="min-width:52px;padding:9px 0;border:none;border-radius:10px;font-size:16px;font-weight:bold;${evalMarks[l.name]==="○"?"background:#dcfce7;color:#15803d;":"background:#fee2e2;color:#b91c1c;"}">${evalMarks[l.name]}</button>
+    </div>`).join("");
+}
+window.toggleEval = function(name){
+  evalMarks[name] = evalMarks[name]==="○" ? "×" : "○";
+  renderEvalList();
+};
+window.closeEval = function(){ document.getElementById("evalBg").style.display = "none"; };
+window.saveEval = async function(){
+  const date = document.getElementById("evalDate").value;
+  if(!date){ toast("評価日を入れてください"); return; }
+  const data = { date, evaluator: document.getElementById("evalUser").value.trim(), results: {...evalMarks} };
+  try{
+    if(editEvalId) await db.collection("isoHoreiEval").doc(editEvalId).update(data);
+    else await db.collection("isoHoreiEval").add(data);
+    closeEval(); toast("✅ 順守評価を保存しました");
+  }catch(e){ toast("❌ 保存に失敗: "+e.message); }
+};
 
 // e-Gov法令API(v2)で現行名称・改正情報を取得
 LAWS.forEach(async (l,i)=>{
