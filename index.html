@@ -4116,6 +4116,7 @@ const SECTION_DEFS = [
   { key: "shokaki", icon: "🧯", name: "消火器・防火管理" },
   { key: "kyoka", icon: "📜", name: "許可一覧" },
   { key: "horei", icon: "⚖️", name: "法規制一覧" },
+  { key: "kiroku", icon: "📚", name: "教育・監査・是正の記録" },
   { key: "sdgs", icon: "🌱", name: "SDGs" },
   { key: "manual", icon: "📖", name: "環境手順書" },
   { key: "company", icon: "🏢", name: "会社情報（沿革・組織図）" },
@@ -4132,6 +4133,7 @@ window.openSection = function(sec) {
   if (sec === "shokaki") { location.href = "shokaki.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
+  if (sec === "kiroku") { location.href = "kiroku.html"; return; }
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   const target = document.getElementById("section-" + sec);
   if (!target) return;
