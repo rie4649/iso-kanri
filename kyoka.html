@@ -96,7 +96,7 @@ function renderDocs(){
     ${byLabel[y].map(d=>`
       <div class="card">
         <div class="info">
-          <div class="ttl">📄 交付日 ${esc(d.date||"")}</div>
+          <div class="ttl">📄 ${esc(d.dateKind||"許可期限")} ${esc(d.date||"")}</div>
           <div class="sub">${esc(d.fileName||"")} ・ ${fmtSize(d.size)}</div>
         </div>
         <button class="openBtn" onclick="openDoc('${d.id}')">開く</button>
