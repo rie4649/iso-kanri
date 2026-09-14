@@ -4117,6 +4117,7 @@ const SECTION_DEFS = [
   { key: "kyoka", icon: "📜", name: "許可一覧" },
   { key: "horei", icon: "⚖️", name: "法規制一覧" },
   { key: "kiroku", icon: "📚", name: "監査・是正の記録" },
+  { key: "summary", icon: "📊", name: "年間サマリー" },
   { key: "sdgs", icon: "🌱", name: "SDGs" },
   { key: "manual", icon: "📖", name: "環境手順書" },
   { key: "company", icon: "🏢", name: "会社情報（沿革・組織図）" },
@@ -4134,6 +4135,7 @@ window.openSection = function(sec) {
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
   if (sec === "kiroku") { location.href = "kiroku.html"; return; }
+  if (sec === "summary") { location.href = "summary.html"; return; }
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   const target = document.getElementById("section-" + sec);
   if (!target) return;
