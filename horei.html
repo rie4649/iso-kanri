@@ -13,178 +13,81 @@
   .wrap { padding:12px; max-width:760px; margin:0 auto; }
   .backBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#555; color:#fff; font-size:15px; font-weight:bold; margin-bottom:12px; }
   .note { font-size:12px; color:#71717a; line-height:1.7; margin-bottom:12px; }
+  .catHead { font-size:16px; font-weight:bold; color:#1e3a8a; margin:18px 0 8px; border-bottom:2px solid #1e3a8a; padding-bottom:4px; }
   .law { background:#fff; border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-left:6px solid #1e3a8a; }
-  .law h2 { font-size:16px; margin-bottom:4px; }
-  .law .act { font-size:13px; color:#52525b; line-height:1.7; }
-  .law .auto { margin-top:10px; background:#eef3fb; border-radius:10px; padding:10px; font-size:13px; line-height:1.8; color:#1e3a8a; }
-  .law .auto b { font-size:14px; }
-  .openBtn { display:inline-block; margin-top:8px; border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:bold; background:#1e3a8a; color:#fff; text-decoration:none; }
+  .law h2 { font-size:16px; margin-bottom:2px; }
+  .meta { font-size:12px; color:#71717a; line-height:1.6; }
+  .act { font-size:13px; color:#52525b; line-height:1.7; margin-top:6px; }
+  .egov { margin-top:10px; background:#f0fdf4; border-radius:10px; padding:10px; font-size:13px; line-height:1.8; color:#166534; }
+  .egov b { font-size:14px; }
   .loading { color:#a1a1aa; }
+  .openBtn { display:inline-block; margin-top:10px; border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:bold; background:#166534; color:#fff; text-decoration:none; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>⚖️ 法規制一覧</h1>
-  <div class="sub">株式会社関根商店に適用される環境関連法規制と、関連する社内記録</div>
+  <div class="sub">株式会社関根商店に適用される法令。改正情報はe-Gov法令APIから自動取得</div>
 </header>
 
 <div class="wrap">
 <button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
-<div class="note">各法令の下の青い枠は、ISO管理に保存されている関連記録から<b>自動で表示</b>されます（最新の記録日など）。「開く」でその記録に飛べます。</div>
+<div class="note">緑の枠は<b>e-Gov法令APIから自動取得した現行名称と改正情報</b>です。ページを開くたびに国のデータベースへ確認しに行くので、法律が改正されると「最新の改正公布」の日付が新しくなります。日付が変わっていたら「📖 全文」で中身を確認してください。</div>
 <div id="lawList"></div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
-  authDomain: "sekine-store.firebaseapp.com",
-  projectId: "sekine-store",
-  storageBucket: "sekine-store.firebasestorage.app",
-  messagingSenderId: "781856496751",
-  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
-// e-Gov法令ID(全文ページ用)と正式名称・法令番号
-const EGOV = {
-  "廃棄物処理法":   { official:"廃棄物の処理及び清掃に関する法律", num:"昭和45年法律第137号", id:"345AC0000000137" },
-  "再生資源利用促進法": { official:"資源の有効な利用の促進に関する法律", num:"平成3年法律第48号", id:"403AC0000000048" },
-  "水質汚濁防止法": { official:"水質汚濁防止法", num:"昭和45年法律第138号", id:"345AC0000000138" },
-  "大気汚染防止法": { official:"大気汚染防止法", num:"昭和43年法律第97号", id:"343AC0000000097" },
-  "騒音規制法":     { official:"騒音規制法", num:"昭和43年法律第98号", id:"343AC0000000098" },
-  "振動規制法":     { official:"振動規制法", num:"昭和51年法律第64号", id:"351AC0000000064" },
-  "消防法(危険物)": { official:"消防法", num:"昭和23年法律第186号", id:"323AC0000000186" }
-};
-
-// 7法令の定義: name / 会社の該当活動 / 自動表示の関数 / 開くリンク
+// 適用法令の定義(e-Gov法令IDつき)
 const LAWS = [
-  {
-    name: "廃棄物処理法",
-    act: "産業廃棄物の収集運搬・処分業。自治体ごとの許可を受けて事業を行う。",
-    link: "kyoka.html",
-    linkLabel: "許可一覧を開く",
-    auto: async () => {
-      const snap = await db.collection("isoKyokaDocs").get();
-      const list = snap.docs.map(d=>d.data());
-      if(!list.length) return "許可証はまだアップされていません";
-      const kigen = list.filter(x=>(x.dateKind||"許可期限")==="許可期限" && x.date).map(x=>x.date).sort();
-      let s = `保管中の許可証: <b>${list.length}件</b>`;
-      if(kigen.length) s += `<br>一番近い許可期限: <b>${kigen[0]}</b>`;
-      return s;
-    }
-  },
-  {
-    name: "再生資源利用促進法",
-    act: "金属スクラップ等の再資源化(リサイクル)そのものが当社の事業。分別・再資源化の実績は金属管理の記録に。",
-    link: "index.html",
-    linkLabel: "ISO管理を開く",
-    auto: async () => {
-      const snap = await db.collection("metalRecords").get();
-      if(snap.empty) return "事業活動そのものが再資源化に該当";
-      return `金属の記録: <b>${snap.size}件</b>`;
-    }
-  },
-  {
-    name: "水質汚濁防止法",
-    act: "場内排水の水質管理。定期的に水質検査を実施し記録する。",
-    link: "index.html",
-    linkLabel: "水質検査を開く",
-    auto: async () => {
-      const snap = await db.collection("waterTests").get();
-      const dates = snap.docs.map(d=>d.data().date).filter(Boolean).sort();
-      if(!dates.length) return "水質検査の記録はまだありません";
-      return `直近の水質検査: <b>${dates[dates.length-1]}</b>(累計 ${dates.length}回)`;
-    }
-  },
-  {
-    name: "大気汚染防止法",
-    act: "重機・車両の排ガス、フロン類使用機器の管理。フロン点検を定期実施。",
-    link: "index.html",
-    linkLabel: "フロン点検を開く",
-    auto: async () => {
-      const snap = await db.collection("freonRecords").get();
-      const dates = snap.docs.map(d=>d.data().date).filter(Boolean).sort();
-      if(!dates.length) return "フロン点検の記録はまだありません";
-      return `直近のフロン点検: <b>${dates[dates.length-1]}</b>(累計 ${dates.length}回)`;
-    }
-  },
-  {
-    name: "騒音規制法",
-    act: "重機・圧縮機等の稼働に伴う騒音の管理。定期的に騒音チェックを実施。",
-    link: "index.html",
-    linkLabel: "騒音チェックを開く",
-    auto: async () => {
-      const snap = await db.collection("noiseChecks").get();
-      const dates = snap.docs.map(d=>d.data().date).filter(Boolean).sort();
-      if(!dates.length) return "騒音チェックの記録はまだありません";
-      return `直近の騒音チェック: <b>${dates[dates.length-1]}</b>(累計 ${dates.length}回)`;
-    }
-  },
-  {
-    name: "振動規制法",
-    act: "重機・圧縮機等の稼働に伴う振動の管理。騒音チェックとあわせて確認。",
-    link: "index.html",
-    linkLabel: "騒音チェックを開く",
-    auto: async () => {
-      const snap = await db.collection("noiseChecks").get();
-      const dates = snap.docs.map(d=>d.data().date).filter(Boolean).sort();
-      if(!dates.length) return "チェック記録はまだありません";
-      return `直近のチェック: <b>${dates[dates.length-1]}</b>(騒音チェックと共通)`;
-    }
-  },
-  {
-    name: "消防法(危険物)",
-    act: "少量危険物(廃油等)・指定可燃物の貯蔵取扱い、消火器の設置と点検(業者委託)。",
-    link: "shokaki.html",
-    linkLabel: "消火器・防火管理を開く",
-    auto: async () => {
-      const snap = await db.collection("isoShokakiDocs").get();
-      const list = snap.docs.map(d=>d.data());
-      if(!list.length) return "消防点検の書類はまだアップされていません";
-      const dates = list.map(x=>x.date).filter(Boolean).sort();
-      return `保管中の消防書類: <b>${list.length}件</b><br>直近の点検書類: <b>${dates[dates.length-1]||"-"}</b>`;
-    }
-  }
+  // ---- 環境関係 ----
+  { cat:"🌿 環境関係", name:"廃棄物処理法", official:"廃棄物の処理及び清掃に関する法律", num:"昭和45年法律第137号", id:"345AC0000000137",
+    act:"産業廃棄物の収集運搬・処分業。自治体ごとの許可を受けて事業を行う。" },
+  { cat:"🌿 環境関係", name:"再生資源利用促進法", official:"資源の有効な利用の促進に関する法律", num:"平成3年法律第48号", id:"403AC0000000048",
+    act:"金属スクラップ等の再資源化(リサイクル)そのものが当社の事業。" },
+  { cat:"🌿 環境関係", name:"水質汚濁防止法", official:"水質汚濁防止法", num:"昭和45年法律第138号", id:"345AC0000000138",
+    act:"場内排水の水質管理。定期的に水質検査を実施し記録する。" },
+  { cat:"🌿 環境関係", name:"大気汚染防止法", official:"大気汚染防止法", num:"昭和43年法律第97号", id:"343AC0000000097",
+    act:"重機・車両の排ガス、フロン類使用機器の管理。" },
+  { cat:"🌿 環境関係", name:"騒音規制法", official:"騒音規制法", num:"昭和43年法律第98号", id:"343AC0000000098",
+    act:"重機・圧縮機等の稼働に伴う騒音の管理。" },
+  { cat:"🌿 環境関係", name:"振動規制法", official:"振動規制法", num:"昭和51年法律第64号", id:"351AC0000000064",
+    act:"重機・圧縮機等の稼働に伴う振動の管理。" },
+  { cat:"🌿 環境関係", name:"消防法(危険物)", official:"消防法", num:"昭和23年法律第186号", id:"323AC0000000186",
+    act:"少量危険物(廃油等)・指定可燃物の貯蔵取扱い、消火器の設置と点検。" },
+  // ---- 交通・運送関係 ----
+  { cat:"🚚 交通・運送関係", name:"道路交通法", official:"道路交通法", num:"昭和35年法律第105号", id:"335AC0000000105",
+    act:"トラック・重機運搬など日々の運転業務全般。免許・積載・運転ルール。" },
+  { cat:"🚚 交通・運送関係", name:"道路運送車両法", official:"道路運送車両法", num:"昭和26年法律第185号", id:"326AC0000000185",
+    act:"車両の登録・車検・点検整備(点検ラクラクの日常点検もこの法律が根拠)。" },
+  { cat:"🚚 交通・運送関係", name:"貨物自動車運送事業法", official:"貨物自動車運送事業法", num:"平成元年法律第83号", id:"401AC0000000083",
+    act:"貨物運送に関わる事業運営のルール。" }
 ];
 
+// カードを描画(カテゴリ見出しつき)
 const box = document.getElementById("lawList");
-box.innerHTML = LAWS.map((l,i)=>{
-  const g = EGOV[l.name] || {};
-  return `
+let html = "", lastCat = "";
+LAWS.forEach((l,i)=>{
+  if(l.cat !== lastCat){ html += `<div class="catHead">${esc(l.cat)}</div>`; lastCat = l.cat; }
+  html += `
   <div class="law">
     <h2>⚖️ ${esc(l.name)}</h2>
-    ${g.official && g.official!==l.name ? `<div style="font-size:12px;color:#71717a;">正式名称: ${esc(g.official)}</div>` : ""}
-    ${g.num ? `<div style="font-size:12px;color:#71717a;">${esc(g.num)}</div>` : ""}
-    <div class="act" style="margin-top:6px;">${esc(l.act)}</div>
-    <div class="auto" id="auto${i}"><span class="loading">関連記録を読み込み中…</span></div>
-    <div class="auto" id="egov${i}" style="background:#f0fdf4;color:#166534;"><span class="loading">🌐 e-Govから法令情報を取得中…</span></div>
-    <a class="openBtn" href="${l.link}">${esc(l.linkLabel)}</a>
-    ${g.id ? `<a class="openBtn" style="background:#166534;margin-left:6px;" href="https://laws.e-gov.go.jp/law/${g.id}" target="_blank">📖 全文(e-Gov)</a>` : ""}
+    ${l.official!==l.name ? `<div class="meta">正式名称: ${esc(l.official)}</div>` : ""}
+    <div class="meta">${esc(l.num)}</div>
+    <div class="act">${esc(l.act)}</div>
+    <div class="egov" id="egov${i}"><span class="loading">🌐 e-Govから改正情報を取得中…</span></div>
+    <a class="openBtn" href="https://laws.e-gov.go.jp/law/${l.id}" target="_blank">📖 全文を読む(e-Gov)</a>
   </div>`;
-}).join("");
-
-LAWS.forEach(async (l,i)=>{
-  const el = document.getElementById("auto"+i);
-  try{
-    el.innerHTML = "📊 " + await l.auto();
-  }catch(e){
-    el.innerHTML = '<span class="loading">記録を読み込めませんでした</span>';
-  }
 });
+box.innerHTML = html;
 
-// e-Gov法令API(v2)から改正情報の自動取得を試みる
+// e-Gov法令API(v2)で現行名称・改正情報を取得
 LAWS.forEach(async (l,i)=>{
   const el = document.getElementById("egov"+i);
-  const g = EGOV[l.name];
-  if(!g){ el.style.display="none"; return; }
   try{
-    const res = await fetch("https://laws.e-gov.go.jp/api/2/laws?law_id=" + g.id, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch("https://laws.e-gov.go.jp/api/2/laws?law_id=" + l.id, { signal: AbortSignal.timeout(10000) });
     if(!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
     const law = (data.laws && data.laws[0]) || {};
@@ -192,12 +95,19 @@ LAWS.forEach(async (l,i)=>{
     const info = law.law_info || {};
     const bits = [];
     if(rev.law_title) bits.push(`現行名称: <b>${esc(rev.law_title)}</b>`);
-    const amend = rev.amendment_promulgate_date || rev.updated || "";
-    if(amend) bits.push(`最新の改正公布: <b>${esc(String(amend).slice(0,10))}</b>`);
+    // 改正に関する情報をあるだけ拾う(APIの項目名の違いに強くする)
+    const amendDate = rev.amendment_promulgate_date || rev.amendment_date || "";
+    if(amendDate) bits.push(`最新の改正公布: <b>${esc(String(amendDate).slice(0,10))}</b>`);
+    const enfDate = rev.amendment_enforcement_date || rev.enforcement_date || "";
+    if(enfDate) bits.push(`施行日: <b>${esc(String(enfDate).slice(0,10))}</b>`);
+    const amendTitle = rev.amendment_law_title || "";
+    if(amendTitle) bits.push(`<span style="font-size:12px;">改正した法律: ${esc(amendTitle)}</span>`);
     if(!bits.length && info.promulgation_date) bits.push(`公布日: <b>${esc(String(info.promulgation_date).slice(0,10))}</b>`);
-    el.innerHTML = bits.length ? "🌐 " + bits.join("　") + '<br><span style="font-size:11px;">(e-Gov法令APIから自動取得)</span>' : "🌐 e-Govに接続できました(詳細は全文リンクから)";
+    el.innerHTML = bits.length
+      ? "🌐 " + bits.join("<br>") + '<br><span style="font-size:11px;">(e-Gov法令APIから自動取得。どこが変わったかの条文は📖全文で確認)</span>'
+      : "🌐 e-Govに接続できました(詳細は📖全文から)";
   }catch(e){
-    el.innerHTML = '🌐 <span style="font-size:12px;">改正情報の自動取得はこの端末からは届きませんでした。「📖 全文(e-Gov)」ボタンから最新の条文が見られます。</span>';
+    el.innerHTML = '🌐 <span style="font-size:12px;">改正情報を取得できませんでした(通信の問題かもしれません)。📖全文ボタンからは確実に見られます。</span>';
   }
 });
 </script>
