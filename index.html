@@ -4110,6 +4110,7 @@ const SECTION_DEFS = [
   { key: "freon", icon: "🌡️", name: "フロン排出抑制法簡易点検記録" },
   { key: "safety", icon: "🦺", name: "安全災害対策" },
   { key: "shokaki", icon: "🧯", name: "消火器・防火管理" },
+  { key: "kyoka", icon: "📜", name: "許可一覧" },
   { key: "sdgs", icon: "🌱", name: "SDGs" },
   { key: "manual", icon: "📖", name: "環境手順書" },
   { key: "company", icon: "🏢", name: "会社情報（沿革・組織図）" },
@@ -4124,6 +4125,7 @@ function renderHomeMenu() {
 
 window.openSection = function(sec) {
   if (sec === "shokaki") { location.href = "shokaki.html"; return; }
+  if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   const target = document.getElementById("section-" + sec);
   if (!target) return;
