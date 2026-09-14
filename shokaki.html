@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>消火器・防火管理(書類保管)</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
+  body { background:#f4f4f5; padding-bottom:60px; }
+  header { background:#b91c1c; color:#fff; padding:14px 16px; }
+  header h1 { font-size:19px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:2px; }
+  .wrap { padding:12px; max-width:760px; margin:0 auto; }
+  .backBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#555; color:#fff; font-size:15px; font-weight:bold; margin-bottom:10px; }
+  .upCard { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:14px; }
+  .upCard h2 { font-size:16px; margin-bottom:6px; }
+  label { display:block; font-size:13px; font-weight:bold; color:#52525b; margin:10px 0 4px; }
+  input, select { width:100%; padding:11px; font-size:15px; border:1px solid #d4d4d8; border-radius:10px; background:#fff; }
+  .upBtn { width:100%; padding:14px; border:none; border-radius:12px; background:#b91c1c; color:#fff; font-size:16px; font-weight:bold; margin-top:12px; }
+  .upBtn:disabled { opacity:.5; }
+  .note { font-size:12px; color:#71717a; line-height:1.7; margin-top:8px; }
+  .yearHead { font-size:16px; font-weight:bold; color:#b91c1c; margin:16px 0 8px; border-bottom:2px solid #b91c1c; padding-bottom:4px; }
+  .card { background:#fff; border-radius:12px; padding:12px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,.08); display:flex; align-items:center; gap:10px; }
+  .card .info { flex:1; min-width:0; }
+  .card .ttl { font-size:15px; font-weight:bold; }
+  .card .sub { font-size:12px; color:#71717a; margin-top:2px; }
+  .openBtn { border:none; border-radius:10px; padding:12px 16px; font-size:14px; font-weight:bold; background:#b91c1c; color:#fff; white-space:nowrap; }
+  .delBtn { border:none; border-radius:10px; padding:12px; font-size:14px; background:#fee2e2; color:#b91c1c; }
+  .empty { text-align:center; color:#a1a1aa; padding:36px 10px; font-size:14px; line-height:1.9; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.25s; z-index:200; white-space:nowrap; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧯 消火器・防火管理</h1>
+  <div class="sub">業者さんの点検書類(PDF)をここに保管します</div>
+</header>
+
+<div class="wrap">
+<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+
+<div class="upCard">
+  <h2>📤 書類をアップする</h2>
+  <label>書類の種類</label>
+  <select id="docType">
+    <option>消火器管理票</option>
+    <option>防火対象物棟別一覧表</option>
+    <option>消防用設備等点検結果報告書</option>
+    <option>その他</option>
+  </select>
+  <label>点検日(書類の日付)</label>
+  <input type="date" id="docDate">
+  <label>ファイル(PDFまたは写真)</label>
+  <input type="file" id="docFile" accept="application/pdf,image/*">
+  <button class="upBtn" id="upBtn" onclick="uploadDoc()">📤 アップして保管する</button>
+  <div class="note">アップした書類は下に年ごとに並び、タップでいつでも開けます。スマホでもパソコンでも同じものが見られます。</div>
+</div>
+
+<div id="docList"><div class="empty">読み込み中...</div></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const DOC_COL = "isoShokakiDocs";     // 書類の情報
+const CHUNK_COL = "isoShokakiChunks"; // 中身(分割base64)
+const CHUNK_SIZE = 700 * 1024;        // Firestoreの1MB制限より小さく分割
+const MAX_MB = 15;
+
+let docs = [];
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
+function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function fmtSize(b){ if(!b) return ""; if(b<1024*1024) return Math.round(b/1024)+"KB"; return (b/1024/1024).toFixed(1)+"MB"; }
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+document.getElementById("docDate").value = todayStr();
+
+db.collection(DOC_COL).onSnapshot(snap=>{
+  docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  docs.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  renderDocs();
+}, err=>{ console.error(err); toast("⚠️ 読み込みエラー: "+err.message); });
+
+function renderDocs(){
+  const box = document.getElementById("docList");
+  if(!docs.length){ box.innerHTML = '<div class="empty">まだ書類がありません。<br>業者さんからもらったPDFを上からアップしてください</div>'; return; }
+  const byYear = {};
+  docs.forEach(d=>{
+    const y = (d.date||"").slice(0,4) || "日付なし";
+    (byYear[y] = byYear[y] || []).push(d);
+  });
+  const years = Object.keys(byYear).sort((a,b)=>b.localeCompare(a));
+  box.innerHTML = years.map(y=>`
+    <div class="yearHead">📅 ${esc(y)}年</div>
+    ${byYear[y].map(d=>`
+      <div class="card">
+        <div class="info">
+          <div class="ttl">📄 ${esc(d.type||"書類")}</div>
+          <div class="sub">${esc(d.date||"")} ・ ${esc(d.fileName||"")} ・ ${fmtSize(d.size)}</div>
+        </div>
+        <button class="openBtn" onclick="openDoc('${d.id}')">開く</button>
+        <button class="delBtn" onclick="delDoc('${d.id}')">🗑</button>
+      </div>`).join("")}
+  `).join("");
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(String(r.result).split(",")[1]);
+    r.onerror = ()=>reject(new Error("ファイルを読み込めませんでした"));
+    r.readAsDataURL(blob);
+  });
+}
+
+async function uploadDoc(){
+  const file = document.getElementById("docFile").files[0];
+  const date = document.getElementById("docDate").value;
+  const type = document.getElementById("docType").value;
+  if(!file){ toast("ファイルを選んでください"); return; }
+  if(!date){ toast("点検日を入れてください"); return; }
+  if(file.size > MAX_MB*1024*1024){ toast(`⚠️ ${MAX_MB}MBまでのファイルにしてください`); return; }
+  const btn = document.getElementById("upBtn");
+  btn.disabled = true; btn.textContent = "アップ中…";
+  try{
+    const b64 = await blobToBase64(file);
+    const chunks = [];
+    for(let i=0; i<b64.length; i+=CHUNK_SIZE) chunks.push(b64.slice(i, i+CHUNK_SIZE));
+    const docRef = db.collection(DOC_COL).doc();
+    // 先に中身を保存してから目次を保存(途中で切れても一覧にゴミが出ない)
+    for(let i=0; i<chunks.length; i++){
+      await db.collection(CHUNK_COL).doc(docRef.id + "_" + i).set({ fileId: docRef.id, idx: i, data: chunks[i] });
+      btn.textContent = `アップ中… ${i+1}/${chunks.length}`;
+    }
+    await docRef.set({
+      type, date,
+      fileName: file.name,
+      fileType: file.type || "application/pdf",
+      size: file.size,
+      chunkCount: chunks.length,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById("docFile").value = "";
+    toast("✅ 保管しました");
+  }catch(e){ console.error(e); toast("❌ アップに失敗: "+e.message); }
+  btn.disabled = false; btn.textContent = "📤 アップして保管する";
+}
+
+window.openDoc = async function(id){
+  const d = docs.find(x=>x.id===id);
+  if(!d) return;
+  const w = window.open("", "_blank"); // 先に開く(スマホのポップアップ制限対策)
+  try{
+    const snap = await db.collection(CHUNK_COL).where("fileId","==",id).get();
+    const parts = snap.docs.map(x=>x.data()).sort((a,b)=>a.idx-b.idx);
+    if(!parts.length) throw new Error("中身が見つかりません");
+    const b64 = parts.map(p=>p.data).join("");
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], {type: d.fileType||"application/pdf"}));
+    if(w) w.location.href = url; else window.open(url,"_blank");
+  }catch(e){ if(w) w.close(); toast("❌ 開けませんでした: "+e.message); }
+};
+
+window.delDoc = async function(id){
+  const d = docs.find(x=>x.id===id);
+  if(!d) return;
+  if(!confirm(`「${d.type} ${d.date}」を削除しますか？`)) return;
+  try{
+    const snap = await db.collection(CHUNK_COL).where("fileId","==",id).get();
+    const batch = db.batch();
+    snap.docs.forEach(x=>batch.delete(x.ref));
+    batch.delete(db.collection(DOC_COL).doc(id));
+    await batch.commit();
+    toast("🗑 削除しました");
+  }catch(e){ toast("❌ 削除に失敗: "+e.message); }
+};
+</script>
+</body>
+</html>
