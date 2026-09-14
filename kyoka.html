@@ -69,6 +69,11 @@ const CHUNK_SIZE = 700 * 1024;        // Firestoreの1MB制限より小さく分
 const MAX_MB = 15;
 
 let docs = [];
+let groupOrder = [];
+db.collection("isoKyokaSettings").doc("groupOrder").onSnapshot(d=>{
+  groupOrder = (d.exists && Array.isArray(d.data().labels)) ? d.data().labels : [];
+  renderDocs();
+}, err=>console.error(err));
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -90,9 +95,21 @@ function renderDocs(){
     const k = d.type || "その他";
     (byLabel[k] = byLabel[k] || []).push(d);
   });
-  const labels = Object.keys(byLabel).sort((a,b)=>a.localeCompare(b,"ja"));
-  box.innerHTML = labels.map(y=>`
-    <div class="yearHead">📜 ${esc(y)}</div>
+  let labels = Object.keys(byLabel).sort((a,b)=>a.localeCompare(b,"ja"));
+  labels.sort((a,b)=>{
+    const ia = groupOrder.indexOf(a), ib = groupOrder.indexOf(b);
+    if(ia<0 && ib<0) return 0;
+    if(ia<0) return 1;
+    if(ib<0) return -1;
+    return ia-ib;
+  });
+  window._kyokaLabels = labels;
+  box.innerHTML = labels.map((y,li)=>`
+    <div class="yearHead" style="display:flex;align-items:center;gap:8px;">
+      <span style="flex:1;">📜 ${esc(y)}</span>
+      <button onclick="moveGroup(${li},-1)" ${li===0?"disabled":""} style="border:none;border-radius:8px;background:#e4e4e7;color:#3f3f46;padding:6px 12px;font-size:14px;font-weight:bold;">▲</button>
+      <button onclick="moveGroup(${li},1)" ${li===labels.length-1?"disabled":""} style="border:none;border-radius:8px;background:#e4e4e7;color:#3f3f46;padding:6px 12px;font-size:14px;font-weight:bold;">▼</button>
+    </div>
     ${byLabel[y].map(d=>`
       <div class="card">
         <div class="info">
@@ -115,6 +132,15 @@ function blobToBase64(blob){
 
 
 
+window.moveGroup = async function(i, dir){
+  const labels = (window._kyokaLabels||[]).slice();
+  const j = i + dir;
+  if(j < 0 || j >= labels.length) return;
+  const t = labels[i]; labels[i] = labels[j]; labels[j] = t;
+  try{
+    await db.collection("isoKyokaSettings").doc("groupOrder").set({ labels });
+  }catch(e){ toast("❌ 並べ替えを保存できませんでした: "+e.message); }
+};
 window.openDoc = async function(id){
   const d = docs.find(x=>x.id===id);
   if(!d) return;
