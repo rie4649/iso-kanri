@@ -66,11 +66,37 @@ const LAWS = [
     act:"貨物運送に関わる事業運営のルール。" }
 ];
 
+// カテゴリごとの公式情報源(わかりやすい解説・改正情報の確認先)
+const SOURCES = {
+  "🌿 環境関係": [
+    { t:"環境省 報道発表資料", d:"法改正や新制度の発表がまずここに出ます", u:"https://www.env.go.jp/press/" },
+    { t:"環境省 法令・告示・通達", d:"環境関連の法令・告示のまとめ", u:"https://www.env.go.jp/hourei/" },
+    { t:"総務省消防庁", d:"消防法・危険物関係のお知らせ", u:"https://www.fdma.go.jp/" }
+  ],
+  "🚚 交通・運送関係": [
+    { t:"警察庁 交通局", d:"道路交通法の改正はここでわかりやすく解説されます", u:"https://www.npa.go.jp/bureau/traffic/" },
+    { t:"国土交通省 自動車局", d:"車検・整備・運送事業のルール変更", u:"https://www.mlit.go.jp/jidosha/" },
+    { t:"長野県警察", d:"県内の交通ルール・取締り情報", u:"https://www.pref.nagano.lg.jp/police/" }
+  ]
+};
+function sourcesCard(cat){
+  const list = SOURCES[cat];
+  if(!list) return "";
+  return `<div class="law" style="border-left-color:#b45309;background:#fffbeb;">
+    <h2 style="font-size:14px;">📚 わかりやすい確認先(公式)</h2>
+    ${list.map(x=>`<div style="margin-top:8px;"><a href="${x.u}" target="_blank" style="font-size:14px;font-weight:bold;color:#b45309;">🔗 ${esc(x.t)}</a><div class="meta">${esc(x.d)}</div></div>`).join("")}
+  </div>`;
+}
+
 // カードを描画(カテゴリ見出しつき)
 const box = document.getElementById("lawList");
 let html = "", lastCat = "";
 LAWS.forEach((l,i)=>{
-  if(l.cat !== lastCat){ html += `<div class="catHead">${esc(l.cat)}</div>`; lastCat = l.cat; }
+  if(l.cat !== lastCat){
+    if(lastCat) html += sourcesCard(lastCat);
+    html += `<div class="catHead">${esc(l.cat)}</div>`;
+    lastCat = l.cat;
+  }
   html += `
   <div class="law">
     <h2>⚖️ ${esc(l.name)}</h2>
@@ -81,6 +107,7 @@ LAWS.forEach((l,i)=>{
     <a class="openBtn" href="https://laws.e-gov.go.jp/law/${l.id}" target="_blank">📖 全文を読む(e-Gov)</a>
   </div>`;
 });
+html += sourcesCard(lastCat);
 box.innerHTML = html;
 
 // e-Gov法令API(v2)で現行名称・改正情報を取得
