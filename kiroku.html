@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>教育・監査・是正の記録</title>
+<title>監査・是正の記録</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
   body { background:#f4f4f5; padding-bottom:60px; }
@@ -44,15 +44,14 @@
 <body>
 
 <header>
-  <h1>📚 教育・監査・是正の記録</h1>
-  <div class="sub">環境教育の実施記録・内部監査・是正処置(苦情/事故/ヒヤリ)</div>
+  <h1>📚 監査・是正の記録</h1>
+  <div class="sub">内部監査・是正処置(苦情/事故/ヒヤリ)。教育訓練はISO管理の🦺安全災害対策→🎓教育訓練へ</div>
 </header>
 
 <div class="wrap">
 <button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
 <div class="tabs">
-  <div class="tab act" id="tab-train" onclick="switchTab('train')">📚 教育訓練</div>
-  <div class="tab" id="tab-audit" onclick="switchTab('audit')">🔍 内部監査</div>
+  <div class="tab act" id="tab-audit" onclick="switchTab('audit')">🔍 内部監査</div>
   <div class="tab" id="tab-fix" onclick="switchTab('fix')">🛠 是正処置</div>
 </div>
 <button class="bigBtn" id="addBtn" onclick="openModal()">＋ 記録を追加</button>
@@ -65,13 +64,6 @@
     <h2 id="modalTitle">記録を追加</h2>
     <input type="hidden" id="recId">
     <label>日付</label><input type="date" id="fDate">
-
-    <div class="only-train">
-      <label>テーマ・内容</label><input type="text" id="fTheme" placeholder="例: 廃棄物分別の教育、油流出時の対応訓練">
-      <label>対象者(受けた人)</label><input type="text" id="fTarget" placeholder="例: 全従業員 / 新入社員2名">
-      <label>実施者・講師</label><input type="text" id="fTeacher" placeholder="例: 理絵 / 外部講師○○">
-      <label>メモ(任意)</label><textarea id="fNote1" placeholder="使った資料や様子など"></textarea>
-    </div>
 
     <div class="only-audit" style="display:none;">
       <label>監査員</label><input type="text" id="fAuditor" placeholder="例: 理絵">
@@ -115,10 +107,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-const COLS = { train:"isoTrainings", audit:"isoAudits", fix:"isoCorrectives" };
-const NAMES = { train:"教育訓練", audit:"内部監査", fix:"是正処置" };
-let tab = "train";
-let data = { train:[], audit:[], fix:[] };
+const COLS = { audit:"isoAudits", fix:"isoCorrectives" };
+const NAMES = { audit:"内部監査", fix:"是正処置" };
+let tab = "audit";
+let data = { audit:[], fix:[] };
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2500); }
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -134,7 +126,7 @@ Object.keys(COLS).forEach(k=>{
 
 function switchTab(k){
   tab = k;
-  ["train","audit","fix"].forEach(x=>document.getElementById("tab-"+x).classList.toggle("act", x===k));
+  ["audit","fix"].forEach(x=>document.getElementById("tab-"+x).classList.toggle("act", x===k));
   render();
 }
 
@@ -148,10 +140,7 @@ function render(){
   if(!list.length){ box.innerHTML = `<div class="empty">まだ${NAMES[tab]}の記録がありません。<br>「＋記録を追加」から始めてください</div>`; return; }
   box.innerHTML = list.map(r=>{
     let ttl="", sub="";
-    if(tab==="train"){
-      ttl = `${esc(r.date)}　${esc(r.theme||"")}`;
-      sub = `対象: ${esc(r.target||"")}　実施: ${esc(r.teacher||"")}${r.note?`\n${esc(r.note)}`:""}`;
-    }else if(tab==="audit"){
+    if(tab==="audit"){
       ttl = `${esc(r.date)}　内部監査${statusChip(r.status)}`;
       sub = `監査員: ${esc(r.auditor||"")}　範囲: ${esc(r.scope||"")}\n指摘: ${esc(r.findings||"指摘なし")}${r.action?`\n対応: ${esc(r.action)}`:""}`;
     }else{
@@ -167,7 +156,6 @@ function render(){
 }
 
 function showFields(){
-  document.querySelector(".only-train").style.display = tab==="train" ? "block" : "none";
   document.querySelector(".only-audit").style.display = tab==="audit" ? "block" : "none";
   document.querySelector(".only-fix").style.display = tab==="fix" ? "block" : "none";
 }
@@ -177,12 +165,7 @@ function openModal(id){
   document.getElementById("modalTitle").textContent = (r?"":"＋ ") + NAMES[tab] + (r?"を編集":"を追加");
   document.getElementById("recId").value = r ? r.id : "";
   document.getElementById("fDate").value = r ? r.date : todayStr();
-  if(tab==="train"){
-    document.getElementById("fTheme").value = r?.theme||"";
-    document.getElementById("fTarget").value = r?.target||"";
-    document.getElementById("fTeacher").value = r?.teacher||"";
-    document.getElementById("fNote1").value = r?.note||"";
-  }else if(tab==="audit"){
+  if(tab==="audit"){
     document.getElementById("fAuditor").value = r?.auditor||"";
     document.getElementById("fScope").value = r?.scope||"";
     document.getElementById("fFindings").value = r?.findings||"";
@@ -205,13 +188,7 @@ async function saveRec(){
   const date = document.getElementById("fDate").value;
   if(!date){ toast("日付を入れてください"); return; }
   let d = { date };
-  if(tab==="train"){
-    d.theme = document.getElementById("fTheme").value.trim();
-    d.target = document.getElementById("fTarget").value.trim();
-    d.teacher = document.getElementById("fTeacher").value.trim();
-    d.note = document.getElementById("fNote1").value.trim();
-    if(!d.theme){ toast("テーマ・内容を入れてください"); return; }
-  }else if(tab==="audit"){
+  if(tab==="audit"){
     d.auditor = document.getElementById("fAuditor").value.trim();
     d.scope = document.getElementById("fScope").value.trim();
     d.findings = document.getElementById("fFindings").value.trim();
