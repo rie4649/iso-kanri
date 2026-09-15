@@ -217,22 +217,50 @@ window.showDetail = function(mi){
   box.scrollIntoView({behavior:"smooth", block:"nearest"});
 };
 
-/* ---- 年間の活動記録(カレンダーと同じデータ) ---- */
+/* ---- 年間の活動記録(カレンダー・マークと完全連動) ---- */
 let allEvents = [];
+let allMarks = [];
+let markFilter = "";
 db.collection("isoEvents").onSnapshot(snap=>{
   allEvents = snap.docs.map(d=>({id:d.id, ...d.data()}));
   renderEventYear();
 }, err=>console.error(err));
+// マークはマスタ(eventMarks)から自動取得: 新しいマークを作れば自動でここにも出る
+db.collection("eventMarks").orderBy("name").onSnapshot(snap=>{
+  allMarks = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderEventYear();
+}, err=>console.error(err));
+function markOf(name){ return allMarks.find(m=>m.name===name); }
+function dot(color){ return `<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${esc(color||"#a1a1aa")};margin-right:5px;vertical-align:baseline;"></span>`; }
 
 function renderEventYear(){
   const box = document.getElementById("eventYearList");
   const list = allEvents.filter(e=>String(e.date||"").startsWith(String(year)));
   list.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   if(!list.length){ box.innerHTML = `<div class="empty">${year}年の活動記録はまだありません(カレンダーに予定を入れるとここに並びます)</div>`; return; }
-  box.innerHTML = `<div class="card"><div class="sub">${list.map(e=>
-    `<b>${esc(e.date)}</b>　${esc(e.title||"")}${e.notes?`<span style="color:#71717a;"> — ${esc(e.notes)}</span>`:""}`
-  ).join("<br>")}</div></div>`;
+
+  // その年に登場するマークごとの件数(マーク一覧はマスタと連動)
+  const counts = {};
+  list.forEach(e=>{ const k = e.mark || "未分類"; counts[k] = (counts[k]||0)+1; });
+  const markNames = allMarks.map(m=>m.name).filter(n=>counts[n]);
+  if(counts["未分類"]) markNames.push("未分類");
+  if(markFilter && !counts[markFilter]) markFilter = "";
+
+  const chips = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+    <button onclick="setMarkFilter('')" style="border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:bold;${markFilter===""?"background:#0f766e;color:#fff;":"background:#e4e4e7;color:#52525b;"}">すべて(${list.length})</button>
+    ${markNames.map(n=>{
+      const m = markOf(n);
+      return `<button onclick="setMarkFilter('${esc(n)}')" style="border:none;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:bold;${markFilter===n?"background:#0f766e;color:#fff;":"background:#e4e4e7;color:#52525b;"}">${dot(m&&m.color)}${esc(n)}(${counts[n]})</button>`;
+    }).join("")}
+  </div>`;
+
+  const shown = markFilter ? list.filter(e=>(e.mark||"未分類")===markFilter) : list;
+  box.innerHTML = chips + `<div class="card"><div class="sub">${shown.map(e=>{
+    const m = markOf(e.mark);
+    return `${dot(m&&m.color)}<b>${esc(e.date)}</b>　${esc(e.title||"")}${e.mark?`<span style="font-size:11px;color:#71717a;">〔${esc(e.mark)}〕</span>`:""}${e.notes?`<span style="color:#71717a;"> — ${esc(e.notes)}</span>`:""}`;
+  }).join("<br>")}</div></div>`;
 }
+window.setMarkFilter = function(n){ markFilter = n; renderEventYear(); };
 
 /* ---- マネジメントレビューの記録 ---- */
 let mrs = [];
