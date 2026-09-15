@@ -324,7 +324,7 @@
       <button class="jpeg-btn" id="jpegBtnNoiseCheck">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="noiseCheckYearTabs"></div>
-    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">保存すると📅カレンダー・📋年間記録に自動反映されます</div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">保存すると📅カレンダー・📊年間サマリーに自動反映されます</div>
     <div class="list" id="noiseCheckListContainer"><div class="loading">読み込み中...</div></div>
     <button class="fab" id="addNoiseCheckBtn" style="background:#ea580c;">＋</button>
   </div>
@@ -334,7 +334,7 @@
       <button class="jpeg-btn" id="jpegBtnComp">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="compYearTabs"></div>
-    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">保存すると📅カレンダー・📋年間記録に自動反映されます。記録カードの「🖨️ チェック表」でEMS-C-21体裁のJPEGが出せます</div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">保存すると📅カレンダー・📊年間サマリーに自動反映されます。記録カードの「🖨️ チェック表」でEMS-C-21体裁のJPEGが出せます</div>
     <div class="list" id="compListContainer"><div class="loading">読み込み中...</div></div>
     <button class="fab" id="addCompBtn" style="background:#7c3aed;">＋</button>
   </div>
@@ -352,7 +352,7 @@
       <span><b id="metalOpeningCarryLabel">−</b> 円　<button type="button" class="btn-edit" id="editMetalOpeningBtn">✏️ 変更</button></span>
     </div>
   </div>
-  <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">保存すると📅カレンダー・📋年間記録に自動反映されます</div>
+  <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">保存すると📅カレンダー・📊年間サマリーに自動反映されます</div>
   <div class="list" id="metalListContainer"><div class="loading">読み込み中...</div></div>
   <button class="fab" id="addMetalBtn" style="background:#78716c;">＋</button>
 </div>
@@ -378,7 +378,7 @@
       <button class="jpeg-btn" id="jpegBtnActivity">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="activityYearTabs"></div>
-    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">📋年間記録でタイトルに活動名を選んで入力すると、ここに自動で反映されます</div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">📅カレンダーでタイトルに活動名を選んで入力すると、ここに自動で反映されます</div>
     <div class="list" id="activityListContainer"><div class="loading">読み込み中...</div></div>
   </div>
 
@@ -457,7 +457,7 @@
         <button class="jpeg-btn" id="jpegBtnSafety">🖨️ JPEG</button>
       </div>
       <div class="year-filter-tabs" id="safetyYearTabs"></div>
-      <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">月1回、構内パトロールチェックを実施します（保存すると📅カレンダー・📋年間記録に自動反映されます）</div>
+      <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">月1回、構内パトロールチェックを実施します（保存すると📅カレンダー・📊年間サマリーに自動反映されます）</div>
       <div class="list" id="safetyListContainer"><div class="loading">読み込み中...</div></div>
     </div>
     <div id="patrolViewStatus" style="display:none;">
@@ -4103,7 +4103,7 @@ if (isIOS && !isStandalone) { installBtn.style.display = "inline-block"; }
 // ---- セクション定義（ホームメニュー・ヘッダー・目的欄で共用） ----
 const SECTION_DEFS = [
   { key: "calendar", icon: "📅", name: "カレンダー" },
-  { key: "list", icon: "📋", name: "年間記録" },
+  { key: "summary", icon: "📊", name: "年間サマリー" },
   { key: "waterTest", icon: "🧪", name: "水質検査" },
   { key: "noiseCheck", icon: "🔊", name: "騒音チェック" },
   { key: "metal", icon: "🔩", name: "進捗記録金属拾い上げ" },
@@ -4117,7 +4117,6 @@ const SECTION_DEFS = [
   { key: "kyoka", icon: "📜", name: "許可一覧" },
   { key: "horei", icon: "⚖️", name: "法規制一覧" },
   { key: "kiroku", icon: "📚", name: "監査・是正の記録" },
-  { key: "summary", icon: "📊", name: "年間サマリー" },
   { key: "sdgs", icon: "🌱", name: "SDGs" },
   { key: "manual", icon: "📖", name: "環境手順書" },
   { key: "company", icon: "🏢", name: "会社情報（沿革・組織図）" },
