@@ -64,6 +64,10 @@
 <button class="grayBtn" onclick="window.print()">🖨️ この画面を印刷(レビュー資料)</button>
 
 <div class="grid" id="statGrid"><div class="empty">集計中...</div></div>
+<div id="statDetail"></div>
+
+<div class="secHead">📋 年間の活動記録</div>
+<div id="eventYearList"><div class="empty">読み込み中...</div></div>
 
 <div class="secHead">👔 マネジメントレビューの記録</div>
 <button class="bigBtn" onclick="openMr()">＋ レビューを記録する(年1回)</button>
@@ -118,7 +122,7 @@ function renderYears(){
     row.innerHTML += `<button class="yBtn ${y===year?"act":""}" onclick="setYear(${y})">${y}年</button>`;
   }
 }
-window.setYear = function(y){ year = y; renderYears(); buildSummary(); };
+window.setYear = function(y){ year = y; renderYears(); buildSummary(); renderEventYear(); };
 
 // 集計の定義: コレクション/日付フィールドで年内の件数と直近日
 const METRICS = [
@@ -148,27 +152,86 @@ const METRICS = [
   { col:"sdgsProgress",   name:"🌏 SDGs進捗の記録" }
 ];
 
+let summaryLists = {};
+let openDetailIdx = null;
+
 async function buildSummary(){
   const grid = document.getElementById("statGrid");
   grid.innerHTML = '<div class="empty">集計中...</div>';
-  const cards = await Promise.all(METRICS.map(async m=>{
+  document.getElementById("statDetail").innerHTML = "";
+  openDetailIdx = null;
+  summaryLists = {};
+  const cards = await Promise.all(METRICS.map(async (m,mi)=>{
     try{
       const snap = await db.collection(m.col).get();
       let list = snap.docs.map(d=>d.data());
       if(!m.all) list = list.filter(x=>String(x.date||"").startsWith(String(year)));
+      list.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+      summaryLists[mi] = list;
       const dates = list.map(x=>x.date).filter(Boolean).sort();
       const latest = dates.length ? dates[dates.length-1] : "";
       const extra = m.extra ? m.extra(list) : "";
-      return `<div class="stat">
+      return `<div class="stat" style="cursor:pointer;" onclick="showDetail(${mi})">
         <div class="k">${m.name}${m.all?"":`(${year}年)`}</div>
         <div class="v">${list.length}<span style="font-size:13px;font-weight:normal;">件</span></div>
         <div class="d">${latest?`直近: ${esc(latest)}　`:""}${extra}</div>
+        <div class="d" style="color:#0f766e;font-weight:bold;">👆 タップで内容を見る</div>
       </div>`;
     }catch(e){
+      summaryLists[mi] = [];
       return `<div class="stat"><div class="k">${m.name}</div><div class="d">読み込めませんでした</div></div>`;
     }
   }));
   grid.innerHTML = cards.join("");
+}
+
+// 1件を読める1行にする
+function describeRec(col, r){
+  const d = r.date ? `<b>${esc(r.date)}</b>` : "";
+  if(col==="isoHoreiEval"){
+    const ng = Object.keys(r.results||{}).filter(k=>r.results[k]==="×");
+    return `${d}　評価者:${esc(r.evaluator||"")}　${ng.length?`<span style="color:#b91c1c;">×: ${esc(ng.join("、"))}</span>`:'<span style="color:#15803d;">全て○</span>'}`;
+  }
+  if(col==="isoAudits") return `${d}　監査員:${esc(r.auditor||"")}　指摘:${esc(r.findings||"なし")}${r.status==="open"?' <span style="color:#b45309;">対応中</span>':''}`;
+  if(col==="isoCorrectives") return `${d}　${esc(r.event||"")}${r.status==="open"?' <span style="color:#b45309;">対応中</span>':' <span style="color:#15803d;">完了</span>'}`;
+  if(col==="isoKyokaDocs"||col==="isoShokakiDocs") return `${d}　${esc(r.type||r.fileName||"")}`;
+  // 汎用: 主要そうな項目を2つまで拾う
+  const keys = ["title","theme","location","place","name","kind","goal","target","amount","value","result","memo","notes","note"];
+  const bits = [];
+  for(const k of keys){
+    if(r[k]!==undefined && r[k]!=="" && typeof r[k]!=="object"){ bits.push(esc(String(r[k]).slice(0,40))); if(bits.length>=2) break; }
+  }
+  return `${d}${bits.length?"　"+bits.join("　"):""}`;
+}
+
+window.showDetail = function(mi){
+  const box = document.getElementById("statDetail");
+  if(openDetailIdx===mi){ box.innerHTML=""; openDetailIdx=null; return; }
+  openDetailIdx = mi;
+  const m = METRICS[mi];
+  const list = summaryLists[mi]||[];
+  box.innerHTML = `<div class="card" style="border-left:5px solid #0f766e;">
+    <div class="ttl">${m.name}${m.all?"":`(${year}年)`} の内容　<span style="font-size:12px;color:#71717a;">もう一度タップで閉じる</span></div>
+    <div class="sub">${list.length ? list.map(r=>describeRec(m.col,r)).join("<br>") : "記録がありません"}</div>
+  </div>`;
+  box.scrollIntoView({behavior:"smooth", block:"nearest"});
+};
+
+/* ---- 年間の活動記録(カレンダーと同じデータ) ---- */
+let allEvents = [];
+db.collection("isoEvents").onSnapshot(snap=>{
+  allEvents = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderEventYear();
+}, err=>console.error(err));
+
+function renderEventYear(){
+  const box = document.getElementById("eventYearList");
+  const list = allEvents.filter(e=>String(e.date||"").startsWith(String(year)));
+  list.sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(!list.length){ box.innerHTML = `<div class="empty">${year}年の活動記録はまだありません(カレンダーに予定を入れるとここに並びます)</div>`; return; }
+  box.innerHTML = `<div class="card"><div class="sub">${list.map(e=>
+    `<b>${esc(e.date)}</b>　${esc(e.title||"")}${e.notes?`<span style="color:#71717a;"> — ${esc(e.notes)}</span>`:""}`
+  ).join("<br>")}</div></div>`;
 }
 
 /* ---- マネジメントレビューの記録 ---- */
