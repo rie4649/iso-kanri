@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>軽油 年度レポート</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
+  body { background:#f4f4f5; padding-bottom:60px; }
+  header { background:#0369a1; color:#fff; padding:14px 16px; }
+  header h1 { font-size:19px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:2px; }
+  .wrap { padding:12px; max-width:760px; margin:0 auto; }
+  .backBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#555; color:#fff; font-size:15px; font-weight:bold; margin-bottom:10px; }
+  .yearRow { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .yBtn { border:none; border-radius:999px; padding:9px 16px; font-size:14px; font-weight:bold; background:#e4e4e7; color:#52525b; }
+  .yBtn.act { background:#0369a1; color:#fff; }
+  .grayBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#e4e4e7; color:#3f3f46; font-size:14px; font-weight:bold; margin-bottom:10px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .stat { background:#fff; border-radius:12px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .stat .k { font-size:12px; color:#71717a; }
+  .stat .v { font-size:21px; font-weight:bold; margin-top:2px; }
+  .stat .d { font-size:12px; color:#71717a; margin-top:2px; }
+  .up { color:#b91c1c; } .down { color:#15803d; }
+  .secHead { font-size:16px; font-weight:bold; color:#0369a1; margin:16px 0 8px; border-bottom:2px solid #0369a1; padding-bottom:4px; }
+  .card { background:#fff; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:6px 6px; border-bottom:1px solid #eee; text-align:right; white-space:nowrap; }
+  th { color:#52525b; font-size:12px; background:#f8fafc; }
+  th:first-child, td:first-child { text-align:left; }
+  .bar { height:9px; background:#0369a1; border-radius:4px; display:inline-block; vertical-align:middle; }
+  .barPrev { background:#cbd5e1; }
+  .note { font-size:12px; color:#71717a; line-height:1.7; margin:6px 0; }
+  .empty { text-align:center; color:#a1a1aa; padding:26px 10px; font-size:14px; line-height:1.8; }
+  details { background:#fffbeb; border:1px solid #fcd34d; border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+  summary { font-size:14px; font-weight:bold; color:#92400e; cursor:pointer; }
+  .impBtn { width:100%; padding:13px; border:none; border-radius:10px; background:#b45309; color:#fff; font-size:15px; font-weight:bold; margin-top:10px; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.25s; z-index:200; white-space:nowrap; }
+  #toast.show { opacity:1; }
+  @media print {
+    .backBtn, .grayBtn, .yearRow, details { display:none !important; }
+    body { background:#fff; }
+    .stat, .card { box-shadow:none; border:1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 軽油使用量 年度レポート</h1>
+  <div class="sub">年度(8月〜翌7月)の自動集計と前年度比較。データは⛽軽油使用量の記録から</div>
+</header>
+
+<div class="wrap">
+<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+
+<details id="importBox">
+  <summary>📥 前年度Excelのデータを取り込む(初回だけ)</summary>
+  <div class="note">2024年8月〜2025年8月の月別・車両別データ(前年度のExcelまとめから抽出済み)をISO管理の軽油記録に登録します。<b>すでに同じ年月の記録がある月はスキップ</b>するので、二重にはなりません。</div>
+  <button class="impBtn" id="impBtn" onclick="runImport()">📥 取り込みを実行</button>
+</details>
+
+<div class="yearRow" id="yearRow"></div>
+<button class="grayBtn" onclick="window.print()">🖨️ この画面を印刷(報告書)</button>
+<div id="report"><div class="empty">読み込み中...</div></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const CO2 = 2.58; // kg-CO2/L (ISO管理と同じ係数)
+const IMPORT_DATA = [{"yearMonth": "2024-08", "totalLiters": 11550.35, "vehicles": [{"name": "576", "stand": "", "liters": 230.34}, {"name": "950", "stand": "", "liters": 140.7}, {"name": "6ヒア", "stand": "", "liters": 355.51}, {"name": "5t", "stand": "", "liters": 375.0}, {"name": "新10Ｔ", "stand": "", "liters": 609.0}, {"name": "230", "stand": "", "liters": 361.05}, {"name": "タダノ", "stand": "", "liters": 102.0}, {"name": "3tワイド", "stand": "", "liters": 217.64}, {"name": "2.9", "stand": "", "liters": 59.75}, {"name": "6ヒア", "stand": "", "liters": 177.59}, {"name": "8t", "stand": "", "liters": 241.01}, {"name": "三菱ワイド", "stand": "", "liters": 283.33}, {"name": "青パッカー", "stand": "", "liters": 173.85}, {"name": "セルフ", "stand": "", "liters": 120.0}, {"name": "265", "stand": "", "liters": 244.15}, {"name": "10t", "stand": "", "liters": 504.5}, {"name": "いすゞ25t", "stand": "", "liters": 1670.0}, {"name": "5ヒア", "stand": "", "liters": 715.01}, {"name": "6ヒアロング", "stand": "", "liters": 520.0}, {"name": "620", "stand": "", "liters": 261.0}, {"name": "三菱25t", "stand": "", "liters": 1084.0}, {"name": "ヒノ", "stand": "", "liters": 319.21}, {"name": "アームロール", "stand": "", "liters": 99.0}, {"name": "640", "stand": "", "liters": 504.0}, {"name": "25tセルフ", "stand": "", "liters": 185.0}, {"name": "340", "stand": "", "liters": 242.0}, {"name": "3ヒア", "stand": "", "liters": 232.22}, {"name": "440", "stand": "", "liters": 102.94}, {"name": "白パッカー", "stand": "", "liters": 40.23}, {"name": "ツートン", "stand": "", "liters": 81.12}, {"name": "290", "stand": "", "liters": 143.04}, {"name": "3tパッカー", "stand": "", "liters": 108.38}, {"name": "3t", "stand": "", "liters": 249.7}, {"name": "低クレ", "stand": "", "liters": 440.08}, {"name": "ハイエース", "stand": "", "liters": 40.5}, {"name": "全リフト", "stand": "", "liters": 317.5}], "notes": "前年度Excelより取込"}, {"yearMonth": "2024-09", "totalLiters": 12151.59, "vehicles": [{"name": "576", "stand": "", "liters": 207.36}, {"name": "950", "stand": "", "liters": 362.21}, {"name": "6ヒア", "stand": "", "liters": 293.19}, {"name": "5t", "stand": "", "liters": 613.0}, {"name": "新10Ｔ", "stand": "", "liters": 720.01}, {"name": "230", "stand": "", "liters": 300.98}, {"name": "タダノ", "stand": "", "liters": 139.0}, {"name": "3tワイド", "stand": "", "liters": 224.0}, {"name": "2.9", "stand": "", "liters": 172.4}, {"name": "6ヒア", "stand": "", "liters": 191.0}, {"name": "8t", "stand": "", "liters": 432.4}, {"name": "三菱ワイド", "stand": "", "liters": 448.26}, {"name": "青パッカー", "stand": "", "liters": 265.41}, {"name": "セルフ", "stand": "", "liters": 154.0}, {"name": "265", "stand": "", "liters": 283.0}, {"name": "10t", "stand": "", "liters": 765.0}, {"name": "いすゞ25t", "stand": "", "liters": 2162.0}, {"name": "5ヒア", "stand": "", "liters": 794.2}, {"name": "6ヒアロング", "stand": "", "liters": 449.01}, {"name": "620", "stand": "", "liters": 338.0}, {"name": "ヒノ", "stand": "", "liters": 235.0}, {"name": "アームロール", "stand": "", "liters": 81.0}, {"name": "640", "stand": "", "liters": 437.0}, {"name": "25tセルフ", "stand": "", "liters": 200.0}, {"name": "340", "stand": "", "liters": 67.0}, {"name": "3ヒア", "stand": "", "liters": 234.41}, {"name": "440", "stand": "", "liters": 115.51}, {"name": "ツートン", "stand": "", "liters": 78.96}, {"name": "290", "stand": "", "liters": 241.57}, {"name": "3tパッカー", "stand": "", "liters": 151.3}, {"name": "3t", "stand": "", "liters": 176.5}, {"name": "低クレ", "stand": "", "liters": 315.1}, {"name": "ハイエース", "stand": "", "liters": 41.01}, {"name": "全リフト", "stand": "", "liters": 462.8}], "notes": "前年度Excelより取込"}, {"yearMonth": "2024-10", "totalLiters": 11879.64, "vehicles": [{"name": "576", "stand": "", "liters": 246.1}, {"name": "950", "stand": "", "liters": 295.5}, {"name": "6ヒア", "stand": "", "liters": 359.0}, {"name": "5t", "stand": "", "liters": 550.3}, {"name": "新10Ｔ", "stand": "", "liters": 619.0}, {"name": "230", "stand": "", "liters": 168.5}, {"name": "タダノ", "stand": "", "liters": 232.8}, {"name": "3tワイド", "stand": "", "liters": 207.0}, {"name": "2.9", "stand": "", "liters": 220.63}, {"name": "6ヒア", "stand": "", "liters": 207.5}, {"name": "8t", "stand": "", "liters": 267.01}, {"name": "三菱ワイド", "stand": "", "liters": 179.2}, {"name": "青パッカー", "stand": "", "liters": 199.57}, {"name": "セルフ", "stand": "", "liters": 106.0}, {"name": "265", "stand": "", "liters": 313.56}, {"name": "10t", "stand": "", "liters": 592.0}, {"name": "いすゞ25t", "stand": "", "liters": 2520.0}, {"name": "5ヒア", "stand": "", "liters": 888.71}, {"name": "6ヒアロング", "stand": "", "liters": 643.0}, {"name": "620", "stand": "", "liters": 255.5}, {"name": "三菱25t", "stand": "", "liters": 200.0}, {"name": "ヒノ", "stand": "", "liters": 214.84}, {"name": "アームロール", "stand": "", "liters": 163.0}, {"name": "640", "stand": "", "liters": 437.5}, {"name": "25tセルフ", "stand": "", "liters": 206.0}, {"name": "340", "stand": "", "liters": 231.4}, {"name": "3ヒア", "stand": "", "liters": 140.5}, {"name": "440", "stand": "", "liters": 84.95}, {"name": "白パッカー", "stand": "", "liters": 38.01}, {"name": "ツートン", "stand": "", "liters": 71.09}, {"name": "290", "stand": "", "liters": 265.1}, {"name": "3tパッカー", "stand": "", "liters": 116.98}, {"name": "3t", "stand": "", "liters": 237.68}, {"name": "低クレ", "stand": "", "liters": 218.71}, {"name": "全リフト", "stand": "", "liters": 183.0}], "notes": "前年度Excelより取込"}, {"yearMonth": "2024-11", "totalLiters": 13355.33, "vehicles": [{"name": "576", "stand": "", "liters": 290.02}, {"name": "950", "stand": "", "liters": 303.3}, {"name": "6ヒア", "stand": "", "liters": 351.0}, {"name": "5t", "stand": "", "liters": 486.0}, {"name": "新10Ｔ", "stand": "", "liters": 916.0}, {"name": "230", "stand": "", "liters": 325.9}, {"name": "タダノ", "stand": "", "liters": 190.0}, {"name": "3tワイド", "stand": "", "liters": 111.0}, {"name": "2.9", "stand": "", "liters": 158.49}, {"name": "6ヒア", "stand": "", "liters": 143.0}, {"name": "8t", "stand": "", "liters": 357.01}, {"name": "三菱ワイド", "stand": "", "liters": 230.86}, {"name": "青パッカー", "stand": "", "liters": 168.67}, {"name": "セルフ", "stand": "", "liters": 154.0}, {"name": "265", "stand": "", "liters": 196.57}, {"name": "10t", "stand": "", "liters": 629.6}, {"name": "いすゞ25t", "stand": "", "liters": 1985.01}, {"name": "5ヒア", "stand": "", "liters": 895.27}, {"name": "6ヒアロング", "stand": "", "liters": 667.6}, {"name": "620", "stand": "", "liters": 36.0}, {"name": "三菱25t", "stand": "", "liters": 1395.0}, {"name": "ヒノ", "stand": "", "liters": 277.28}, {"name": "640", "stand": "", "liters": 773.79}, {"name": "25tセルフ", "stand": "", "liters": 425.0}, {"name": "340", "stand": "", "liters": 173.97}, {"name": "3ヒア", "stand": "", "liters": 190.3}, {"name": "440", "stand": "", "liters": 117.87}, {"name": "ツートン", "stand": "", "liters": 109.04}, {"name": "290", "stand": "", "liters": 310.94}, {"name": "3tパッカー", "stand": "", "liters": 120.12}, {"name": "3t", "stand": "", "liters": 77.89}, {"name": "低クレ", "stand": "", "liters": 295.03}, {"name": "ハイエース", "stand": "", "liters": 65.2}, {"name": "全リフト", "stand": "", "liters": 428.6}], "notes": "前年度Excelより取込"}, {"yearMonth": "2024-12", "totalLiters": 13791.31, "vehicles": [{"name": "576", "stand": "", "liters": 913.6}, {"name": "950", "stand": "", "liters": 155.27}, {"name": "6ヒア", "stand": "", "liters": 176.26}, {"name": "5t", "stand": "", "liters": 520.0}, {"name": "新10Ｔ", "stand": "", "liters": 618.0}, {"name": "230", "stand": "", "liters": 203.14}, {"name": "タダノ", "stand": "", "liters": 120.0}, {"name": "3tワイド", "stand": "", "liters": 281.27}, {"name": "2.9", "stand": "", "liters": 149.93}, {"name": "6ヒア", "stand": "", "liters": 132.0}, {"name": "8t", "stand": "", "liters": 444.02}, {"name": "三菱ワイド", "stand": "", "liters": 293.68}, {"name": "青パッカー", "stand": "", "liters": 160.3}, {"name": "セルフ", "stand": "", "liters": 148.0}, {"name": "265", "stand": "", "liters": 237.3}, {"name": "10t", "stand": "", "liters": 477.0}, {"name": "いすゞ25t", "stand": "", "liters": 2211.0}, {"name": "5ヒア", "stand": "", "liters": 840.3}, {"name": "6ヒアロング", "stand": "", "liters": 560.0}, {"name": "620", "stand": "", "liters": 975.4}, {"name": "三菱25t", "stand": "", "liters": 873.0}, {"name": "ヒノ", "stand": "", "liters": 325.42}, {"name": "アームロール", "stand": "", "liters": 153.0}, {"name": "640", "stand": "", "liters": 636.0}, {"name": "25tセルフ", "stand": "", "liters": 251.0}, {"name": "340", "stand": "", "liters": 229.63}, {"name": "3ヒア", "stand": "", "liters": 310.74}, {"name": "440", "stand": "", "liters": 75.5}, {"name": "白パッカー", "stand": "", "liters": 25.28}, {"name": "ツートン", "stand": "", "liters": 125.1}, {"name": "290", "stand": "", "liters": 49.5}, {"name": "3tパッカー", "stand": "", "liters": 118.5}, {"name": "3t", "stand": "", "liters": 198.74}, {"name": "低クレ", "stand": "", "liters": 411.83}, {"name": "ハイエース", "stand": "", "liters": 57.3}, {"name": "全リフト", "stand": "", "liters": 334.3}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-01", "totalLiters": 12246.11, "vehicles": [{"name": "576", "stand": "", "liters": 265.21}, {"name": "950", "stand": "", "liters": 309.0}, {"name": "6ヒア", "stand": "", "liters": 300.0}, {"name": "5t", "stand": "", "liters": 430.0}, {"name": "新10Ｔ", "stand": "", "liters": 911.0}, {"name": "230", "stand": "", "liters": 182.51}, {"name": "タダノ", "stand": "", "liters": 137.0}, {"name": "3tワイド", "stand": "", "liters": 174.0}, {"name": "2.9", "stand": "", "liters": 75.82}, {"name": "6ヒア", "stand": "", "liters": 100.0}, {"name": "8t", "stand": "", "liters": 341.0}, {"name": "三菱ワイド", "stand": "", "liters": 321.46}, {"name": "青パッカー", "stand": "", "liters": 161.73}, {"name": "セルフ", "stand": "", "liters": 131.0}, {"name": "265", "stand": "", "liters": 210.04}, {"name": "10t", "stand": "", "liters": 631.0}, {"name": "いすゞ25t", "stand": "", "liters": 1726.0}, {"name": "5ヒア", "stand": "", "liters": 891.47}, {"name": "6ヒアロング", "stand": "", "liters": 450.0}, {"name": "620", "stand": "", "liters": 342.0}, {"name": "三菱25t", "stand": "", "liters": 1212.0}, {"name": "ヒノ", "stand": "", "liters": 311.2}, {"name": "アームロール", "stand": "", "liters": 44.0}, {"name": "640", "stand": "", "liters": 618.1}, {"name": "25tセルフ", "stand": "", "liters": 222.0}, {"name": "340", "stand": "", "liters": 169.0}, {"name": "3ヒア", "stand": "", "liters": 132.7}, {"name": "440", "stand": "", "liters": 118.18}, {"name": "ツートン", "stand": "", "liters": 70.27}, {"name": "290", "stand": "", "liters": 102.3}, {"name": "3tパッカー", "stand": "", "liters": 125.5}, {"name": "3t", "stand": "", "liters": 119.8}, {"name": "低クレ", "stand": "", "liters": 292.02}, {"name": "ハイエース", "stand": "", "liters": 40.3}, {"name": "全リフト", "stand": "", "liters": 578.5}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-02", "totalLiters": 11953.61, "vehicles": [{"name": "576", "stand": "", "liters": 202.0}, {"name": "950", "stand": "", "liters": 279.85}, {"name": "6ヒア", "stand": "", "liters": 429.0}, {"name": "5t", "stand": "", "liters": 364.4}, {"name": "新10Ｔ", "stand": "", "liters": 598.0}, {"name": "230", "stand": "", "liters": 167.99}, {"name": "タダノ", "stand": "", "liters": 169.2}, {"name": "3tワイド", "stand": "", "liters": 219.63}, {"name": "2.9", "stand": "", "liters": 109.02}, {"name": "6ヒア", "stand": "", "liters": 117.0}, {"name": "8t", "stand": "", "liters": 382.82}, {"name": "三菱ワイド", "stand": "", "liters": 191.45}, {"name": "青パッカー", "stand": "", "liters": 172.55}, {"name": "セルフ", "stand": "", "liters": 292.0}, {"name": "265", "stand": "", "liters": 210.36}, {"name": "10t", "stand": "", "liters": 296.0}, {"name": "いすゞ25t", "stand": "", "liters": 1676.0}, {"name": "5ヒア", "stand": "", "liters": 950.1}, {"name": "6ヒアロング", "stand": "", "liters": 270.0}, {"name": "620", "stand": "", "liters": 344.0}, {"name": "三菱25t", "stand": "", "liters": 1187.0}, {"name": "ヒノ", "stand": "", "liters": 227.54}, {"name": "アームロール", "stand": "", "liters": 183.0}, {"name": "640", "stand": "", "liters": 580.0}, {"name": "25tセルフ", "stand": "", "liters": 408.0}, {"name": "340", "stand": "", "liters": 179.0}, {"name": "3ヒア", "stand": "", "liters": 132.51}, {"name": "440", "stand": "", "liters": 60.08}, {"name": "ツートン", "stand": "", "liters": 75.7}, {"name": "290", "stand": "", "liters": 58.9}, {"name": "3tパッカー", "stand": "", "liters": 65.6}, {"name": "3t", "stand": "", "liters": 121.01}, {"name": "低クレ", "stand": "", "liters": 349.95}, {"name": "ハイエース", "stand": "", "liters": 121.67}, {"name": "567", "stand": "", "liters": 145.56}, {"name": "全リフト", "stand": "", "liters": 616.72}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-03", "totalLiters": 15168.44, "vehicles": [{"name": "576", "stand": "", "liters": 342.41}, {"name": "950", "stand": "", "liters": 347.2}, {"name": "6ヒア", "stand": "", "liters": 342.14}, {"name": "5t", "stand": "", "liters": 612.0}, {"name": "新10Ｔ", "stand": "", "liters": 970.0}, {"name": "230", "stand": "", "liters": 105.0}, {"name": "タダノ", "stand": "", "liters": 105.01}, {"name": "3tワイド", "stand": "", "liters": 211.92}, {"name": "2.9", "stand": "", "liters": 52.0}, {"name": "6ヒア", "stand": "", "liters": 228.9}, {"name": "8t", "stand": "", "liters": 435.3}, {"name": "三菱ワイド", "stand": "", "liters": 276.41}, {"name": "青パッカー", "stand": "", "liters": 108.5}, {"name": "セルフ", "stand": "", "liters": 555.6}, {"name": "265", "stand": "", "liters": 278.91}, {"name": "10t", "stand": "", "liters": 1071.0}, {"name": "いすゞ25t", "stand": "", "liters": 1609.0}, {"name": "5ヒア", "stand": "", "liters": 988.6}, {"name": "6ヒアロング", "stand": "", "liters": 417.0}, {"name": "620", "stand": "", "liters": 418.0}, {"name": "三菱25t", "stand": "", "liters": 1187.0}, {"name": "ヒノ", "stand": "", "liters": 165.9}, {"name": "アームロール", "stand": "", "liters": 77.31}, {"name": "640", "stand": "", "liters": 1332.91}, {"name": "25tセルフ", "stand": "", "liters": 659.0}, {"name": "340", "stand": "", "liters": 230.0}, {"name": "3ヒア", "stand": "", "liters": 238.93}, {"name": "440", "stand": "", "liters": 189.25}, {"name": "ツートン", "stand": "", "liters": 80.58}, {"name": "290", "stand": "", "liters": 48.5}, {"name": "3tパッカー", "stand": "", "liters": 236.71}, {"name": "3t", "stand": "", "liters": 160.8}, {"name": "低クレ", "stand": "", "liters": 382.67}, {"name": "ハイエース", "stand": "", "liters": 123.83}, {"name": "567", "stand": "", "liters": 242.05}, {"name": "全リフト", "stand": "", "liters": 338.1}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-04", "totalLiters": 13333.76, "vehicles": [{"name": "576", "stand": "", "liters": 229.98}, {"name": "950", "stand": "", "liters": 275.84}, {"name": "6ヒア", "stand": "", "liters": 263.01}, {"name": "5t", "stand": "", "liters": 394.0}, {"name": "新10Ｔ", "stand": "", "liters": 642.0}, {"name": "230", "stand": "", "liters": 178.51}, {"name": "タダノ", "stand": "", "liters": 182.0}, {"name": "3tワイド", "stand": "", "liters": 158.5}, {"name": "2.9", "stand": "", "liters": 254.95}, {"name": "6ヒア", "stand": "", "liters": 128.0}, {"name": "8t", "stand": "", "liters": 405.21}, {"name": "三菱ワイド", "stand": "", "liters": 371.14}, {"name": "青パッカー", "stand": "", "liters": 239.6}, {"name": "セルフ", "stand": "", "liters": 172.0}, {"name": "265", "stand": "", "liters": 255.0}, {"name": "10t", "stand": "", "liters": 623.0}, {"name": "いすゞ25t", "stand": "", "liters": 2223.0}, {"name": "5ヒア", "stand": "", "liters": 873.7}, {"name": "6ヒアロング", "stand": "", "liters": 544.0}, {"name": "620", "stand": "", "liters": 405.0}, {"name": "三菱25t", "stand": "", "liters": 970.0}, {"name": "ヒノ", "stand": "", "liters": 210.01}, {"name": "アームロール", "stand": "", "liters": 145.0}, {"name": "640", "stand": "", "liters": 846.0}, {"name": "25tセルフ", "stand": "", "liters": 302.0}, {"name": "340", "stand": "", "liters": 114.0}, {"name": "3ヒア", "stand": "", "liters": 238.52}, {"name": "440", "stand": "", "liters": 60.35}, {"name": "白パッカー", "stand": "", "liters": 38.6}, {"name": "ツートン", "stand": "", "liters": 128.7}, {"name": "290", "stand": "", "liters": 206.79}, {"name": "3tパッカー", "stand": "", "liters": 134.21}, {"name": "3t", "stand": "", "liters": 118.98}, {"name": "低クレ", "stand": "", "liters": 363.64}, {"name": "ハイエース", "stand": "", "liters": 35.4}, {"name": "567", "stand": "", "liters": 180.11}, {"name": "全リフト", "stand": "", "liters": 423.01}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-05", "totalLiters": 12449.09, "vehicles": [{"name": "576", "stand": "", "liters": 332.22}, {"name": "950", "stand": "", "liters": 264.73}, {"name": "6ヒア", "stand": "", "liters": 249.0}, {"name": "5t", "stand": "", "liters": 482.0}, {"name": "新10Ｔ", "stand": "", "liters": 716.6}, {"name": "230", "stand": "", "liters": 273.74}, {"name": "タダノ", "stand": "", "liters": 131.0}, {"name": "3tワイド", "stand": "", "liters": 124.6}, {"name": "2.9", "stand": "", "liters": 151.0}, {"name": "6ヒア", "stand": "", "liters": 196.32}, {"name": "8t", "stand": "", "liters": 374.71}, {"name": "三菱ワイド", "stand": "", "liters": 238.36}, {"name": "青パッカー", "stand": "", "liters": 101.3}, {"name": "セルフ", "stand": "", "liters": 160.0}, {"name": "265", "stand": "", "liters": 232.22}, {"name": "10t", "stand": "", "liters": 420.0}, {"name": "いすゞ25t", "stand": "", "liters": 2200.0}, {"name": "5ヒア", "stand": "", "liters": 871.4}, {"name": "6ヒアロング", "stand": "", "liters": 389.0}, {"name": "620", "stand": "", "liters": 394.0}, {"name": "三菱25t", "stand": "", "liters": 1170.0}, {"name": "ヒノ", "stand": "", "liters": 327.32}, {"name": "アームロール", "stand": "", "liters": 139.01}, {"name": "640", "stand": "", "liters": 521.0}, {"name": "25tセルフ", "stand": "", "liters": 232.1}, {"name": "340", "stand": "", "liters": 168.04}, {"name": "3ヒア", "stand": "", "liters": 170.6}, {"name": "440", "stand": "", "liters": 16.5}, {"name": "ツートン", "stand": "", "liters": 85.05}, {"name": "290", "stand": "", "liters": 48.52}, {"name": "3tパッカー", "stand": "", "liters": 136.33}, {"name": "3t", "stand": "", "liters": 38.02}, {"name": "低クレ", "stand": "", "liters": 358.85}, {"name": "ハイエース", "stand": "", "liters": 169.19}, {"name": "567", "stand": "", "liters": 100.65}, {"name": "全リフト", "stand": "", "liters": 465.71}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-06", "totalLiters": 12915.29, "vehicles": [{"name": "576", "stand": "", "liters": 125.0}, {"name": "950", "stand": "", "liters": 310.71}, {"name": "6ヒア", "stand": "", "liters": 192.0}, {"name": "5t", "stand": "", "liters": 254.0}, {"name": "新10Ｔ", "stand": "", "liters": 475.0}, {"name": "230", "stand": "", "liters": 210.3}, {"name": "タダノ", "stand": "", "liters": 288.0}, {"name": "3tワイド", "stand": "", "liters": 167.72}, {"name": "2.9", "stand": "", "liters": 100.62}, {"name": "6ヒア", "stand": "", "liters": 180.0}, {"name": "8t", "stand": "", "liters": 416.0}, {"name": "三菱ワイド", "stand": "", "liters": 290.93}, {"name": "青パッカー", "stand": "", "liters": 290.92}, {"name": "セルフ", "stand": "", "liters": 216.0}, {"name": "265", "stand": "", "liters": 219.01}, {"name": "10t", "stand": "", "liters": 670.0}, {"name": "いすゞ25t", "stand": "", "liters": 1963.0}, {"name": "5ヒア", "stand": "", "liters": 923.4}, {"name": "6ヒアロング", "stand": "", "liters": 424.0}, {"name": "620", "stand": "", "liters": 344.0}, {"name": "三菱25t", "stand": "", "liters": 1215.0}, {"name": "ヒノ", "stand": "", "liters": 50.27}, {"name": "アームロール", "stand": "", "liters": 211.0}, {"name": "640", "stand": "", "liters": 727.21}, {"name": "25tセルフ", "stand": "", "liters": 741.1}, {"name": "340", "stand": "", "liters": 119.0}, {"name": "3ヒア", "stand": "", "liters": 214.99}, {"name": "440", "stand": "", "liters": 116.7}, {"name": "白パッカー", "stand": "", "liters": 61.0}, {"name": "ツートン", "stand": "", "liters": 93.11}, {"name": "290", "stand": "", "liters": 146.64}, {"name": "3tパッカー", "stand": "", "liters": 99.45}, {"name": "3t", "stand": "", "liters": 180.31}, {"name": "低クレ", "stand": "", "liters": 337.0}, {"name": "ハイエース", "stand": "", "liters": 133.95}, {"name": "567", "stand": "", "liters": 234.95}, {"name": "全リフト", "stand": "", "liters": 173.0}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-07", "totalLiters": 14639.32, "vehicles": [{"name": "576", "stand": "", "liters": 168.23}, {"name": "950", "stand": "", "liters": 268.5}, {"name": "6ヒア", "stand": "", "liters": 489.99}, {"name": "5t", "stand": "", "liters": 519.01}, {"name": "新10Ｔ", "stand": "", "liters": 1302.52}, {"name": "230", "stand": "", "liters": 294.27}, {"name": "3tワイド", "stand": "", "liters": 73.36}, {"name": "2.9", "stand": "", "liters": 140.29}, {"name": "6ヒア", "stand": "", "liters": 119.0}, {"name": "8t", "stand": "", "liters": 551.02}, {"name": "三菱ワイド", "stand": "", "liters": 221.3}, {"name": "青パッカー", "stand": "", "liters": 177.75}, {"name": "セルフ", "stand": "", "liters": 352.62}, {"name": "265", "stand": "", "liters": 258.74}, {"name": "10t", "stand": "", "liters": 576.01}, {"name": "いすゞ25t", "stand": "", "liters": 2134.0}, {"name": "5ヒア", "stand": "", "liters": 1029.0}, {"name": "6ヒアロング", "stand": "", "liters": 504.01}, {"name": "620", "stand": "", "liters": 465.0}, {"name": "三菱25t", "stand": "", "liters": 527.0}, {"name": "ヒノ", "stand": "", "liters": 847.05}, {"name": "アームロール", "stand": "", "liters": 39.0}, {"name": "640", "stand": "", "liters": 695.0}, {"name": "25tセルフ", "stand": "", "liters": 345.0}, {"name": "3ヒア", "stand": "", "liters": 115.72}, {"name": "440", "stand": "", "liters": 118.7}, {"name": "ツートン", "stand": "", "liters": 125.02}, {"name": "290", "stand": "", "liters": 195.48}, {"name": "3tパッカー", "stand": "", "liters": 261.75}, {"name": "低クレ", "stand": "", "liters": 475.79}, {"name": "ハイエース", "stand": "", "liters": 52.0}, {"name": "567", "stand": "", "liters": 320.6}, {"name": "全リフト", "stand": "", "liters": 634.4}, {"name": "新3ヒア", "stand": "", "liters": 242.19}], "notes": "前年度Excelより取込"}, {"yearMonth": "2025-08", "totalLiters": 12781.67, "vehicles": [{"name": "576", "stand": "", "liters": 257.09}, {"name": "950", "stand": "", "liters": 202.7}, {"name": "6ヒア", "stand": "", "liters": 267.0}, {"name": "5t", "stand": "", "liters": 585.0}, {"name": "新10Ｔ", "stand": "", "liters": 860.0}, {"name": "230", "stand": "", "liters": 320.94}, {"name": "タダノ", "stand": "", "liters": 325.91}, {"name": "3tワイド", "stand": "", "liters": 108.44}, {"name": "2.9", "stand": "", "liters": 216.91}, {"name": "6ヒア", "stand": "", "liters": 192.0}, {"name": "8t", "stand": "", "liters": 413.0}, {"name": "三菱ワイド", "stand": "", "liters": 230.67}, {"name": "青パッカー", "stand": "", "liters": 249.14}, {"name": "セルフ", "stand": "", "liters": 303.0}, {"name": "265", "stand": "", "liters": 179.0}, {"name": "10t", "stand": "", "liters": 497.0}, {"name": "いすゞ25t", "stand": "", "liters": 1758.0}, {"name": "5ヒア", "stand": "", "liters": 794.06}, {"name": "6ヒアロング", "stand": "", "liters": 371.0}, {"name": "620", "stand": "", "liters": 369.0}, {"name": "三菱25t", "stand": "", "liters": 1018.0}, {"name": "ヒノ", "stand": "", "liters": 121.5}, {"name": "640", "stand": "", "liters": 680.4}, {"name": "25tセルフ", "stand": "", "liters": 266.0}, {"name": "440", "stand": "", "liters": 76.9}, {"name": "白パッカー", "stand": "", "liters": 55.8}, {"name": "ツートン", "stand": "", "liters": 100.9}, {"name": "3tパッカー", "stand": "", "liters": 166.47}, {"name": "3t", "stand": "", "liters": 191.53}, {"name": "低クレ", "stand": "", "liters": 683.96}, {"name": "ハイエース", "stand": "", "liters": 114.48}, {"name": "567", "stand": "", "liters": 298.2}, {"name": "全リフト", "stand": "", "liters": 308.2}, {"name": "新3ヒア", "stand": "", "liters": 199.47}], "notes": "前年度Excelより取込"}];
+
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),3000); }
+function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function fmt(n){ return Math.round(n).toLocaleString(); }
+function fmt1(n){ return n.toLocaleString(undefined,{maximumFractionDigits:1}); }
+
+// 年度: 8月〜翌7月。2024-08〜2025-07 → 2024年度
+function fyOf(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return m>=8 ? y : y-1; }
+function fyLabel(fy){ return `${fy}年度(${fy}.8〜${fy+1}.7)`; }
+const FY_MONTHS = fy => { const a=[]; for(let i=0;i<12;i++){ const d=new Date(fy, 7+i, 1); a.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);} return a; };
+
+let allRecords = [];
+let curFy = null;
+
+db.collection("dieselRecords").onSnapshot(snap=>{
+  allRecords = snap.docs.map(d=>({id:d.id, ...d.data()})).filter(r=>r.yearMonth);
+  const fys = [...new Set(allRecords.map(r=>fyOf(r.yearMonth)))].sort((a,b)=>b-a);
+  if(curFy===null && fys.length) curFy = fys[0];
+  renderYears(fys);
+  render();
+}, err=>{ document.getElementById("report").innerHTML = '<div class="empty">読み込めませんでした</div>'; console.error(err); });
+
+function renderYears(fys){
+  document.getElementById("yearRow").innerHTML = fys.map(fy=>
+    `<button class="yBtn ${fy===curFy?"act":""}" onclick="setFy(${fy})">${fy}年度</button>`).join("");
+}
+window.setFy = function(fy){ curFy = fy; renderYears([...new Set(allRecords.map(r=>fyOf(r.yearMonth)))].sort((a,b)=>b-a)); render(); };
+
+function fyData(fy){
+  const months = FY_MONTHS(fy);
+  const recs = allRecords.filter(r=>months.includes(r.yearMonth));
+  const byMonth = {}; months.forEach(m=>byMonth[m]=0);
+  const byVehicle = {};
+  recs.forEach(r=>{
+    byMonth[r.yearMonth] = (byMonth[r.yearMonth]||0) + (Number(r.totalLiters)||0);
+    (r.vehicles||[]).forEach(v=>{ if(v.name) byVehicle[v.name]=(byVehicle[v.name]||0)+(Number(v.liters)||0); });
+  });
+  const total = Object.values(byMonth).reduce((a,b)=>a+b,0);
+  return { months, byMonth, byVehicle, total, monthCount: recs.length };
+}
+
+function render(){
+  const box = document.getElementById("report");
+  if(curFy===null){ box.innerHTML = '<div class="empty">まだ軽油の記録がありません。<br>⛽軽油使用量で月々の記録を入れるか、上の📥で前年度データを取り込んでください</div>'; return; }
+  const cur = fyData(curFy);
+  const prev = fyData(curFy-1);
+  const hasPrev = prev.monthCount > 0;
+  const co2Cur = cur.total*CO2/1000;
+  const vCount = Object.keys(cur.byVehicle).length;
+  const diff = hasPrev ? cur.total-prev.total : 0;
+  const diffPct = hasPrev && prev.total>0 ? (diff/prev.total*100) : 0;
+  const partial = cur.monthCount<12 ? `<div class="note">⚠️ ${curFy}年度はまだ${cur.monthCount}か月分です(12か月そろうと年間の姿になります)</div>` : "";
+
+  // サマリー
+  let html = partial + `<div class="grid">
+    <div class="stat"><div class="k">年間軽油使用量</div><div class="v">${fmt(cur.total)} L</div><div class="d">${cur.monthCount}か月分・${vCount}台</div></div>
+    <div class="stat"><div class="k">CO2排出量</div><div class="v">${fmt1(co2Cur)} t</div><div class="d">係数 ${CO2} kg-CO2/L</div></div>
+    <div class="stat"><div class="k">前年度比</div><div class="v">${hasPrev?`<span class="${diff>0?"up":"down"}">${diff>0?"+":""}${fmt(diff)} L</span>`:"—"}</div><div class="d">${hasPrev?`${diffPct>0?"+":""}${diffPct.toFixed(1)}%(前年 ${fmt(prev.total)} L)`:"前年度の記録がありません"}</div></div>
+    <div class="stat"><div class="k">1台あたり平均</div><div class="v">${vCount?fmt(cur.total/vCount):"—"} L</div><div class="d">CO2 約${vCount?fmt1(co2Cur/vCount):"—"} t/台</div></div>
+  </div>`;
+  // 目安目標(前年比3%減)
+  if(hasPrev){
+    const goal = prev.total*0.97;
+    const ok = cur.total<=goal;
+    html += `<div class="card" style="border-left:5px solid ${ok?"#15803d":"#b45309"};">
+      🎯 <b>目安目標(前年度比3%削減): ${fmt(goal)} L</b>　→ ${cur.monthCount<12?"進行中":(ok?'<b class="down">達成!</b>':`<b class="up">未達(+${fmt(cur.total-goal)} L)</b>`)}
+    </div>`;
+  }
+
+  // 月別推移(前年同月と並べる)
+  const maxV = Math.max(...cur.months.map(m=>cur.byMonth[m]||0), ...(hasPrev?prev.months.map(m=>prev.byMonth[m]||0):[0]), 1);
+  html += `<div class="secHead">📅 月別推移${hasPrev?"(グレー=前年度)":""}</div><div class="card"><table>
+    <tr><th>月</th><th>使用量</th>${hasPrev?"<th>前年同月</th><th>増減</th>":""}<th style="text-align:left;">グラフ</th></tr>`;
+  cur.months.forEach((m,i)=>{
+    const v = cur.byMonth[m]||0;
+    const pv = hasPrev ? (prev.byMonth[prev.months[i]]||0) : 0;
+    const d = v-pv;
+    html += `<tr><td>${+m.slice(5,7)}月</td><td>${v?fmt(v):"−"}</td>
+      ${hasPrev?`<td style="color:#94a3b8;">${pv?fmt(pv):"−"}</td><td>${v&&pv?`<span class="${d>0?"up":"down"}">${d>0?"+":""}${fmt(d)}</span>`:"−"}</td>`:""}
+      <td style="text-align:left;min-width:110px;">${hasPrev?`<span class="bar barPrev" style="width:${Math.round(pv/maxV*100)}px;"></span><br>`:""}<span class="bar" style="width:${Math.round(v/maxV*100)}px;"></span></td></tr>`;
+  });
+  html += `</table></div>`;
+
+  // 車両ランキング
+  const rank = Object.entries(cur.byVehicle).sort((a,b)=>b[1]-a[1]);
+  if(rank.length){
+    const top10 = rank.slice(0,10);
+    const topSum = top10.reduce((a,b)=>a+b[1],0);
+    html += `<div class="secHead">🚛 使用量ランキング(上位10台)</div><div class="card"><table>
+      <tr><th>順位</th><th style="text-align:left;">車両</th><th>使用量</th>${hasPrev?"<th>前年</th><th>増減</th>":""}</tr>`;
+    top10.forEach(([name,v],i)=>{
+      const pv = prev.byVehicle[name]||0;
+      const d = v-pv;
+      html += `<tr><td>${i+1}</td><td style="text-align:left;">${esc(name)}</td><td><b>${fmt(v)} L</b></td>
+        ${hasPrev?`<td style="color:#94a3b8;">${pv?fmt(pv):"−"}</td><td>${pv?`<span class="${d>0?"up":"down"}">${d>0?"+":""}${fmt(d)}</span>`:"新"}</td>`:""}</tr>`;
+    });
+    html += `</table><div class="note">上位10台で全体の約${cur.total?Math.round(topSum/cur.total*100):0}%(${fmt(topSum)} L)</div></div>`;
+
+    const low = rank.filter(([n,v])=>v<2000).sort((a,b)=>a[1]-b[1]);
+    if(low.length){
+      html += `<div class="secHead">📦 低稼働車両(年間2,000L未満・${low.length}台)</div><div class="card"><table>`;
+      low.forEach(([name,v])=>{ html += `<tr><td style="text-align:left;">${esc(name)}</td><td>${fmt(v)} L</td></tr>`; });
+      html += `</table><div class="note">予備・短距離中心の車両。環境負荷は小さいが維持コストの見直し候補</div></div>`;
+    }
+  }
+  box.innerHTML = html;
+}
+
+/* ---- 前年度Excelデータの取込 ---- */
+async function runImport(){
+  const btn = document.getElementById("impBtn");
+  btn.disabled = true;
+  const existing = new Set(allRecords.map(r=>r.yearMonth));
+  let added=0, skipped=0;
+  try{
+    for(const rec of IMPORT_DATA){
+      if(existing.has(rec.yearMonth)){ skipped++; continue; }
+      await db.collection("dieselRecords").add(rec);
+      added++;
+      btn.textContent = `取り込み中… ${added}件`;
+    }
+    toast(`✅ ${added}件を取り込みました${skipped?`(${skipped}件は登録済みのためスキップ)`:""}`);
+    btn.textContent = "📥 取り込みを実行";
+  }catch(e){ toast("❌ 取り込みに失敗: "+e.message); btn.textContent = "📥 取り込みを実行"; }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
