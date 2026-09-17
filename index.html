@@ -2427,7 +2427,12 @@ function renderDieselList() {
 
   const groups = {};
   filtered.forEach(r => {
-    const y = (r.yearMonth||"未設定").slice(0,4) || "未設定";
+    const ym = r.yearMonth || "";
+    let y = "未設定";
+    if (/^\d{4}-\d{2}/.test(ym)) {
+      const yy = +ym.slice(0,4), mm = +ym.slice(5,7);
+      y = String(mm >= 8 ? yy : yy - 1); // 年度(8月〜翌7月)
+    }
     if (!groups[y]) groups[y] = [];
     groups[y].push(r);
   });
@@ -2470,7 +2475,7 @@ function renderDieselList() {
     }).join("");
 
     return `
-      <div class="year-group-label">${y}年
+      <div class="year-group-label">${y==="未設定"?y:`${y}年度(${y}.8〜${+y+1}.7)`}
         <button class="jpeg-btn" style="height:28px;padding:0 10px;font-size:11px;margin-left:8px;" onclick="openDieselTarget('${y}')">🎯 目標設定</button>
       </div>
       <div class="event-card" style="border-left-color:#0369a1;background:#f0f9ff;">
