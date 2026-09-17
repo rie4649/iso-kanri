@@ -721,12 +721,15 @@
   </div>
 
   <div class="master-panel" id="masterPanel-dieselVehicle">
-    <div class="year-group-label" style="margin-top:14px;">⛽ 車両名</div>
-    <div id="dieselVehicleList" style="margin-top:14px;"></div>
+    <div style="background:#eef3fb;border-radius:10px;padding:12px;font-size:13px;line-height:1.7;margin-top:14px;">🚛 今の車両は<b>マスタ管理アプリの車両</b>と自動で連動しています(呼び名があれば呼び名で表示)。車両の追加・変更はマスタ管理で。<br>廃車にした車両も過去の記録のために下の「過去の車両」に残せます。</div>
+    <div class="year-group-label" style="margin-top:14px;">🚛 今の車両(マスタ連動)</div>
+    <div id="dieselMasterVehicleList" style="margin-top:8px;"></div>
+    <div class="year-group-label" style="margin-top:18px;">📦 過去の車両(廃車など・ここだけの登録)</div>
+    <div id="dieselVehicleList" style="margin-top:8px;"></div>
     <div class="add-master-form">
       <div class="field">
-        <label>車両名</label>
-        <input type="text" id="newDieselVehicle" placeholder="例：4tダンプ、2tユニック">
+        <label>車両名(マスタにない車両・廃車の名前を残したいとき)</label>
+        <input type="text" id="newDieselVehicle" placeholder="例：旧4tダンプ(廃車)">
       </div>
       <button type="button" class="submit-btn" id="addDieselVehicleBtn">追加</button>
     </div>
@@ -2165,6 +2168,27 @@ document.getElementById("jpegBtnClean").addEventListener("click", () => {
 });
 
 // ---- 車両名マスター(軽油使用量用) ----
+// マスタ管理の車両(master_vehicles)と連動。呼び名があれば呼び名、なければ車番で表示。
+// dieselVehiclesコレクションは「マスタにない過去の車両(廃車など)」の置き場として残す。
+let allMasterVehicles = [];
+function subscribeMasterVehicles() {
+  db.collection("master_vehicles").onSnapshot(snapshot => {
+    allMasterVehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    allMasterVehicles.sort((a,b) => String(a.number||"").localeCompare(String(b.number||""), "ja"));
+    renderDieselVehicleList();
+    renderDieselList();
+  }, err => console.error("master_vehicles読込エラー", err));
+}
+function masterVehicleNames() {
+  return allMasterVehicles.map(v => (v.nickname || v.number || "").trim()).filter(Boolean);
+}
+// 現役(マスタ)＋過去(ISO独自でマスタと重複しない名前)
+function dieselVehicleNameGroups() {
+  const current = masterVehicleNames();
+  const cset = new Set(current);
+  const past = allDieselVehicles.map(v => (v.name||"").trim()).filter(n => n && !cset.has(n));
+  return { current, past };
+}
 function subscribeDieselVehicles() {
   db.collection(DIESEL_VEHICLE_COLLECTION).orderBy("name").onSnapshot(snapshot => {
     allDieselVehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2173,14 +2197,23 @@ function subscribeDieselVehicles() {
   });
 }
 function renderDieselVehicleList() {
+  const mEl = document.getElementById("dieselMasterVehicleList");
+  if (mEl) {
+    mEl.innerHTML = allMasterVehicles.length ? allMasterVehicles.map(v => {
+      const disp = (v.nickname || v.number || "").trim();
+      const sub = v.nickname && v.number ? `　<span style="color:#8b8b9e;font-size:12px;">${escapeHtml(v.number)}</span>` : "";
+      return `<div class="master-item"><div class="master-item-info"><span>🚛 ${escapeHtml(disp)}${sub}</span></div></div>`;
+    }).join("") : '<div class="empty-state" style="padding:14px;">マスタ管理にまだ車両がありません</div>';
+  }
   const el = document.getElementById("dieselVehicleList");
-  if (!allDieselVehicles.length) { el.innerHTML = '<div class="empty-state" style="padding:14px;">まだ車両が登録されていません</div>'; return; }
-  el.innerHTML = allDieselVehicles.map(v => `
+  const cset = new Set(masterVehicleNames());
+  const past = allDieselVehicles.filter(v => (v.name||"").trim() && !cset.has((v.name||"").trim()));
+  el.innerHTML = past.length ? past.map(v => `
     <div class="master-item">
       <div class="master-item-info"><span>${escapeHtml(v.name)}</span></div>
       <div class="master-item-actions"><button onclick="deleteDieselVehicle('${v.id}')">削除</button></div>
     </div>
-  `).join("");
+  `).join("") : '<div class="empty-state" style="padding:14px;">過去の車両はありません(マスタと同じ名前の登録は「今の車両」に統合表示)</div>';
 }
 window.deleteDieselVehicle = function(id) {
   if (!confirm("この車両を削除しますか？")) return;
@@ -2246,7 +2279,12 @@ function addDieselVehicleRow(prefill) {
   const container = document.getElementById("dieselVehiclesContainer");
   const row = document.createElement("div");
   row.className = "water-item-row";
-  const options = allDieselVehicles.map(v => `<option value="${escapeHtml(v.name)}">${escapeHtml(v.name)}</option>`).join("");
+  const g = dieselVehicleNameGroups();
+  let options = g.current.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  if (g.past.length) options += `<optgroup label="── 過去の車両 ──">` + g.past.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("") + `</optgroup>`;
+  if (prefill && prefill.name && !g.current.includes(prefill.name) && !g.past.includes(prefill.name)) {
+    options += `<option value="${escapeHtml(prefill.name)}">${escapeHtml(prefill.name)}</option>`;
+  }
   const standOptions = allGasStands.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join("");
   row.innerHTML = `
     <div class="field">
@@ -5594,6 +5632,7 @@ subscribeMetalRecords();
 subscribeCleanZones();
 subscribeCleanChecks();
 subscribeDieselVehicles();
+subscribeMasterVehicles();
 subscribeGasStands();
 subscribeDieselRecords();
 subscribeDieselTargets();
