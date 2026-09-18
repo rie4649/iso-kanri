@@ -242,6 +242,15 @@
   .fr-qchips button.act { background:#0d9488; color:#fff; border-color:#0d9488; }
   .status-table td.undone { color: #c3c3d1; cursor: pointer; }
   .status-table td.rowhead { text-align: left; background: #fafafa; font-weight: 600; }
+  /* 軽油使用量 マトリクス表（車両×スタンド / 車両×月） */
+  .fuel-matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; border: 1px solid #ececf3; border-radius: 8px; }
+  .fuel-matrix { border-collapse: separate; border-spacing: 0; font-size: 11.5px; width: max-content; min-width: 100%; }
+  .fuel-matrix th, .fuel-matrix td { border-bottom: 1px solid #ececf3; border-right: 1px solid #ececf3; padding: 5px 8px; text-align: right; white-space: nowrap; background: #fff; }
+  .fuel-matrix thead th { background: #e0f2fe; color: #0369a1; font-weight: 700; text-align: center; }
+  .fuel-matrix th:first-child, .fuel-matrix td:first-child { position: sticky; left: 0; z-index: 2; text-align: left; font-weight: 600; background: #f8fafc; box-shadow: 1px 0 0 #ececf3; }
+  .fuel-matrix thead th:first-child { background: #e0f2fe; z-index: 3; }
+  .fuel-matrix td.coltotal, .fuel-matrix th.coltotal { background: #f0f9ff; font-weight: 700; }
+  .fuel-matrix tr.total-row td { background: #f0f9ff; font-weight: 800; border-top: 2px solid #bae6fd; }
 
   .noise-judge-good { background: #dcfce7; color: #15803d; }
   .noise-judge-warn { background: #fef9c3; color: #a16207; }
@@ -2416,6 +2425,129 @@ dieselTargetFormEl.addEventListener("submit", async (e) => {
   } catch (err) { alert("保存エラー: " + err.message); }
 });
 
+// ---- マトリクス表ヘルパー（車両×スタンド / 車両×月） ----
+function dieselFmtL(n) {
+  if (!n) return "";
+  return (Math.round(n * 100) / 100).toLocaleString();
+}
+function sortDieselVehicleNames(names) {
+  return names.sort((a, b) => {
+    const na = /^\d+(\.\d+)?$/.test(a), nb = /^\d+(\.\d+)?$/.test(b);
+    if (na && nb) return Number(a) - Number(b);
+    if (na) return -1;
+    if (nb) return 1;
+    return a.localeCompare(b, "ja");
+  });
+}
+function dieselStandColumns(records) {
+  const set = new Set();
+  records.forEach(r => (r.vehicles||[]).forEach(v => set.add((v.stand||"").trim())));
+  const masterOrder = allGasStands.map(s => (s.name||"").trim());
+  const stands = [...set].filter(s => s !== "");
+  stands.sort((a, b) => {
+    const ia = masterOrder.indexOf(a), ib = masterOrder.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return a.localeCompare(b, "ja");
+  });
+  if (set.has("")) stands.push("");
+  return stands;
+}
+function buildDieselMonthMatrix(r) {
+  const stands = dieselStandColumns([r]);
+  const byVehicle = {};
+  (r.vehicles||[]).forEach(v => {
+    const name = (v.name||"").trim();
+    if (!name) return;
+    const stand = (v.stand||"").trim();
+    if (!byVehicle[name]) byVehicle[name] = {};
+    byVehicle[name][stand] = (byVehicle[name][stand]||0) + (Number(v.liters)||0);
+  });
+  const vehicles = sortDieselVehicleNames(Object.keys(byVehicle));
+  if (!vehicles.length || !stands.length) return "";
+  const standTotals = {};
+  let grand = 0;
+  let html = `<div class="fuel-matrix-wrap"><table class="fuel-matrix"><thead><tr><th>車両</th>${stands.map(s => `<th>${s ? escapeHtml(s) : "未設定"}</th>`).join("")}<th class="coltotal">合計</th></tr></thead><tbody>`;
+  vehicles.forEach(name => {
+    let rowTotal = 0;
+    const cells = stands.map(s => {
+      const val = byVehicle[name][s] || 0;
+      rowTotal += val;
+      standTotals[s] = (standTotals[s]||0) + val;
+      return `<td>${dieselFmtL(val)}</td>`;
+    }).join("");
+    grand += rowTotal;
+    html += `<tr><td>${escapeHtml(name)}</td>${cells}<td class="coltotal">${dieselFmtL(rowTotal)}</td></tr>`;
+  });
+  html += `<tr class="total-row"><td>合計</td>${stands.map(s => `<td>${dieselFmtL(standTotals[s]||0)}</td>`).join("")}<td class="coltotal">${dieselFmtL(grand)}</td></tr>`;
+  html += `</tbody></table></div>`;
+  return html;
+}
+const DIESEL_FY_MONTHS = [8,9,10,11,12,1,2,3,4,5,6,7]; // 年度＝8月〜翌7月
+function dieselYearMatrixData(records) {
+  const byVehicle = {};
+  const monthTotals = {};
+  records.forEach(r => {
+    const ym = r.yearMonth || "";
+    if (!/^\d{4}-\d{2}/.test(ym)) return;
+    const mm = +ym.slice(5,7);
+    (r.vehicles||[]).forEach(v => {
+      const name = (v.name||"").trim();
+      if (!name) return;
+      const val = Number(v.liters)||0;
+      if (!byVehicle[name]) byVehicle[name] = {};
+      byVehicle[name][mm] = (byVehicle[name][mm]||0) + val;
+      monthTotals[mm] = (monthTotals[mm]||0) + val;
+    });
+  });
+  return { vehicles: sortDieselVehicleNames(Object.keys(byVehicle)), byVehicle, monthTotals };
+}
+function buildDieselYearMatrix(records) {
+  const { vehicles, byVehicle, monthTotals } = dieselYearMatrixData(records);
+  if (!vehicles.length) return "";
+  let grand = 0;
+  let html = `<div class="fuel-matrix-wrap"><table class="fuel-matrix"><thead><tr><th>車両</th>${DIESEL_FY_MONTHS.map(m => `<th>${m}月</th>`).join("")}<th class="coltotal">合計</th></tr></thead><tbody>`;
+  vehicles.forEach(name => {
+    let rowTotal = 0;
+    const cells = DIESEL_FY_MONTHS.map(m => {
+      const val = byVehicle[name][m] || 0;
+      rowTotal += val;
+      return `<td>${dieselFmtL(val)}</td>`;
+    }).join("");
+    grand += rowTotal;
+    html += `<tr><td>${escapeHtml(name)}</td>${cells}<td class="coltotal">${dieselFmtL(rowTotal)}</td></tr>`;
+  });
+  html += `<tr class="total-row"><td>月合計</td>${DIESEL_FY_MONTHS.map(m => `<td>${dieselFmtL(monthTotals[m]||0)}</td>`).join("")}<td class="coltotal">${dieselFmtL(grand)}</td></tr>`;
+  html += `</tbody></table></div>`;
+  return html;
+}
+function dieselRecordsOfFiscalYear(y) {
+  return allDieselRecords.filter(r => {
+    const ym = r.yearMonth || "";
+    if (!/^\d{4}-\d{2}/.test(ym)) return false;
+    const yy = +ym.slice(0,4), mm = +ym.slice(5,7);
+    return String(mm >= 8 ? yy : yy - 1) === y;
+  });
+}
+window.exportDieselYearMatrixJpeg = function(y) {
+  const { vehicles, byVehicle, monthTotals } = dieselYearMatrixData(dieselRecordsOfFiscalYear(y));
+  if (!vehicles.length) { alert("この年度の記録がありません"); return; }
+  let grand = 0;
+  const rows = vehicles.map(name => {
+    let rowTotal = 0;
+    const cells = DIESEL_FY_MONTHS.map(m => {
+      const val = byVehicle[name][m] || 0;
+      rowTotal += val;
+      return dieselFmtL(val);
+    });
+    grand += rowTotal;
+    return [escapeHtml(name), ...cells, dieselFmtL(rowTotal)];
+  });
+  rows.push(["月合計", ...DIESEL_FY_MONTHS.map(m => dieselFmtL(monthTotals[m]||0)), dieselFmtL(grand)]);
+  exportTableAsJpeg(`軽油使用量 年間票 ${y}年度(${y}.8〜${+y+1}.7)`, ["車両", ...DIESEL_FY_MONTHS.map(m => m+"月"), "合計"], rows, `軽油年間票${y}年度`);
+};
+
 function renderDieselList() {
   const container = document.getElementById("dieselListContainer");
   let filtered = allDieselRecords;
@@ -2459,12 +2591,11 @@ function renderDieselList() {
       : "";
 
     const monthRowsHtml = records.map(r => {
-      const vehiclesText = (r.vehicles||[]).map(v => `${v.name}${v.stand?"（"+v.stand+"）":""}: ${v.liters}L`).join("・");
       return `
       <div class="event-card" style="border-left-color:#0369a1;">
         <div class="event-date">${r.yearMonth || "-"}</div>
         <div class="event-title">${Number(r.totalLiters||0).toLocaleString()} L</div>
-        ${vehiclesText ? `<div class="event-notes">${escapeHtml(vehiclesText)}</div>` : ""}
+        ${buildDieselMonthMatrix(r)}
         ${r.notes ? `<div class="event-notes">${escapeHtml(r.notes)}</div>` : ""}
         <div class="event-actions">
           <button class="btn-edit" onclick="openEditDiesel('${r.id}')">編集</button>
@@ -2483,6 +2614,15 @@ function renderDieselList() {
         <div class="water-test-item-line"><span>CO₂換算量</span><span>${co2Ton.toFixed(2)} トンCO₂</span></div>
         ${targetHtml}
       </div>
+      ${y !== "未設定" ? `
+        <div class="event-card" style="border-left-color:#0369a1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div class="event-title" style="font-size:13px;">📊 年間票（車両×月）</div>
+            <button class="jpeg-btn" style="height:28px;padding:0 10px;font-size:11px;" onclick="exportDieselYearMatrixJpeg('${y}')">🖨️ JPEG</button>
+          </div>
+          ${buildDieselYearMatrix(records)}
+        </div>
+      ` : ""}
       ${top5.length ? `
         <div class="event-card" style="border-left-color:#15803d;">
           <div class="event-title" style="font-size:13px;">使用量 上位車両</div>
