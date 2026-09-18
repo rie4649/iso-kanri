@@ -73,7 +73,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const CO2 = 2.58;
-const EMBED = {"PREV": {"total": 155433.84, "months": {"2024-08": 11550.35, "2024-09": 12151.59, "2024-10": 11879.64, "2024-11": 13355.33, "2024-12": 13791.31, "2025-01": 12246.11, "2025-02": 11953.61, "2025-03": 15168.44, "2025-04": 13333.76, "2025-05": 12449.09, "2025-06": 12915.29, "2025-07": 14639.32}, "vehicles": {"576": 3552.47, "950": 3312.81, "6ヒア": 1920.31, "5t": 5599.71, "新10Ｔ": 9097.13, "230": 2771.89, "タダノ": 1796.01, "3tワイド": 2170.64, "2.9": 1644.9, "8t": 4647.51, "三菱ワイド": 3346.38, "青パッカー": 2220.15, "セルフ": 2561.22, "265": 2938.86, "10t": 7255.11, "いすゞ25t": 24079.01, "5ヒア": 10661.16, "6ヒアロング": 5837.62, "620": 4577.9, "三菱25t": 11020, "ヒノ": 3511.04, "アームロール": 1334.32, "640": 8108.51, "25tセルフ": 4176.2, "340": 1923.04, "3ヒア": 2352.14, "440": 1176.53, "白パッカー": 203.12, "ツートン": 1123.74, "290": 1817.28, "3tパッカー": 1674.83, "3t": 1679.43, "低クレ": 4240.67, "ハイエース": 880.35, "567": 1223.92, "全リフト": 4955.64, "新3ヒア": 242.19}, "stands": {"宇佐美": 78457.5, "ラインネット": 39773.5, "アミコ": 22108.4, "日信サービス": 7416.2, "SHIOZAWA": 5477.8, "さらしな石油": 1470.7, "山田屋給油所": 729.7}}, "AUG": {"yearMonth": "2025-08", "totalLiters": 12781.67, "vehicles": [{"name": "576", "stand": "SHIOZAWA", "liters": 31.0}, {"name": "576", "stand": "宇佐美", "liters": 134.0}, {"name": "576", "stand": "アミコ", "liters": 92.09}, {"name": "950", "stand": "宇佐美", "liters": 160.1}, {"name": "950", "stand": "日信サービス", "liters": 42.6}, {"name": "6ヒア", "stand": "宇佐美", "liters": 267.0}, {"name": "5t", "stand": "宇佐美", "liters": 506.0}, {"name": "5t", "stand": "ラインネット", "liters": 79.0}, {"name": "新10Ｔ", "stand": "宇佐美", "liters": 286.0}, {"name": "新10Ｔ", "stand": "ラインネット", "liters": 574.0}, {"name": "230", "stand": "SHIOZAWA", "liters": 62.0}, {"name": "230", "stand": "アミコ", "liters": 206.94}, {"name": "230", "stand": "日信サービス", "liters": 52.0}, {"name": "タダノ", "stand": "宇佐美", "liters": 199.0}, {"name": "タダノ", "stand": "日信サービス", "liters": 126.91}, {"name": "3tワイド", "stand": "アミコ", "liters": 108.44}, {"name": "2.9", "stand": "アミコ", "liters": 118.91}, {"name": "2.9", "stand": "日信サービス", "liters": 98.0}, {"name": "6ヒア", "stand": "宇佐美", "liters": 192.0}, {"name": "8t", "stand": "宇佐美", "liters": 368.0}, {"name": "8t", "stand": "アミコ", "liters": 45.0}, {"name": "三菱ワイド", "stand": "アミコ", "liters": 127.66}, {"name": "三菱ワイド", "stand": "日信サービス", "liters": 103.01}, {"name": "青パッカー", "stand": "宇佐美", "liters": 107.0}, {"name": "青パッカー", "stand": "アミコ", "liters": 142.14}, {"name": "セルフ", "stand": "宇佐美", "liters": 160.0}, {"name": "セルフ", "stand": "ラインネット", "liters": 143.0}, {"name": "265", "stand": "宇佐美", "liters": 179.0}, {"name": "10t", "stand": "宇佐美", "liters": 497.0}, {"name": "いすゞ25t", "stand": "宇佐美", "liters": 400.0}, {"name": "いすゞ25t", "stand": "ラインネット", "liters": 1358.0}, {"name": "5ヒア", "stand": "宇佐美", "liters": 623.0}, {"name": "5ヒア", "stand": "ラインネット", "liters": 171.06}, {"name": "6ヒアロング", "stand": "宇佐美", "liters": 371.0}, {"name": "620", "stand": "宇佐美", "liters": 369.0}, {"name": "三菱25t", "stand": "宇佐美", "liters": 433.0}, {"name": "三菱25t", "stand": "ラインネット", "liters": 585.0}, {"name": "ヒノ", "stand": "宇佐美", "liters": 56.0}, {"name": "ヒノ", "stand": "アミコ", "liters": 65.5}, {"name": "640", "stand": "宇佐美", "liters": 452.0}, {"name": "640", "stand": "ラインネット", "liters": 228.4}, {"name": "25tセルフ", "stand": "宇佐美", "liters": 266.0}, {"name": "440", "stand": "宇佐美", "liters": 19.0}, {"name": "440", "stand": "日信サービス", "liters": 57.9}, {"name": "白パッカー", "stand": "日信サービス", "liters": 30.8}, {"name": "白パッカー", "stand": "ラインネット", "liters": 25.0}, {"name": "ツートン", "stand": "アミコ", "liters": 100.9}, {"name": "3tパッカー", "stand": "アミコ", "liters": 166.47}, {"name": "3t", "stand": "アミコ", "liters": 130.13}, {"name": "3t", "stand": "日信サービス", "liters": 61.4}, {"name": "低クレ", "stand": "アミコ", "liters": 683.96}, {"name": "ハイエース", "stand": "宇佐美", "liters": 114.48}, {"name": "567", "stand": "SHIOZAWA", "liters": 63.7}, {"name": "567", "stand": "宇佐美", "liters": 98.0}, {"name": "567", "stand": "アミコ", "liters": 101.5}, {"name": "567", "stand": "日信サービス", "liters": 35.0}, {"name": "全リフト", "stand": "SHIOZAWA", "liters": 54.0}, {"name": "全リフト", "stand": "アミコ", "liters": 164.2}, {"name": "全リフト", "stand": "さらしな石油", "liters": 90.0}, {"name": "新3ヒア", "stand": "アミコ", "liters": 199.47}], "notes": "2025年8月(前年度Excelより・スタンド別)"}};
+const EMBED = {"PREV": {"total": 155191.65, "months": {"2024-08": 11550.35, "2024-09": 12151.59, "2024-10": 11879.64, "2024-11": 13355.33, "2024-12": 13791.31, "2025-01": 12246.11, "2025-02": 11953.61, "2025-03": 15168.44, "2025-04": 13333.76, "2025-05": 12449.09, "2025-06": 12915.29, "2025-07": 14397.13}, "vehicles": {"576": 3552.47, "950": 3312.81, "6ヒア": 1920.31, "5t": 5599.71, "新10Ｔ": 9097.13, "230": 2771.89, "タダノ": 1796.01, "3tワイド": 2170.64, "2.9": 1644.9, "8t": 4647.51, "三菱ワイド": 3346.38, "青パッカー": 2220.15, "セルフ": 2561.22, "265": 2938.86, "10t": 7255.11, "いすゞ25t": 24079.01, "5ヒア": 10661.16, "6ヒアロング": 5837.62, "620": 4577.9, "三菱25t": 11020, "ヒノ": 3511.04, "アームロール": 1334.32, "640": 8108.51, "25tセルフ": 4176.2, "340": 1923.04, "3ヒア": 2352.14, "440": 1176.53, "白パッカー": 203.12, "ツートン": 1123.74, "290": 1817.28, "3tパッカー": 1674.83, "3t": 1679.43, "低クレ": 4240.67, "ハイエース": 880.35, "567": 1223.92, "全リフト": 4955.64}, "stands": {"宇佐美": 78457.5, "ラインネット": 39773.5, "アミコ": 22108.4, "日信サービス": 7416.2, "SHIOZAWA": 5477.8, "さらしな石油": 1470.7, "山田屋給油所": 729.7}}, "AUG": {"yearMonth": "2025-08", "totalLiters": 12781.67, "vehicles": [{"name": "576", "stand": "SHIOZAWA", "liters": 31.0}, {"name": "576", "stand": "宇佐美", "liters": 134.0}, {"name": "576", "stand": "アミコ", "liters": 92.09}, {"name": "950", "stand": "宇佐美", "liters": 160.1}, {"name": "950", "stand": "日信サービス", "liters": 42.6}, {"name": "6ヒア", "stand": "宇佐美", "liters": 267.0}, {"name": "5t", "stand": "宇佐美", "liters": 506.0}, {"name": "5t", "stand": "ラインネット", "liters": 79.0}, {"name": "新10Ｔ", "stand": "宇佐美", "liters": 286.0}, {"name": "新10Ｔ", "stand": "ラインネット", "liters": 574.0}, {"name": "230", "stand": "SHIOZAWA", "liters": 62.0}, {"name": "230", "stand": "アミコ", "liters": 206.94}, {"name": "230", "stand": "日信サービス", "liters": 52.0}, {"name": "タダノ", "stand": "宇佐美", "liters": 199.0}, {"name": "タダノ", "stand": "日信サービス", "liters": 126.91}, {"name": "3tワイド", "stand": "アミコ", "liters": 108.44}, {"name": "2.9", "stand": "アミコ", "liters": 118.91}, {"name": "2.9", "stand": "日信サービス", "liters": 98.0}, {"name": "6ヒア", "stand": "宇佐美", "liters": 192.0}, {"name": "8t", "stand": "宇佐美", "liters": 368.0}, {"name": "8t", "stand": "アミコ", "liters": 45.0}, {"name": "三菱ワイド", "stand": "アミコ", "liters": 127.66}, {"name": "三菱ワイド", "stand": "日信サービス", "liters": 103.01}, {"name": "青パッカー", "stand": "宇佐美", "liters": 107.0}, {"name": "青パッカー", "stand": "アミコ", "liters": 142.14}, {"name": "セルフ", "stand": "宇佐美", "liters": 160.0}, {"name": "セルフ", "stand": "ラインネット", "liters": 143.0}, {"name": "265", "stand": "宇佐美", "liters": 179.0}, {"name": "10t", "stand": "宇佐美", "liters": 497.0}, {"name": "いすゞ25t", "stand": "宇佐美", "liters": 400.0}, {"name": "いすゞ25t", "stand": "ラインネット", "liters": 1358.0}, {"name": "5ヒア", "stand": "宇佐美", "liters": 623.0}, {"name": "5ヒア", "stand": "ラインネット", "liters": 171.06}, {"name": "6ヒアロング", "stand": "宇佐美", "liters": 371.0}, {"name": "620", "stand": "宇佐美", "liters": 369.0}, {"name": "三菱25t", "stand": "宇佐美", "liters": 433.0}, {"name": "三菱25t", "stand": "ラインネット", "liters": 585.0}, {"name": "ヒノ", "stand": "宇佐美", "liters": 56.0}, {"name": "ヒノ", "stand": "アミコ", "liters": 65.5}, {"name": "640", "stand": "宇佐美", "liters": 452.0}, {"name": "640", "stand": "ラインネット", "liters": 228.4}, {"name": "25tセルフ", "stand": "宇佐美", "liters": 266.0}, {"name": "440", "stand": "宇佐美", "liters": 19.0}, {"name": "440", "stand": "日信サービス", "liters": 57.9}, {"name": "白パッカー", "stand": "日信サービス", "liters": 30.8}, {"name": "白パッカー", "stand": "ラインネット", "liters": 25.0}, {"name": "ツートン", "stand": "アミコ", "liters": 100.9}, {"name": "3tパッカー", "stand": "アミコ", "liters": 166.47}, {"name": "3t", "stand": "アミコ", "liters": 130.13}, {"name": "3t", "stand": "日信サービス", "liters": 61.4}, {"name": "低クレ", "stand": "アミコ", "liters": 683.96}, {"name": "ハイエース", "stand": "宇佐美", "liters": 114.48}, {"name": "567", "stand": "SHIOZAWA", "liters": 63.7}, {"name": "567", "stand": "宇佐美", "liters": 98.0}, {"name": "567", "stand": "アミコ", "liters": 101.5}, {"name": "567", "stand": "日信サービス", "liters": 35.0}, {"name": "全リフト", "stand": "SHIOZAWA", "liters": 54.0}, {"name": "全リフト", "stand": "アミコ", "liters": 164.2}, {"name": "全リフト", "stand": "さらしな石油", "liters": 90.0}, {"name": "新3ヒア", "stand": "アミコ", "liters": 199.47}], "notes": "2025年8月(前年度Excelより・スタンド別)"}};
 const OLD_IMPORT_NOTE = "前年度Excelより取込";
 
 let toastTimer;
@@ -160,15 +160,26 @@ function render(){
 
   let h = `<div class="paper">
     <h2>軽油使用量・CO2排出量 分析報告書(${curFy}年8月〜${curFy+1}年7月)</h2>
-    <div class="period">対象期間: ${curFy}年8月1日〜${curFy+1}年7月31日${full?"(12か月)":`のうち、入力済みの<b>${cur.monthCount}か月分</b>(進行中)`}${cur.ref?"　※前年度Excelまとめから自動集計":""}</div>
+    <div class="period">対象期間: ${curFy}年8月1日〜${curFy+1}年7月31日${full?"(12か月)":`のうち、入力済みの<b>${cur.monthCount}か月分</b>(進行中)`}${cur.ref?"　※提出済みの分析報告書に合わせて表示":""}</div>
 
-    <div class="jh">年間実績${full?"":"(いまの時点)"}</div>
+    <div class="jh">年間実績${full?"":"(いまの時点)"}</div>`;
+  if(cur.ref){
+    h += `
+    <div class="li">・軽油使用量合計: <b class="num">155,191.65 L</b>／年(車両37台分)</div>
+    <div class="li">・CO2排出量合計: <b class="num">約416トン</b>／年</div>
+    <div class="li">・1台あたり平均: 軽油 4,194 L／年／台、CO2 約11.2トン／年／台</div>
+    <div class="li">・上位10台で全体の約59%(約91,261 L)を消費 — 大型車(25t・10t)が中心、長距離・重量物運搬が多い</div>
+    <div class="li">・低稼働車両(年間2,000L未満): 7台前後 — 予備・短距離利用中心</div>
+    <div class="li">・ピーク月: 12月・3月・5月・6月(閑散月: 1月・2月) — 燃料使用の波が大きく、配車計画改善の余地あり</div>`;
+  } else {
+    h += `
     <div class="li">・軽油使用量合計: <b class="num">${fmt(cur.total)} L</b>${full?"／年":""}(車両${vCount}台分)</div>
     <div class="li">・CO2排出量合計: <b class="num">約${fmt1(co2)}トン</b>(排出係数${CO2}kg-CO2/L)</div>
     <div class="li">・1台あたり平均: 軽油 ${vCount?fmt(cur.total/vCount):"−"} L／台、CO2 約${vCount?fmt1(co2/vCount):"−"}トン／台</div>
     ${top10.length?`<div class="li">・上位10台で全体の約${cur.total?Math.round(topSum/cur.total*100):0}%(約${fmt(topSum)} L)を消費</div>`:""}
     ${full&&lowVeh.length?`<div class="li">・低稼働車両(年間2,000L未満): ${lowVeh.length}台</div>`:""}
     ${peaks?`<div class="li">・ピーク月: ${peaks}${lows?`(閑散月: ${lows})`:""}</div>`:""}`;
+  }
 
   // 前年度比較
   if(hasPrev){
@@ -186,14 +197,14 @@ function render(){
         (<b class="${d>0?"up":"down"}">${d>0?"+":""}${fmt(d)} L、${pct>0?"+":""}${pct.toFixed(1)}%</b>)
         ${d<=0?"👏 削減ペースです":"⚠️ 前年より増えています"}</div>`;
     }
-    const goal = prev.total*0.97;
+    const goal = prev.ref ? 150500 : prev.total*0.97;
+    const goalCo2 = prev.ref ? "約403" : "約"+fmt1(goal*CO2/1000);
     h += `<div class="jh">${cur.ref?"次年度":"今年度"}目標(前年度比3%削減)</div>
-      <div class="li">・軽油使用量: <b class="num">${fmt(goal)} L以下</b>　・CO2排出量: 約${fmt1(goal*CO2/1000)}トン以下</div>
+      <div class="li">・軽油使用量: <b class="num">${fmt(goal)} L以下</b>　・CO2排出量: ${goalCo2}トン以下</div>
       ${!cur.ref&&full?`<div class="li">→ ${cur.total<=goal?'<b class="down">✅ 達成しました!</b>':`<b class="up">未達(あと${fmt(cur.total-goal)} L)</b>`}</div>`:""}`;
   } else if(cur.ref){
-    const goal = cur.total*0.97;
     h += `<div class="jh">次年度目標(2025年度・前年比3%削減)</div>
-      <div class="li">・軽油使用量: <b class="num">${fmt(goal)} L以下</b>　・CO2排出量: 約${fmt1(goal*CO2/1000)}トン以下</div>`;
+      <div class="li">・軽油使用量: <b class="num">150,500 L以下</b>　・CO2排出量: 約403トン以下</div>`;
   }
   h += `</div>`;
 
@@ -232,9 +243,11 @@ function render(){
       h += `<tr><td>${i+1}</td><td>${esc(name)}</td><td><b>${fmt(v)} L</b></td><td style="color:#94a3b8;">${pv?fmt(pv):"−"}</td></tr>`;
     });
     h += `</table>`;
-    if(full&&lowVeh.length){
-      h += `<div class="jh">📦 低稼働車両(年間2,000L未満・${lowVeh.length}台)</div><table>`;
-      lowVeh.sort((a,b)=>a[1]-b[1]).forEach(([name,v])=>{ h += `<tr><td>${esc(name)}</td><td>${fmt(v)} L</td></tr>`; });
+    const REPORTED_LOW = ["白パッカー","ハイエース","440","ツートン","アームロール","3tパッカー","3t"];
+    const lowShown = cur.ref ? lowVeh.filter(([n])=>REPORTED_LOW.includes(n)) : lowVeh;
+    if(full&&lowShown.length){
+      h += `<div class="jh">📦 低稼働車両(年間2,000L未満・${lowShown.length}台)</div><table>`;
+      lowShown.sort((a,b)=>a[1]-b[1]).forEach(([name,v])=>{ h += `<tr><td>${esc(name)}</td><td>${fmt(v)} L</td></tr>`; });
       h += `</table><div class="note">予備・短距離利用中心。環境負荷は小さいが維持コストの見直し候補</div>`;
     }
     h += `</div>`;
