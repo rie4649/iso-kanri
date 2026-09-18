@@ -2571,6 +2571,8 @@ window.exportDieselYearMatrixJpeg = function(y) {
   exportTableAsJpeg(`軽油使用量 年間票 ${y}年度(${y}.8〜${+y+1}.7)`, ["車両", ...DIESEL_FY_MONTHS.map(m => m+"月"), "合計"], rows, `軽油年間票${y}年度`);
 };
 
+// 報告済み年度のCO₂は報告書の値をそのまま表示（以降の年度は係数2.58で自動計算）
+const DIESEL_CO2_REPORTED = { "2024": "約416 トンCO₂（報告値）" };
 function renderDieselList() {
   const container = document.getElementById("dieselListContainer");
   let filtered = allDieselRecords;
@@ -2634,7 +2636,7 @@ function renderDieselList() {
       </div>
       <div class="event-card" style="border-left-color:#0369a1;background:#f0f9ff;">
         <div class="water-test-item-line" style="font-weight:800;"><span>年間使用量</span><span>${totalLiters.toLocaleString()} L</span></div>
-        <div class="water-test-item-line"><span>CO₂換算量</span><span>${co2Ton.toFixed(2)} トンCO₂</span></div>
+        <div class="water-test-item-line"><span>CO₂換算量</span><span>${DIESEL_CO2_REPORTED[y] || co2Ton.toFixed(2) + " トンCO₂"}</span></div>
         ${targetHtml}
       </div>
       ${y !== "未設定" ? `
