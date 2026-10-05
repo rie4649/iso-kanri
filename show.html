@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISO 見せるモード | 関根商店</title>
+<link rel="icon" href="icon-192.png">
+<style id="pageStyle">@page { size: A4 landscape; margin: 10mm; }</style>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body { font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif; background:#e8ecf4; color:#1e293b; }
+button { font-family:inherit; cursor:pointer; }
+
+/* ===== 上のバー ===== */
+#bar { position:fixed; top:0; left:0; right:0; height:58px; z-index:50; background:#1e1b4b; color:#fff; display:flex; align-items:center; gap:8px; padding:0 12px; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+#bar .bt { border:none; background:rgba(255,255,255,.12); color:#fff; border-radius:10px; padding:9px 14px; font-size:15px; font-weight:bold; white-space:nowrap; }
+#bar .bt:hover { background:rgba(255,255,255,.22); }
+#bar .nav { font-size:20px; padding:6px 16px; }
+#bar .ttl { flex:1; text-align:center; font-size:19px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bar .pg { font-size:13px; opacity:.75; white-space:nowrap; }
+
+/* ===== スライド ===== */
+#stage { padding:76px 18px 30px; min-height:100%; }
+.slide { background:#fff; border-radius:18px; max-width:1400px; margin:0 auto; padding:30px 38px 36px; box-shadow:0 6px 24px rgba(30,27,75,.12); min-height:calc(100vh - 110px); }
+.sHead { display:flex; align-items:center; gap:14px; flex-wrap:wrap; border-bottom:4px solid #4338ca; padding-bottom:12px; margin-bottom:16px; }
+.sHead h2 { font-size:32px; font-weight:900; color:#1e1b4b; }
+.sHead .sub { font-size:16px; color:#64748b; font-weight:bold; }
+.per { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.per button { border:2px solid #c7d2fe; background:#eef2ff; color:#3730a3; border-radius:10px; width:46px; height:42px; font-size:18px; font-weight:900; }
+.per button:disabled { opacity:.3; cursor:default; }
+.per span { font-size:20px; font-weight:900; color:#3730a3; min-width:120px; text-align:center; }
+.purpose { background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:10px 16px; margin-bottom:18px; font-size:16px; line-height:1.8; color:#78350f; white-space:pre-wrap; }
+.purpose b { color:#92400e; }
+h3.sec { font-size:22px; color:#3730a3; margin:22px 0 10px; padding-left:10px; border-left:6px solid #6366f1; }
+.note { font-size:14px; color:#64748b; margin:6px 0; }
+.empty { text-align:center; color:#94a3b8; font-size:20px; padding:50px 0; }
+
+/* 表 */
+table.t { width:100%; border-collapse:collapse; font-size:18px; }
+table.t th { background:#eef2ff; color:#1e1b4b; font-weight:900; padding:10px 8px; border:1px solid #c7d2fe; text-align:center; white-space:nowrap; }
+table.t td { padding:9px 10px; border:1px solid #e2e8f0; vertical-align:middle; }
+table.t tr:nth-child(even) td { background:#f8fafc; }
+table.t td.c { text-align:center; } table.t td.r { text-align:right; font-variant-numeric:tabular-nums; }
+table.t td.nw { white-space:nowrap; }
+.tw { overflow-x:auto; }
+.ok { color:#15803d; font-weight:900; } .ng { color:#dc2626; font-weight:900; } .wn { color:#d97706; font-weight:900; }
+.badge { display:inline-block; border-radius:999px; padding:2px 12px; font-size:15px; font-weight:900; white-space:nowrap; }
+.b-ok { background:#dcfce7; color:#166534; } .b-wn { background:#fef3c7; color:#92400e; } .b-ng { background:#fee2e2; color:#991b1b; } .b-gr { background:#f1f5f9; color:#475569; }
+.openBtn { border:none; background:#4338ca; color:#fff; border-radius:8px; padding:6px 14px; font-size:15px; font-weight:bold; white-space:nowrap; margin:2px; }
+.kpis { display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 14px; }
+.kpi { flex:1; min-width:200px; background:linear-gradient(135deg,#eef2ff,#f8fafc); border:1px solid #c7d2fe; border-radius:14px; padding:14px 18px; }
+.kpi .k { font-size:15px; color:#475569; font-weight:bold; }
+.kpi .v { font-size:34px; font-weight:900; color:#1e1b4b; line-height:1.2; }
+.kpi .v small { font-size:16px; color:#64748b; margin-left:4px; }
+.bar { height:22px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
+.bar i { display:block; height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); }
+.dot { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+
+/* 表紙・目次 */
+.cover { text-align:center; padding:30px 0 10px; }
+.cover .co { font-size:26px; font-weight:bold; color:#475569; }
+.cover h1 { font-size:46px; font-weight:900; color:#1e1b4b; margin:10px 0 6px; }
+.cover .iso { display:inline-block; background:#4338ca; color:#fff; border-radius:999px; padding:6px 22px; font-size:20px; font-weight:bold; }
+.cover .dt { margin-top:10px; color:#64748b; font-size:16px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; margin-top:28px; }
+.tile { border:2px solid #e0e7ff; background:#f8faff; border-radius:16px; padding:18px 12px; text-align:center; cursor:pointer; transition:.15s; }
+.tile:hover { border-color:#6366f1; background:#eef2ff; transform:translateY(-2px); }
+.tile .ic { font-size:38px; } .tile .nm { font-size:17px; font-weight:900; margin-top:6px; color:#1e1b4b; line-height:1.4; }
+
+/* 沿革(年表) */
+.tl { position:relative; margin:10px 0 0 10px; }
+.tl::before { content:""; position:absolute; left:142px; top:6px; bottom:6px; width:4px; background:#c7d2fe; border-radius:2px; }
+.tl .row { display:flex; align-items:baseline; gap:30px; padding:8px 0; position:relative; }
+.tl .d { width:120px; flex-shrink:0; text-align:right; font-size:18px; font-weight:900; color:#3730a3; white-space:nowrap; }
+.tl .row::before { content:""; position:absolute; left:136px; top:15px; width:16px; height:16px; border-radius:50%; background:#fff; border:4px solid #6366f1; }
+.tl .x { font-size:20px; font-weight:bold; padding-left:14px; }
+.tl.two { column-count:2; column-gap:40px; }
+.tl.two .row { break-inside:avoid; }
+
+/* 組織図(線でつながった木の形) */
+.org { text-align:center; padding:10px 0 4px; overflow-x:auto; }
+.org .box { display:inline-block; border-radius:10px; padding:12px 22px; font-size:20px; font-weight:900; color:#1e1b4b; box-shadow:0 2px 6px rgba(0,0,0,.08); white-space:nowrap; }
+.org .vl { width:3px; height:26px; background:#64748b; margin:0 auto; }
+.org .tr { display:flex; justify-content:center; }
+.org .tc { position:relative; padding:24px 14px 0; display:flex; flex-direction:column; align-items:center; }
+.org .tc::before { content:""; position:absolute; top:0; left:50%; width:3px; height:24px; margin-left:-1.5px; background:#64748b; }
+.org .tc::after { content:""; position:absolute; top:0; left:0; right:0; border-top:3px solid #64748b; }
+.org .tc:first-child::after { left:50%; }
+.org .tc:last-child::after { right:50%; }
+.org .tc:only-child::after { display:none; }
+.org .tr.top > .tc { padding-top:0; } .org .tr.top > .tc::before, .org .tr.top > .tc::after { display:none; }
+.org .dept { min-width:230px; }
+.org .dept .box { background:#14b8a6; color:#fff; width:100%; }
+.org .items { text-align:left; margin-top:6px; padding-left:22px; position:relative; width:100%; }
+.org .items::before { content:""; position:absolute; left:10px; top:0; bottom:22px; width:3px; background:#94a3b8; }
+.org .items div { position:relative; padding:8px 4px 8px 16px; font-size:18px; font-weight:bold; }
+.org .items div::before { content:""; position:absolute; left:-12px; top:50%; width:22px; border-top:3px solid #94a3b8; }
+
+#printArea { display:none; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1e1b4b; color:#fff; padding:12px 24px; border-radius:999px; font-size:15px; opacity:0; pointer-events:none; transition:.25s; z-index:99; }
+#toast.show { opacity:1; }
+#loading { text-align:center; padding:60px; color:#64748b; font-size:20px; }
+
+@media (max-width:760px){
+  #bar { height:auto; flex-wrap:wrap; padding:6px 8px; gap:5px; }
+  #bar .ttl { order:-1; flex-basis:100%; font-size:16px; }
+  #bar .bt { padding:7px 10px; font-size:13px; }
+  #bar .pg { display:none; }
+  #stage { padding:110px 8px 20px; }
+  .slide { padding:18px 14px; border-radius:12px; }
+  .sHead h2 { font-size:24px; }
+  table.t { font-size:15px; }
+  .tl::before { left:96px; } .tl .row::before { left:90px; } .tl .d { width:80px; font-size:15px; } .tl .x { font-size:16px; }
+  .tl.two { column-count:1; }
+  .org .box { font-size:15px; padding:8px 12px; }
+  .org .tr { justify-content:flex-start; }
+}
+@media print {
+  #bar, #stage, #toast { display:none !important; }
+  #printArea { display:block !important; }
+  body { background:#fff; }
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .pslide { page-break-after:always; break-after:page; }
+  .pslide:last-child { page-break-after:auto; }
+  .slide { box-shadow:none; border-radius:0; padding:0; min-height:0; max-width:none; }
+  .per button, .openBtn, .tile { display:none !important; }
+  .per span { min-width:0; }
+  table.t { font-size:11pt; } table.t th, table.t td { padding:4px 6px; }
+  .sHead h2 { font-size:20pt; }
+  .tl .d, .tl .x { font-size:12pt; } .tl .row { padding:3px 0; }
+  .org .box { font-size:12pt; padding:6px 12px; } .org .items div { font-size:11pt; padding:4px 4px 4px 14px; }
+  table.t tr { break-inside:avoid; }
+}
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <button class="bt" onclick="location.href='index.html'">← ISO管理</button>
+  <button class="bt" onclick="go(0)">☰ 目次</button>
+  <button class="bt nav" onclick="step(-1)">◀</button>
+  <div class="ttl" id="barTtl">見せるモード</div>
+  <span class="pg" id="barPg"></span>
+  <button class="bt nav" onclick="step(1)">▶</button>
+  <button class="bt" onclick="toggleFull()">⛶ 全画面</button>
+  <button class="bt" onclick="printCurrent()">🖨 このページ</button>
+  <button class="bt" onclick="printAll()">📄 全部PDF</button>
+</div>
+
+<div id="stage"><div id="loading">読み込み中…</div></div>
+<div id="printArea"></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* =====================================================================
+   ISO 見せるモード(監査・視察・プロジェクター用)
+   ・ISO管理と同じデータを「見るだけ」。ここから書き込むことはありません。
+   ・開いたページのデータだけ読み込みます(読み取り回数の節約)。
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const COMPANY = "株式会社関根商店";
+
+/* ---------- 小道具 ---------- */
+const esc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const pad = n => String(n).padStart(2,"0");
+const todayYmd = () => { const d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+const WD = ["日","月","火","水","木","金","土"];
+function fd(s){ if (!s) return ""; const p = String(s).split("-"); if (p.length < 3) return s; return Number(p[0])+"/"+Number(p[1])+"/"+Number(p[2]); }
+function fdw(s){ if (!s) return ""; const d = new Date(s+"T00:00:00"); return isNaN(d) ? s : fd(s)+"("+WD[d.getDay()]+")"; }
+function num(v, dg){ if (v == null || v === "" || isNaN(v)) return "-"; return Number(v).toLocaleString("ja-JP", { maximumFractionDigits: dg == null ? 1 : dg }); }
+function fyOf(ym){ if (!ym) return ""; const [y, m] = String(ym).slice(0,7).split("-").map(Number); return m >= 8 ? y+"-"+(y+1) : (y-1)+"-"+y; }
+function fyLabel(fy){ const a = String(fy).split("-"); return a.length === 2 ? a[0]+"年度" : fy; }
+function fySub(fy){ const a = String(fy).split("-"); return a.length === 2 ? a[0]+"年8月〜"+a[1]+"年7月" : ""; }
+const FY_MONTHS = [8,9,10,11,12,1,2,3,4,5,6,7];
+function fyMonthYm(fy, m){ const a = String(fy).split("-").map(Number); return (m >= 8 ? a[0] : a[1])+"-"+pad(m); }
+function daysLeft(ds){ if (!ds) return null; return Math.round((new Date(ds+"T00:00:00") - new Date(todayYmd()+"T00:00:00")) / 86400000); }
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2400); }
+
+/* ---------- 読み込み(1回だけ) ---------- */
+const cache = {};
+function col(name){ return cache[name] || (cache[name] = db.collection(name).get().then(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).catch(e => { console.error(name, e); return []; })); }
+function docGet(c, id){ const k = c+"/"+id; return cache[k] || (cache[k] = db.collection(c).doc(id).get().then(d => d.exists ? d.data() : null).catch(() => null)); }
+let purposes = null;
+function loadPurposes(){ return purposes || (purposes = col("sectionPurposes").then(a => { const m = {}; a.forEach(x => m[x.id] = x); return m; })); }
+
+/* ---------- ファイルを開く ---------- */
+async function openInline(colName, fileId){
+  const w = window.open("", "_blank");
+  try {
+    const d = await db.collection(colName).doc(fileId).get();
+    if (!d.exists) throw new Error("ファイルが見つかりません");
+    const f = d.data(); const bin = atob(f.data); const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/octet-stream" }));
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
+}
+async function openChunked(chunkCol, fileId, type){
+  const w = window.open("", "_blank");
+  try {
+    const snap = await db.collection(chunkCol).where("fileId", "==", fileId).get();
+    const parts = snap.docs.map(x => x.data()).sort((a,b) => a.idx - b.idx);
+    if (!parts.length) throw new Error("中身が見つかりません");
+    const bin = atob(parts.map(p => p.data).join("")); const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: type || "application/pdf" }));
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
+}
+function attBtns(atts, fileCol){
+  return (atts||[]).map(a => a.fileId
+    ? '<button class="openBtn" onclick="openInline(\''+fileCol+'\',\''+esc(a.fileId)+'\')">'+(String(a.type||"").startsWith("image/") ? "🖼️" : "📄")+' 開く</button>'
+    : (a.url ? '<a class="openBtn" style="text-decoration:none;display:inline-block;" href="'+esc(a.url)+'" target="_blank">📄 開く</a>' : '')).join("");
+}
+
+/* ---------- 期間(年度・年)の切り替え ---------- */
+const per = {};   // ページごとの選んでいる期間
+function pickPeriods(list, key){ // list: 期間の文字列(新しい順にする)
+  const u = Array.from(new Set(list.filter(Boolean))).sort().reverse();
+  if (!u.length) return { list:[], cur:null };
+  if (!per[key] || !u.includes(per[key])) per[key] = u[0];
+  return { list:u, cur:per[key] };
+}
+function perHtml(key, P, label){
+  if (!P.cur) return "";
+  const i = P.list.indexOf(P.cur);
+  return '<div class="per"><button onclick="movePer(\''+key+'\',1)" '+(i >= P.list.length-1 ? "disabled" : "")+'>◀</button><span>'+esc(label(P.cur))+'</span>'+
+    '<button onclick="movePer(\''+key+'\',-1)" '+(i <= 0 ? "disabled" : "")+'>▶</button></div>';
+}
+function movePer(key, d){ const P = per["__list_"+key]; if (!P) return; const i = P.indexOf(per[key]) + d; if (i < 0 || i >= P.length) return; per[key] = P[i]; show(cur); }
+function regPer(key, P){ per["__list_"+key] = P.list; return P; }
+
+/* ---------- ページの見出し ---------- */
+async function head(p, sub, perPart){
+  const pm = await loadPurposes(); const x = p.purpose ? pm[p.purpose] : null;
+  const lines = x ? [x.emsCode ? "<b>管理コード</b>　"+esc(x.emsCode) : "", x.text ? "<b>目的</b>　"+esc(x.text) : "", x.management ? "<b>管理</b>　"+esc(x.management) : ""].filter(Boolean) : [];
+  return '<div class="sHead"><h2>'+p.icon+' '+esc(p.name)+'</h2>'+(sub ? '<span class="sub">'+sub+'</span>' : '')+(perPart||"")+'</div>'+
+    (lines.length ? '<div class="purpose">'+lines.join("\n")+'</div>' : '');
+}
+const empty = m => '<div class="empty">'+(m || "この期間の記録はありません")+'</div>';
+
+/* =====================================================================
+   ページの一覧(この順番で ◀ ▶ で進みます)
+   ===================================================================== */
+const PAGES = [
+  { key:"cover", icon:"🏠", name:"目次", render: renderCover },
+  { key:"history", icon:"📜", name:"沿革", purpose:"company", render: renderHistory },
+  { key:"org", icon:"🏢", name:"組織図", purpose:"company", render: renderOrg },
+  { key:"kyoka", icon:"📜", name:"許可一覧", render: renderKyoka },
+  { key:"horei", icon:"⚖️", name:"法規制一覧", render: renderHorei },
+  { key:"manual", icon:"📖", name:"環境手順書", purpose:"manual", render: renderManual },
+  { key:"kiroku", icon:"📚", name:"監査・是正の記録", render: renderKiroku },
+  { key:"review", icon:"📊", name:"マネジメントレビュー", render: renderReview },
+  { key:"calendar", icon:"📅", name:"年間の活動(カレンダー)", purpose:"calendar", render: renderCalendar },
+  { key:"water", icon:"🧪", name:"水質検査", purpose:"waterTest", render: renderWater },
+  { key:"noise", icon:"🔊", name:"騒音チェック", purpose:"noiseCheck", render: renderNoise },
+  { key:"comp", icon:"🛠️", name:"圧縮機定期点検", purpose:"noiseCheck", render: renderComp },
+  { key:"metal", icon:"🔩", name:"金属拾い上げ", purpose:"metal", render: renderMetal },
+  { key:"clean", icon:"🧹", name:"クリーン度チェック", purpose:"clean", render: renderClean },
+  { key:"donation", icon:"🤝", name:"地域貢献", purpose:"donation", render: renderDonation },
+  { key:"diesel", icon:"⛽", name:"軽油使用量", purpose:"diesel", render: renderDiesel },
+  { key:"lifeline", icon:"⚡", name:"ライフライン(電気・ガス・水道)", purpose:"lifeline", render: renderLifeline },
+  { key:"freon", icon:"🌡️", name:"フロン簡易点検", purpose:"freon", render: renderFreon },
+  { key:"safety", icon:"🦺", name:"安全衛生パトロール", purpose:"safety", render: renderSafety },
+  { key:"training", icon:"🎓", name:"教育訓練", purpose:"safety", render: renderTraining },
+  { key:"shokaki", icon:"🧯", name:"消火器・防火管理", render: renderShokaki },
+  { key:"sdgs", icon:"🌱", name:"SDGs", purpose:"sdgs", render: renderSdgs }
+];
+
+/* ---------- 目次 ---------- */
+async function renderCover(p){
+  const t = new Date();
+  return '<div class="cover"><div class="co">'+COMPANY+'</div><h1>環境マネジメントシステム</h1><span class="iso">ISO 14001</span>'+
+    '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ</div></div>'+
+    '<div class="tiles">'+PAGES.slice(1).map((x, i) => '<div class="tile" onclick="go('+(i+1)+')"><div class="ic">'+x.icon+'</div><div class="nm">'+esc(x.name)+'</div></div>').join("")+'</div>'+
+    '<div class="note" style="text-align:center;margin-top:18px;">◀ ▶ ボタン・キーボードの ← → ・スワイプで次のページへ進めます</div>';
+}
+
+/* ---------- 沿革 ---------- */
+async function renderHistory(p){
+  const h = await docGet("companyInfo", "history"); const items = (h && h.items) || [];
+  return await head(p, COMPANY) + (items.length
+    ? '<div class="tl'+(items.length > 14 ? ' two' : '')+'">'+items.map(x => '<div class="row"><div class="d">'+esc(x.date)+'</div><div class="x">'+esc(x.text)+'</div></div>').join("")+'</div>'
+    : empty("沿革が登録されていません"));
+}
+
+/* ---------- 組織図 ---------- */
+const ORG_COLORS = ["#bbf7d0","#bbf7d0","#e9d5ff","#ddd6fe","#bfdbfe"];
+async function renderOrg(p){
+  const o = await docGet("companyInfo", "orgChart");
+  if (!o) return await head(p, COMPANY) + empty("組織図が登録されていません");
+  let h = '<div class="org">';
+  (o.upper || []).forEach((lv, i) => {
+    const names = Array.isArray(lv) ? lv : String(lv).split("・").map(s => s.trim()).filter(Boolean);
+    const c = ORG_COLORS[Math.min(i, ORG_COLORS.length-1)];
+    if (i > 0) h += '<div class="vl"></div>';
+    h += '<div class="tr'+(names.length === 1 ? ' top' : '')+'" style="'+(names.length === 1 ? '' : 'margin-top:-0px;')+'">'+
+      names.map(n => '<div class="tc"><div class="box" style="background:'+c+'">'+esc(n)+'</div></div>').join("")+'</div>';
+    if (names.length > 1 && i < (o.upper||[]).length - 1) h += '<div class="vl" style="height:14px;"></div>';
+  });
+  if ((o.depts||[]).length){
+    h += '<div class="vl"></div><div class="tr">'+(o.depts||[]).map(d =>
+      '<div class="tc dept"><div class="box">'+esc(d.name)+'</div><div class="items">'+(d.items||[]).map(x => '<div>'+esc(x)+'</div>').join("")+'</div></div>').join("")+'</div>';
+  }
+  return await head(p, COMPANY) + h + '</div>';
+}
+
+/* ---------- 許可一覧 ---------- */
+async function renderKyoka(p){
+  const [docs, ord] = await Promise.all([col("isoKyokaDocs"), docGet("isoKyokaSettings", "groupOrder")]);
+  const groups = {};
+  docs.forEach(d => { (groups[d.type || "(名前なし)"] = groups[d.type || "(名前なし)"] || []).push(d); });
+  const labels = (ord && ord.labels) || [];
+  const keys = Object.keys(groups).sort((a,b) => { const ia = labels.indexOf(a), ib = labels.indexOf(b); if (ia >= 0 || ib >= 0) return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib); return a.localeCompare(b, "ja"); });
+  if (!keys.length) return await head(p) + empty("許可証が登録されていません");
+  const rows = keys.map(k => {
+    const l = groups[k].sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+    const d = l[0], kind = d.dateKind || "許可期限", left = kind === "許可期限" ? daysLeft(d.date) : null;
+    const st = left == null ? '<span class="badge b-gr">'+esc(kind)+'</span>' : left < 0 ? '<span class="badge b-ng">期限切れ</span>' : left <= 90 ? '<span class="badge b-wn">あと'+left+'日</span>' : '<span class="badge b-ok">有効</span>';
+    return '<tr><td><b>'+esc(k)+'</b></td><td class="c nw">'+esc(kind)+'</td><td class="c nw">'+esc(fd(d.date))+'</td><td class="c">'+st+'</td>'+
+      '<td class="c"><button class="openBtn" onclick="openChunked(\'isoKyokaChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">📄 開く</button></td></tr>';
+  }).join("");
+  return await head(p, "期限が90日以内は黄色、切れているものは赤で表示") +
+    '<div class="tw"><table class="t"><tr><th>許可の種類</th><th>日付の種類</th><th>日付</th><th>状態</th><th>許可証</th></tr>'+rows+'</table></div>';
+}
+
+/* ---------- 法規制一覧 ---------- */
+const LAWS = [
+  { cat:"🌿 環境関係", name:"廃棄物処理法", official:"廃棄物の処理及び清掃に関する法律", num:"昭和45年法律第137号", act:"産業廃棄物の収集運搬・処分業。自治体ごとの許可を受けて事業を行う。" },
+  { cat:"🌿 環境関係", name:"再生資源利用促進法", official:"資源の有効な利用の促進に関する法律", num:"平成3年法律第48号", act:"金属スクラップ等の再資源化(リサイクル)そのものが当社の事業。" },
+  { cat:"🌿 環境関係", name:"水質汚濁防止法", official:"水質汚濁防止法", num:"昭和45年法律第138号", act:"場内排水の水質管理。定期的に水質検査を実施し記録する。" },
+  { cat:"🌿 環境関係", name:"大気汚染防止法", official:"大気汚染防止法", num:"昭和43年法律第97号", act:"重機・車両の排ガス、フロン類使用機器の管理。" },
+  { cat:"🌿 環境関係", name:"騒音規制法", official:"騒音規制法", num:"昭和43年法律第98号", act:"重機・圧縮機等の稼働に伴う騒音の管理。" },
+  { cat:"🌿 環境関係", name:"振動規制法", official:"振動規制法", num:"昭和51年法律第64号", act:"重機・圧縮機等の稼働に伴う振動の管理。" },
+  { cat:"🌿 環境関係", name:"消防法(危険物)", official:"消防法", num:"昭和23年法律第186号", act:"少量危険物(廃油等)・指定可燃物の貯蔵取扱い、消火器の設置と点検。" },
+  { cat:"🚚 交通・運送関係", name:"道路交通法", official:"道路交通法", num:"昭和35年法律第105号", act:"トラック・重機運搬など日々の運転業務全般。免許・積載・運転ルール。" },
+  { cat:"🚚 交通・運送関係", name:"道路運送車両法", official:"道路運送車両法", num:"昭和26年法律第185号", act:"車両の登録・車検・点検整備(点検ラクラクの日常点検もこの法律が根拠)。" },
+  { cat:"🚚 交通・運送関係", name:"貨物自動車運送事業法", official:"貨物自動車運送事業法", num:"平成元年法律第83号", act:"貨物運送に関わる事業運営のルール。" }
+];
+async function renderHorei(p){
+  const ev = (await col("isoHoreiEval")).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+  const last = ev[0] || null, res = (last && last.results) || {};
+  const rows = LAWS.map(l => { const r = res[l.name];
+    return '<tr><td class="nw">'+esc(l.cat)+'</td><td><b>'+esc(l.name)+'</b><div class="note">'+esc(l.official)+'(' +esc(l.num)+')</div></td><td>'+esc(l.act)+'</td>'+
+      '<td class="c" style="font-size:24px;">'+(r === "○" ? '<span class="ok">○</span>' : r === "×" ? '<span class="ng">×</span>' : '<span class="note">-</span>')+'</td></tr>'; }).join("");
+  return await head(p, last ? "最新の順守評価：" + esc(fd(last.date)) + (last.evaluator ? "(評価者 " + esc(last.evaluator) + ")" : "") : "順守評価はまだ記録がありません") +
+    '<div class="tw"><table class="t"><tr><th>区分</th><th>法律</th><th>当社との関わり</th><th>順守</th></tr>'+rows+'</table></div>';
+}
+
+/* ---------- 環境手順書 ---------- */
+async function renderManual(p){
+  const m = await col("envManuals");
+  const key = x => (x.category === "emergency" ? 1000 : 0) + (parseInt(String(x.no||"").replace(/[^0-9]/g,""), 10) || 0);
+  m.sort((a,b) => key(a) - key(b));
+  if (!m.length) return await head(p) + empty("手順書が登録されていません");
+  const tbl = list => '<div class="tw"><table class="t"><tr><th>No</th><th>名称</th><th>版</th><th>改定日</th><th>PDF</th></tr>'+list.map(x =>
+    '<tr><td class="c nw">'+esc(x.no)+'</td><td><b>'+esc(x.name)+'</b></td><td class="c nw">'+esc(x.version)+'</td><td class="c nw">'+esc(x.revDate)+'</td><td class="c">'+(attBtns(x.attachments, "envManualFiles") || '<span class="note">未登録</span>')+'</td></tr>').join("")+'</table></div>';
+  const nm = m.filter(x => x.category !== "emergency"), em = m.filter(x => x.category === "emergency");
+  return await head(p, "全"+m.length+"件") + (nm.length ? '<h3 class="sec">📘 通常の手順書('+nm.length+'件)</h3>'+tbl(nm) : '') + (em.length ? '<h3 class="sec">🚨 緊急時対応('+em.length+'件)</h3>'+tbl(em) : '');
+}
+
+/* ---------- 監査・是正の記録 ---------- */
+async function renderKiroku(p){
+  const [au, co] = await Promise.all([col("isoAudits"), col("isoCorrectives")]);
+  const P = regPer(p.key, pickPeriods(au.concat(co).map(x => fyOf(x.date)), p.key));
+  const inP = x => fyOf(x.date) === P.cur;
+  const st = s => s === "done" ? '<span class="badge b-ok">完了</span>' : '<span class="badge b-wn">対応中</span>';
+  const a = au.filter(inP).sort((x,y) => String(y.date).localeCompare(String(x.date)));
+  const c = co.filter(inP).sort((x,y) => String(y.date).localeCompare(String(x.date)));
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) +
+    '<h3 class="sec">🔍 内部監査('+a.length+'件)</h3>'+(a.length ? '<div class="tw"><table class="t"><tr><th>日付</th><th>監査員</th><th>範囲</th><th>指摘事項</th><th>是正・対応</th><th>状態</th></tr>'+a.map(x =>
+      '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.auditor)+'</td><td>'+esc(x.scope)+'</td><td>'+esc(x.findings)+'</td><td>'+esc(x.action)+'</td><td class="c">'+st(x.status)+'</td></tr>').join("")+'</table></div>' : empty()) +
+    '<h3 class="sec">🛠 是正処置('+c.length+'件)</h3>'+(c.length ? '<div class="tw"><table class="t"><tr><th>日付</th><th>何が起きたか</th><th>原因</th><th>対策</th><th>効果の確認</th><th>状態</th></tr>'+c.map(x =>
+      '<tr><td class="c nw">'+fd(x.date)+'</td><td>'+esc(x.event)+'</td><td>'+esc(x.cause)+'</td><td>'+esc(x.action)+'</td><td>'+esc(x.verify)+'</td><td class="c">'+st(x.status)+'</td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- マネジメントレビュー ---------- */
+async function renderReview(p){
+  const r = (await col("isoMgmtReviews")).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+  if (!r.length) return await head(p) + empty("マネジメントレビューの記録はまだありません");
+  return await head(p, "全"+r.length+"回") + '<div class="tw"><table class="t"><tr><th>開催日</th><th>出席者</th><th>報告した内容</th><th>社長の指示・決定事項</th></tr>'+r.map(x =>
+    '<tr><td class="c nw">'+fd(x.date)+'</td><td>'+esc(x.members)+'</td><td style="white-space:pre-wrap">'+esc(x.report)+'</td><td style="white-space:pre-wrap">'+esc(x.decision)+'</td></tr>').join("")+'</table></div>';
+}
+
+/* ---------- 年間の活動(カレンダー) ---------- */
+async function renderCalendar(p){
+  const [ev, marks] = await Promise.all([col("isoEvents"), col("eventMarks")]);
+  const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#4338ca");
+  const P = regPer(p.key, pickPeriods(ev.map(x => fyOf(x.date)), p.key));
+  const l = ev.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(a.date).localeCompare(String(b.date)));
+  const cnt = {}; l.forEach(x => { const k = x.mark || "未分類"; cnt[k] = (cnt[k]||0) + 1; });
+  return await head(p, P.cur ? fySub(P.cur)+"・"+l.length+"件" : "", perHtml(p.key, P, fyLabel)) +
+    (Object.keys(cnt).length ? '<div class="kpis">'+Object.keys(cnt).sort((a,b) => cnt[b]-cnt[a]).map(k => '<div class="kpi" style="min-width:160px;"><div class="k"><span class="dot" style="background:'+esc(mc[k]||"#94a3b8")+'"></span>'+esc(k)+'</div><div class="v">'+cnt[k]+'<small>件</small></div></div>').join("")+'</div>' : '') +
+    (l.length ? '<div class="tw"><table class="t"><tr><th>日付</th><th>種類</th><th>内容</th><th>メモ</th></tr>'+l.map(x =>
+      '<tr><td class="c nw">'+fdw(x.date)+'</td><td class="nw"><span class="dot" style="background:'+esc(mc[x.mark]||"#94a3b8")+'"></span>'+esc(x.mark||"未分類")+'</td><td><b>'+esc(x.title)+'</b></td><td>'+esc(x.notes)+'</td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- 水質検査 ---------- */
+async function renderWater(p){
+  const w = await col("waterTests");
+  const P = regPer(p.key, pickPeriods(w.map(x => String(x.date||"").slice(0,4)), p.key));
+  const l = w.filter(x => String(x.date||"").startsWith(P.cur||"~")).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  const names = []; l.forEach(x => (x.items||[]).forEach(i => { if (i.name && !names.includes(i.name)) names.push(i.name); }));
+  const avg = k => { const v = l.map(x => x[k]).filter(x => x != null && x !== "" && !isNaN(x)).map(Number); return v.length ? v.reduce((a,b) => a+b, 0) / v.length : null; };
+  return await head(p, "", perHtml(p.key, P, y => y+"年")) +
+    '<div class="kpis"><div class="kpi"><div class="k">検査回数</div><div class="v">'+l.length+'<small>回</small></div></div>'+
+    '<div class="kpi"><div class="k">平均水温</div><div class="v">'+num(avg("temp"))+'<small>℃</small></div></div>'+
+    '<div class="kpi"><div class="k">平均PH</div><div class="v">'+num(avg("ph"), 2)+'</div></div></div>'+
+    (l.length ? '<div class="tw"><table class="t"><tr><th>検査日</th><th>場所</th><th>水温(℃)</th><th>PH</th>'+names.map(n => '<th>'+esc(n)+'</th>').join("")+'<th>備考</th><th>記録</th></tr>'+l.map(x => {
+      const m = {}; (x.items||[]).forEach(i => m[i.name] = i.value);
+      return '<tr><td class="c nw">'+fd(x.date)+(x.time ? ' '+esc(x.time) : '')+'</td><td class="c">'+esc(x.location)+'</td><td class="r">'+num(x.temp)+'</td><td class="r">'+num(x.ph, 2)+'</td>'+
+        names.map(n => '<td class="c">'+esc(m[n] == null ? "" : m[n])+'</td>').join("")+'<td>'+esc(x.notes)+'</td><td class="c">'+attBtns(x.attachments, "waterTestFiles")+'</td></tr>'; }).join("")+'</table></div>' : empty());
+}
+
+/* ---------- 騒音チェック ---------- */
+async function renderNoise(p){
+  const n = await col("noiseChecks");
+  const P = regPer(p.key, pickPeriods(n.map(x => String(x.date||"").slice(0,4)), p.key));
+  const l = n.filter(x => String(x.date||"").startsWith(P.cur||"~")).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  const judge = v => v == null || v === "" ? '-' : v <= 70 ? '<span class="ok">○</span>' : v <= 80 ? '<span class="wn">△</span>' : '<span class="ng">✕</span>';
+  const v = l.map(x => x.db).filter(x => x != null && x !== "").map(Number);
+  return await head(p, "規制基準：70dB以下＝○　70〜80dB＝△　80dB超＝✕", perHtml(p.key, P, y => y+"年")) +
+    '<div class="kpis"><div class="kpi"><div class="k">測定回数</div><div class="v">'+l.length+'<small>回</small></div></div>'+
+    '<div class="kpi"><div class="k">年間平均</div><div class="v">'+num(v.length ? v.reduce((a,b) => a+b, 0) / v.length : null)+'<small>dB</small></div></div>'+
+    '<div class="kpi"><div class="k">最大</div><div class="v">'+num(v.length ? Math.max(...v) : null)+'<small>dB</small></div></div></div>'+
+    (l.length ? '<div class="tw"><table class="t"><tr><th>検査日</th><th>場所</th><th>数値(dB)</th><th>判定</th><th>備考</th></tr>'+l.map(x =>
+      '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.location)+'</td><td class="r">'+num(x.db)+'</td><td class="c" style="font-size:22px;">'+judge(x.db)+'</td><td>'+esc(x.notes)+'</td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- 圧縮機定期点検 ---------- */
+async function renderComp(p){
+  const c = await col("compressorInspections");
+  const P = regPer(p.key, pickPeriods(c.map(x => fyOf(x.date)), p.key));
+  const l = c.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  return await head(p, P.cur ? fySub(P.cur)+"・管理コード EMS-C-21" : "", perHtml(p.key, P, fyLabel)) +
+    (l.length ? '<div class="tw"><table class="t"><tr><th>実施日</th><th>機械</th><th>点検者</th><th>工場長</th><th>結果</th><th>要修理の箇所・気付いた点</th></tr>'+l.map(x => {
+      const ng = (x.items||[]).filter(i => i.ok === false);
+      return '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.machine)+'</td><td class="c">'+esc(x.inspector)+'</td><td class="c">'+esc(x.kojocho)+'</td>'+
+        '<td class="c">'+(ng.length ? '<span class="badge b-ng">要修理 '+ng.length+'件</span>' : '<span class="badge b-ok">異常なし</span>')+'</td>'+
+        '<td>'+esc(ng.map(i => i.name+(i.memo ? "("+i.memo+")" : "")).concat(x.notes ? [x.notes] : []).join(" / "))+'</td></tr>'; }).join("")+'</table></div>' : empty());
+}
+
+/* ---------- 金属拾い上げ ---------- */
+async function renderMetal(p){
+  const [r, cfg] = await Promise.all([col("metalRecords"), docGet("metalSettings", "config")]);
+  const ymOf = x => x.date ? String(x.date).slice(0,7) : x.yearMonth;
+  const fys = Array.from(new Set(r.map(x => fyOf(ymOf(x))).filter(Boolean))).sort();
+  let carry = Number((cfg && cfg.openingCarry) || 0); const carryIn = {};
+  fys.forEach(f => { carryIn[f] = carry; carry += r.filter(x => fyOf(ymOf(x)) === f).reduce((a,x) => a + (Number(x.total)||0), 0); });
+  const P = regPer(p.key, pickPeriods(fys, p.key));
+  const l = r.filter(x => fyOf(ymOf(x)) === P.cur);
+  const sumM = ms => l.filter(x => ms.includes(Number(String(ymOf(x)).slice(5,7)))).reduce((a,x) => a + (Number(x.total)||0), 0);
+  const h1 = sumM([8,9,10,11,12,1]), h2 = sumM([2,3,4,5,6,7]), tot = h1 + h2;
+  const byM = FY_MONTHS.map(m => { const ym = fyMonthYm(P.cur, m); const xs = l.filter(x => ymOf(x) === ym);
+    return { m, n:xs.length, kg:xs.reduce((a,x) => a + (x.items||[]).reduce((b,i) => b + (Number(i.quantity)||0), 0), 0), yen:xs.reduce((a,x) => a + (Number(x.total)||0), 0) }; });
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (P.cur ?
+    '<div class="kpis"><div class="kpi"><div class="k">上半期計(8〜1月)</div><div class="v">'+num(h1,0)+'<small>円</small></div></div>'+
+    '<div class="kpi"><div class="k">下半期計(2〜7月)</div><div class="v">'+num(h2,0)+'<small>円</small></div></div>'+
+    '<div class="kpi"><div class="k">年間合計</div><div class="v">'+num(tot,0)+'<small>円</small></div></div>'+
+    '<div class="kpi"><div class="k">前期繰越額 → 繰越金額</div><div class="v" style="font-size:24px;">'+num(carryIn[P.cur],0)+' → '+num(carryIn[P.cur]+tot,0)+'<small>円</small></div></div></div>'+
+    '<div class="tw"><table class="t"><tr><th>月</th><th>回数</th><th>重さ(kg)</th><th>金額(円)</th></tr>'+byM.map(x =>
+      '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.n||"-")+'</td><td class="r">'+(x.kg ? num(x.kg) : "-")+'</td><td class="r">'+(x.n ? num(x.yen,0) : "-")+'</td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- クリーン度チェック ---------- */
+async function renderClean(p){
+  const c = await col("cleanlinessChecks");
+  const P = regPer(p.key, pickPeriods(c.map(x => String(x.date||"").slice(0,4)), p.key));
+  const l = c.filter(x => String(x.date||"").startsWith(P.cur||"~")).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  const zones = []; l.forEach(x => (x.zones||[]).forEach(z => { if (z.name && !zones.includes(z.name)) zones.push(z.name); }));
+  const av = l.map(x => x.avgScore).filter(x => x != null).map(Number);
+  return await head(p, "5点満点", perHtml(p.key, P, y => y+"年")) +
+    '<div class="kpis"><div class="kpi"><div class="k">チェック回数</div><div class="v">'+l.length+'<small>回</small></div></div>'+
+    '<div class="kpi"><div class="k">年間の平均点</div><div class="v">'+num(av.length ? av.reduce((a,b) => a+b, 0) / av.length : null)+'<small>点</small></div></div></div>'+
+    (l.length ? '<div class="tw"><table class="t"><tr><th>検査日</th>'+zones.map(z => '<th>'+esc(z)+'</th>').join("")+'<th>平均</th><th>改善点・備考</th></tr>'+l.map(x => {
+      const m = {}; (x.zones||[]).forEach(z => m[z.name] = z);
+      const notes = (x.zones||[]).filter(z => z.note).map(z => z.name+"："+z.note).concat(x.notes ? [x.notes] : []).join(" / ");
+      return '<tr><td class="c nw">'+fd(x.date)+'</td>'+zones.map(z => '<td class="c">'+(m[z] && m[z].score != null ? m[z].score : "-")+'</td>').join("")+'<td class="c"><b>'+num(x.avgScore)+'</b></td><td>'+esc(notes)+'</td></tr>'; }).join("")+'</table></div>' : empty());
+}
+
+/* ---------- 地域貢献 ---------- */
+async function renderDonation(p){
+  const [ev, marks, types] = await Promise.all([col("isoEvents"), col("eventMarks"), col("activityTypes")]);
+  const tn = types.map(t => String(t.name||"").trim()).filter(Boolean);
+  const am = marks.filter(m => m.countsAsActivity).map(m => m.name);
+  const acts = ev.filter(e => tn.includes(String(e.title||"").trim()) || am.includes(e.mark));
+  const P = regPer(p.key, pickPeriods(acts.map(x => fyOf(x.date)), p.key));
+  const l = acts.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(a.date).localeCompare(String(b.date)));
+  const cnt = {}; l.forEach(e => { const k = tn.includes(String(e.title||"").trim()) ? String(e.title).trim() : (e.mark || "未分類"); cnt[k] = (cnt[k]||0) + 1; });
+  return await head(p, P.cur ? fySub(P.cur)+"・"+l.length+"件" : "", perHtml(p.key, P, fyLabel)) +
+    (l.length ? '<div class="kpis">'+Object.keys(cnt).sort((a,b) => cnt[b]-cnt[a]).map(k => '<div class="kpi" style="min-width:180px;"><div class="k">'+esc(k)+'</div><div class="v">'+cnt[k]+'<small>回</small></div></div>').join("")+'</div>'+
+      '<div class="tw"><table class="t"><tr><th>日付</th><th>活動</th><th>内容</th></tr>'+l.map(x => '<tr><td class="c nw">'+fdw(x.date)+'</td><td><b>'+esc(x.title)+'</b></td><td>'+esc(x.notes)+'</td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- 軽油使用量 ---------- */
+async function renderDiesel(p){
+  const [r, tg] = await Promise.all([col("dieselRecords"), col("dieselTargets")]);
+  const recs = r.filter(x => x.yearMonth);
+  const P = regPer(p.key, pickPeriods(recs.map(x => fyOf(x.yearMonth)), p.key));
+  const l = recs.filter(x => fyOf(x.yearMonth) === P.cur);
+  const lit = x => Number(x.totalLiters) || (x.vehicles||[]).reduce((a,v) => a + (Number(v.liters)||0), 0);
+  const tot = l.reduce((a,x) => a + lit(x), 0);
+  const start = P.cur ? P.cur.split("-")[0] : "";
+  const prevFy = P.cur ? (Number(start)-1)+"-"+start : "";
+  // 前年度と比べるときは、今年度に記録がある月だけで比べる(途中の年度でも正しく比べられるように)
+  const curMs = l.map(x => x.yearMonth.slice(5,7));
+  const prevTot = recs.filter(x => fyOf(x.yearMonth) === prevFy && curMs.includes(x.yearMonth.slice(5,7))).reduce((a,x) => a + lit(x), 0);
+  const t = tg.find(x => String(x.year) === start);
+  const co2 = start === "2024" ? null : tot * 2.58 / 1000;
+  const byM = FY_MONTHS.map(m => { const ym = fyMonthYm(P.cur, m); const xs = l.filter(x => x.yearMonth === ym); return { m, has:xs.length > 0, v:xs.reduce((a,x) => a + lit(x), 0) }; });
+  const mx = Math.max(1, ...byM.map(x => x.v));
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (P.cur ?
+    '<div class="kpis"><div class="kpi"><div class="k">年間使用量</div><div class="v">'+num(tot)+'<small>L</small></div></div>'+
+    '<div class="kpi"><div class="k">CO₂換算量</div><div class="v">'+(co2 == null ? '約416<small>トンCO₂(報告値)</small>' : num(co2)+'<small>トンCO₂</small>')+'</div></div>'+
+    (prevTot ? '<div class="kpi"><div class="k">前年度の同じ時期と比べて</div><div class="v">'+num(tot / prevTot * 100)+'<small>%</small></div></div>' : '')+
+    (t ? '<div class="kpi"><div class="k">目標</div><div class="v">'+num(t.targetLiters)+'<small>L</small></div></div>' : '')+'</div>'+
+    '<div class="tw"><table class="t"><tr><th style="width:80px">月</th><th style="width:160px">使用量(L)</th><th>グラフ</th></tr>'+byM.map(x =>
+      '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.has ? num(x.v) : "-")+'</td><td><div class="bar" style="height:18px;"><i style="width:'+(x.v / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#4338ca)"></i></div></td></tr>').join("")+'</table></div>'+
+    '<div class="note">CO₂換算係数 2.58kg-CO₂/L</div>' : empty());
+}
+
+/* ---------- ライフライン ---------- */
+async function renderLifeline(p){
+  const [types, r] = await Promise.all([col("lifelineTypes"), col("lifelineRecords")]);
+  const P = regPer(p.key, pickPeriods(r.map(x => fyOf(x.yearMonth)), p.key));
+  const curMs = r.filter(x => fyOf(x.yearMonth) === P.cur).map(x => String(x.yearMonth).slice(5,7));
+  const tot = (fy, name, same) => r.filter(x => fyOf(x.yearMonth) === fy && (!same || curMs.includes(String(x.yearMonth).slice(5,7)))).reduce((a,x) => a + (x.types||[]).filter(t => t.name === name).reduce((b,t) => b + (Number(t.usage)||0), 0), 0);
+  const prev = P.cur ? (Number(P.cur.split("-")[0])-1)+"-"+P.cur.split("-")[0] : "";
+  let co2All = 0, co2Prev = 0;
+  const rows = types.map(t => { const u = tot(P.cur, t.name), up = tot(prev, t.name, true), f = Number(t.co2Factor)||0;
+    co2All += u * f / 1000; co2Prev += up * f / 1000;
+    return '<tr><td><b>'+esc(t.name)+'</b></td><td class="r">'+num(u)+' '+esc(t.unit||"")+'</td><td class="r">'+(f ? num(u*f/1000, 2)+' t' : '-')+'</td><td class="r">'+(up ? num(u/up*100)+' %' : '-')+'</td></tr>'; }).join("");
+  const l = r.filter(x => fyOf(x.yearMonth) === P.cur);
+  const mrows = FY_MONTHS.map(m => { const ym = fyMonthYm(P.cur, m); const x = l.find(y => y.yearMonth === ym);
+    return '<tr><td class="c">'+m+'月</td>'+types.map(t => { const v = x ? (x.types||[]).filter(y => y.name === t.name).reduce((a,y) => a + (Number(y.usage)||0), 0) : null; return '<td class="r">'+(x ? num(v) : "-")+'</td>'; }).join("")+'</tr>'; }).join("");
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (P.cur ?
+    '<div class="kpis"><div class="kpi"><div class="k">合計CO₂換算量</div><div class="v">'+num(co2All, 2)+'<small>トンCO₂</small></div></div>'+
+    (co2Prev ? '<div class="kpi"><div class="k">前年度の同じ時期と比べて</div><div class="v">'+num(co2All/co2Prev*100)+'<small>%</small></div></div>' : '')+'</div>'+
+    '<div class="tw"><table class="t"><tr><th>種類</th><th>年間使用量</th><th>CO₂換算</th><th>前年度の同じ時期と比べて</th></tr>'+rows+'</table></div>'+
+    '<h3 class="sec">月ごとの使用量</h3><div class="tw"><table class="t"><tr><th>月</th>'+types.map(t => '<th>'+esc(t.name)+'('+esc(t.unit||"")+')</th>').join("")+'</tr>'+mrows+'</table></div>' : empty());
+}
+
+/* ---------- フロン簡易点検 ---------- */
+async function renderFreon(p){
+  const [eq, r] = await Promise.all([col("freonEquipments"), col("freonRecords")]);
+  const P = regPer(p.key, pickPeriods(r.map(x => fyOf(x.date)), p.key));
+  const l = r.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  const Q = [["8〜10月",[8,9,10]],["11〜1月",[11,12,1]],["2〜4月",[2,3,4]],["5〜7月",[5,6,7]]];
+  eq.sort((a,b) => String(a.name).localeCompare(String(b.name), "ja"));
+  const gwp = {}; eq.forEach(e => gwp[e.name] = Number(e.gwp)||0);
+  const leak = l.reduce((a,x) => a + (Number(x.leakedG)||0) / 1000 * (gwp[x.equipment]||0), 0);
+  return await head(p, P.cur ? fySub(P.cur)+"・3か月に1回の簡易点検" : "", perHtml(p.key, P, fyLabel)) + (P.cur ?
+    '<div class="kpis"><div class="kpi"><div class="k">点検回数</div><div class="v">'+l.length+'<small>回</small></div></div>'+
+    '<div class="kpi"><div class="k">異常あり</div><div class="v">'+l.filter(x => x.result === "abnormal").length+'<small>回</small></div></div>'+
+    '<div class="kpi"><div class="k">漏えいCO₂換算</div><div class="v">'+num(leak/1000, 4)+'<small>トン</small></div></div></div>'+
+    '<h3 class="sec">実施状況</h3><div class="tw"><table class="t"><tr><th>機器</th><th>冷媒</th>'+Q.map(q => '<th>'+q[0]+'</th>').join("")+'</tr>'+eq.map(e =>
+      '<tr><td><b>'+esc(e.name)+'</b></td><td class="c">'+esc(e.refrigerant||"")+'</td>'+Q.map(q => { const xs = l.filter(x => x.equipment === e.name && q[1].includes(Number(String(x.date).slice(5,7))));
+        return '<td class="c">'+(xs.length ? '<span class="ok">✅</span> '+xs.map(x => fd(x.date).slice(5)).join("、") : '<span class="note">⬜</span>')+'</td>'; }).join("")+'</tr>').join("")+'</table></div>'+
+    '<h3 class="sec">点検記録</h3>'+(l.length ? '<div class="tw"><table class="t"><tr><th>点検日</th><th>機器</th><th>点検者</th><th>結果</th><th>回収(g)</th><th>漏えい(g)</th><th>備考</th></tr>'+l.map(x =>
+      '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.equipment)+'</td><td class="c">'+esc(x.inspector)+'</td><td class="c">'+(x.result === "abnormal" ? '<span class="badge b-ng">異常あり</span>' : '<span class="badge b-ok">異常なし</span>')+'</td><td class="r">'+num(x.recoveredG,0)+'</td><td class="r">'+num(x.leakedG,0)+'</td><td>'+esc(x.notes)+'</td></tr>').join("")+'</table></div>' : empty()) : empty());
+}
+
+/* ---------- 安全衛生パトロール ---------- */
+async function renderSafety(p){
+  const r = await col("safetyPatrols");
+  const P = regPer(p.key, pickPeriods(r.map(x => fyOf(x.date)), p.key));
+  const l = r.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  return await head(p, P.cur ? fySub(P.cur)+"・管理コード EMS-C-25" : "", perHtml(p.key, P, fyLabel)) + (P.cur ?
+    '<h3 class="sec">月ごとの実施状況</h3><div class="tw"><table class="t"><tr>'+FY_MONTHS.map(m => '<th>'+m+'月</th>').join("")+'</tr><tr>'+FY_MONTHS.map(m => { const ym = fyMonthYm(P.cur, m); const x = l.filter(y => String(y.date).slice(0,7) === ym);
+      return '<td class="c">'+(x.length ? '<span class="ok">✅</span><div class="note">'+x.map(y => fd(y.date).split("/").slice(1).join("/")).join("、")+'</div>' : '<span class="note">⬜</span>')+'</td>'; }).join("")+'</tr></table></div>'+
+    '<h3 class="sec">パトロール記録</h3>'+(l.length ? '<div class="tw"><table class="t"><tr><th>点検日</th><th>点検者</th><th>防火管理者</th><th>結果</th><th>指摘内容・気付いた点</th></tr>'+l.map(x => { const ng = (x.items||[]).filter(i => i.ok === false);
+      return '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.inspector)+'</td><td class="c">'+esc(x.fireManager)+'</td><td class="c">'+(ng.length ? '<span class="badge b-wn">不備 '+ng.length+'件</span>' : '<span class="badge b-ok">不備なし</span>')+'</td>'+
+        '<td>'+esc(ng.map(i => i.name+(i.memo ? "("+i.memo+")" : "")).concat(x.otherNotes ? [x.otherNotes] : []).join(" / "))+'</td></tr>'; }).join("")+'</table></div>' : empty()) : empty());
+}
+
+/* ---------- 教育訓練 ---------- */
+async function renderTraining(p){
+  const r = await col("trainingRecords");
+  const P = regPer(p.key, pickPeriods(r.map(x => String(x.date||"").slice(0,4)), p.key));
+  const l = r.filter(x => String(x.date||"").startsWith(P.cur||"~")).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  return await head(p, l.length ? l.length+"件" : "", perHtml(p.key, P, y => y+"年")) + (l.length ?
+    '<div class="tw"><table class="t"><tr><th>実施日</th><th>種別</th><th>テーマ・内容</th><th>対象者・参加者</th><th>実施者</th><th>結果</th><th>記録</th></tr>'+l.map(x =>
+      '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c nw">'+(x.kind === "test" ? '<span class="badge b-wn">定期テスト</span>' : '<span class="badge b-ok">教育訓練</span>')+'</td><td><b>'+esc(x.theme)+'</b>'+(x.manualLabel ? '<div class="note">手順書：'+esc(x.manualLabel)+'</div>' : '')+'</td>'+
+      '<td>'+esc(x.participants)+'</td><td class="c">'+esc(x.instructor)+'</td><td>'+esc(x.notes)+(x.revisionNeeded === "needed" ? '<div class="wn">改訂あり：'+esc(x.revisionNote)+'</div>' : x.revisionNeeded === "none" ? '<div class="note">改訂の必要なし</div>' : '')+'</td><td class="c">'+attBtns(x.attachments, "trainingFiles")+'</td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- 消火器・防火管理 ---------- */
+async function renderShokaki(p){
+  const d = await col("isoShokakiDocs");
+  const P = regPer(p.key, pickPeriods(d.map(x => String(x.date||"").slice(0,4)), p.key));
+  const l = d.filter(x => String(x.date||"").startsWith(P.cur||"~")).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  return await head(p, "業者による点検の書類", perHtml(p.key, P, y => y+"年")) + (l.length ?
+    '<div class="tw"><table class="t"><tr><th>書類の種類</th><th>日付</th><th>ファイル名</th><th>開く</th></tr>'+l.map(x =>
+      '<tr><td><b>'+esc(x.type)+'</b></td><td class="c nw">'+fd(x.date)+'</td><td>'+esc(x.fileName)+'</td><td class="c"><button class="openBtn" onclick="openChunked(\'isoShokakiChunks\',\''+x.id+'\',\''+esc(x.fileType||"application/pdf")+'\')">📄 開く</button></td></tr>').join("")+'</table></div>' : empty());
+}
+
+/* ---------- SDGs ---------- */
+async function renderSdgs(p){
+  const [g, pr] = await Promise.all([col("sdgsGoals"), col("sdgsProgress")]);
+  const P = regPer(p.key, pickPeriods(g.map(x => x.fy), p.key));
+  const l = g.filter(x => x.fy === P.cur).sort((a,b) => String(a.name).localeCompare(String(b.name), "ja"));
+  const card = x => {
+    const ps = pr.filter(y => y.goalId === x.id);
+    let val = null, pct = null, detail = "";
+    if (x.calc === "sum"){ val = ps.filter(y => y.year == null).reduce((a,y) => a + (Number(y.value)||0), 0); if (x.targetValue) pct = val / x.targetValue * 100; }
+    else {
+      const by = {}; ps.filter(y => y.year != null).forEach(y => by[y.year] = Number(y.value));
+      const ys = Object.keys(by).map(Number).sort();
+      if (x.calc === "avg3"){ const ok = ys.filter(y => by[y-1] != null && by[y-2] != null); if (ok.length){ const y = ok[ok.length-1]; val = (by[y]+by[y-1]+by[y-2]) / 3; detail = (y-2)+"〜"+y+"年の3年平均"; if (x.targetValue) pct = val / x.targetValue * 100; } }
+      else if (ys.length){ const y = ys[ys.length-1]; val = by[y]; detail = y+"年の値"; }
+      if (ys.length) detail += (detail ? "　" : "") + ys.map(y => y+"年 "+num(by[y])).join(" / ");
+    }
+    return '<div class="kpi" style="min-width:320px;"><div class="k" style="font-size:18px;color:#1e1b4b;">🌱 '+esc(x.name)+'</div>'+
+      (x.indicator ? '<div class="note">指標：'+esc(x.indicator)+'</div>' : '')+
+      '<div class="v">'+(val == null ? '-' : num(val))+'<small>'+esc(x.unit||"")+(x.targetValue ? ' / 目標 '+num(x.targetValue)+' '+esc(x.unit||"") : '')+'</small></div>'+
+      (pct != null ? '<div class="bar" style="margin-top:6px;"><i style="width:'+Math.min(100, pct)+'%"></i></div><div class="note">達成率 '+num(pct)+'%</div>' : '')+
+      (detail ? '<div class="note">'+esc(detail)+'</div>' : '')+(x.notes ? '<div class="note">'+esc(x.notes)+'</div>' : '')+'</div>';
+  };
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty());
+}
+
+/* =====================================================================
+   画面の切り替え・印刷
+   ===================================================================== */
+let cur = 0;
+async function show(i){
+  cur = Math.max(0, Math.min(PAGES.length-1, i));
+  const p = PAGES[cur];
+  document.getElementById("barTtl").textContent = p.icon+" "+p.name;
+  document.getElementById("barPg").textContent = (cur+1)+" / "+PAGES.length;
+  try { history.replaceState(null, "", "#"+p.key); } catch(e){}
+  const html = await p.render(p);
+  if (PAGES[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
+  document.getElementById("stage").innerHTML = '<div class="slide">'+html+'</div>';
+}
+function go(i){ show(i); window.scrollTo({ top:0 }); }
+function step(d){ go(cur + d); }
+document.addEventListener("keydown", e => {
+  if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && !e.shiftKey)){ e.preventDefault(); step(1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)){ e.preventDefault(); step(-1); }
+  if (e.key === "Home") go(0);
+});
+(function(){ // スワイプ
+  let sx = 0, sy = 0, on = false;
+  document.addEventListener("touchstart", e => { on = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive:true });
+  document.addEventListener("touchend", e => { if (!on) return; on = false;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.6) step(dx < 0 ? 1 : -1); }, { passive:true });
+})();
+function toggleFull(){
+  if (!document.fullscreenElement) (document.documentElement.requestFullscreen || function(){}).call(document.documentElement);
+  else document.exitFullscreen && document.exitFullscreen();
+}
+function doPrint(html){
+  document.getElementById("printArea").innerHTML = html;
+  setTimeout(() => window.print(), 300);
+}
+async function printCurrent(){
+  const p = PAGES[cur];
+  doPrint('<div class="pslide"><div class="slide">'+await p.render(p)+'</div></div>');
+}
+async function printAll(){
+  toast("📄 全部のページを準備しています…");
+  const parts = [];
+  for (const p of PAGES){ if (p.key === "cover") continue; parts.push('<div class="pslide"><div class="slide">'+await p.render(p)+'</div></div>'); }
+  const t = new Date();
+  const cover = '<div class="pslide"><div class="slide"><div class="cover" style="padding-top:60px;"><div class="co">'+COMPANY+'</div><h1>環境マネジメントシステム</h1><span class="iso">ISO 14001</span>'+
+    '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在</div></div>'+
+    '<h3 class="sec" style="margin-top:30px;">目次</h3><div style="column-count:3;column-gap:24px;font-size:13pt;line-height:2;">'+PAGES.slice(1).map((x, i) => '<div>'+(i+1)+'.　'+x.icon+' '+esc(x.name)+'</div>').join("")+'</div></div></div>';
+  doPrint(cover + parts.join(""));
+}
+
+/* 最初に開くページ(アドレスの #名前 があればそのページ) */
+(function(){ const h = location.hash.replace("#",""); const i = PAGES.findIndex(p => p.key === h); show(i >= 0 ? i : 0); })();
+</script>
+</body>
+</html>
