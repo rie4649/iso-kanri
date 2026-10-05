@@ -4333,7 +4333,10 @@ const SECTION_DEFS = [
 ];
 
 function renderHomeMenu() {
-  document.getElementById("homeMenu").innerHTML = SECTION_DEFS.map(s =>
+  document.getElementById("homeMenu").innerHTML =
+    // 監査・視察・プロジェクター用の「見せるモード」(見るだけ)
+    `<div class="home-menu-card" onclick="location.href='show.html'" style="flex-basis:100%;background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;"><div class="icon">🖥️</div><div class="name" style="color:#fff;font-size:16px;">見せるモード(監査・視察・プロジェクター用)</div></div>` +
+    SECTION_DEFS.map(s =>
     `<div class="home-menu-card" onclick="openSection('${s.key}')"><div class="icon">${s.icon}</div><div class="name">${s.name}</div></div>`
   ).join("");
 }
