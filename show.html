@@ -683,9 +683,17 @@ const TENKEN_IMGS = [
 let tkIdx = 0;
 let tkPrinting = false;
 function tkImg(n, label, style){
-  // .png が無ければ .jpg を試し、それも無ければ案内を出す
-  return '<img src="tenken/'+n+'.png" alt="'+esc(label)+'" style="'+style+'" '+
-    'onerror="if(!this.dataset.j){this.dataset.j=1;this.src=\'tenken/'+n+'.jpg\';}else{this.outerHTML=\'<div class=&quot;empty&quot;>画像 '+n+' がまだ入っていません(iso-kanri の tenken フォルダに '+n+'.png を入れてください)</div>\';}">';
+  // tenken フォルダ → リポジトリの一番上 の順に、.png と .jpg を探す。どれも無ければ案内を出す
+  const tries = ["tenken/"+n+".png", "tenken/"+n+".jpg", n+".png", n+".jpg"];
+  return '<img src="'+tries[0]+'" alt="'+esc(label)+'" style="'+style+'" data-k="0" data-n="'+n+'" onerror="tkNext(this)">';
+}
+function tkNext(img){
+  const n = img.dataset.n, tries = ["tenken/"+n+".png", "tenken/"+n+".jpg", n+".png", n+".jpg"];
+  const k = Number(img.dataset.k) + 1;
+  if (k < tries.length){ img.dataset.k = k; img.src = tries[k]; return; }
+  const d = document.createElement("div"); d.className = "empty";
+  d.textContent = "画像 "+n+" がまだ入っていません(iso-kanri に "+n+".png を入れてください)";
+  img.replaceWith(d);
 }
 function tkGo(i){ tkIdx = (i + TENKEN_IMGS.length) % TENKEN_IMGS.length; show(cur); }
 async function renderTenken(p){
