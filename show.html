@@ -366,13 +366,11 @@ const PAGES = [
   { key:"donation", ch:6, icon:"🤝", name:"地域貢献", purpose:"donation", render: renderDonation }
 ];
 /* 見せる相手ごとのコース(表紙で選ぶ) */
+/* 監査・視察・行政で中身は同じ(コース分けはしない)。いつも全ページを同じ順番で見せる */
 const COURSES = {
-  all:   { name:"審査コース", sub:"全部のページ", keys:null, skip:["numbers"] },
-  visit: { name:"視察・見学コース", sub:"会社紹介中心", keys:["cover","numbers","policy","cert","history","org","equip","tenken","sdgs","donation"] },
-  admin: { name:"行政コース", sub:"許可・法令・測定", keys:["cover","cert","kyoka","horei","water","noise","shokaki"] }
+  all:   { name:"見せるモード", sub:"全ページ", keys:null }
 };
 let course = "all";
-try { const c = localStorage.getItem("isoShowCourse"); if (COURSES[c]) course = c; } catch(e){}
 function coursePages(){ const c = COURSES[course]; return c.keys ? PAGES.filter(p => c.keys.includes(p.key)) : PAGES.filter(p => !(c.skip||[]).includes(p.key)); }
 function courseFor(k){ if (coursePages().some(p => p.key === k)) return course; const keep = course; for (const c of Object.keys(COURSES)){ course = c; if (coursePages().some(p => p.key === k)){ course = keep; return c; } } course = keep; return null; }
 function setCourse(c){ course = c; try { localStorage.setItem("isoShowCourse", c); } catch(e){} show(0); }
@@ -390,7 +388,6 @@ async function renderCover(p){
   return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+(pf.certBody ? '　'+esc(pf.certBody) : '')+'</div>' : '')+
     '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ</div></div>'+
-    '<div class="course">'+Object.keys(COURSES).map(k => '<button class="'+(course === k ? 'on' : '')+'" onclick="setCourse(\''+k+'\')">'+esc(COURSES[k].name)+'<small>'+esc(COURSES[k].sub)+'</small></button>').join("")+'</div>'+
     '<div class="tiles">'+tiles+'</div>'+
     '<div class="note" style="text-align:center;margin-top:18px;">◀ ▶ ボタン・キーボードの ← → ・スワイプで次のページへ進めます</div>';
 }
@@ -676,9 +673,23 @@ async function renderHorei(p){
 /* ---------- 車両点検アプリ(点検ラクラク)の紹介画像 ----------
    画像はリポジトリの tenken フォルダに 01.png〜07.png の名前で置く(.jpg でも可)。
    作り直したときは同じ名前で上書きするだけ */
+const TK_URL = "https://rie4649.github.io/tenken-rakuraku/";
+// [画像ファイル名, ボタンの名前, 実際の画面か, 開くページ, 開くボタンの文字]
 const TENKEN_IMGS = [
-  ["01","表紙"], ["02","QRで開く画面"], ["03","日常点検"], ["04","緊急連絡先・環境手順書"],
-  ["05","不具合報告"], ["06","取引先情報・運搬ルート"], ["07","事務所での記録管理"]
+  ["01", "表紙", false, "index.html", "点検ラクラクを開く"],
+  ["02", "QRで開く画面", false, "qr.html?vehicle=340", "340のQR点検ページを開く"],
+  ["03", "日常点検", false, "qr.html?vehicle=340", "340のQR点検ページを開く"],
+  ["tk-daily", "点検記録(32項目)", true, "search.html", "点検データ検索を開く"],
+  ["04", "緊急連絡先・環境手順書", false, "emergency.html", "緊急連絡先を開く"],
+  ["tk-emergency", "緊急連絡先", true, "emergency.html", "緊急連絡先を開く"],
+  ["tk-manuals", "環境手順書", true, "manuals.html", "環境手順書を開く"],
+  ["05", "不具合報告", false, "report-list.html", "不具合報告一覧を開く"],
+  ["tk-reports", "不具合報告一覧", true, "report-list.html", "不具合報告一覧を開く"],
+  ["06", "取引先情報・運搬ルート", false, "clients.html", "取引先を開く"],
+  ["tk-clients", "取引先", true, "clients.html", "取引先を開く"],
+  ["tk-route", "運搬ルート(地図)", true, "clients.html", "取引先(ルート作成)を開く"],
+  ["07", "事務所での記録管理", false, "index.html", "点検ラクラクを開く"],
+  ["tk-home", "今日の点検", true, "index.html", "点検ラクラクを開く"]
 ];
 let tkIdx = 0;
 let tkPrinting = false;
@@ -704,16 +715,20 @@ async function renderTenken(p){
   const x = TENKEN_IMGS[tkIdx];
   const btn = "border:2px solid #c7d2fe;background:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
   const on = "border:2px solid #1E6B45;background:#1E6B45;color:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
-  const thumbs = TENKEN_IMGS.map((y, i) => '<button style="'+(i === tkIdx ? on : btn)+'" onclick="tkGo('+i+')">'+y[0]+' '+esc(y[1])+'</button>').join("");
+  const real = "border:2px dashed #93c5fd;background:#f8fbff;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer;";
+  const thumbs = TENKEN_IMGS.map((y, i) => '<button style="'+(i === tkIdx ? on : (y[2] ? real : btn))+'" onclick="tkGo('+i+')">'+(y[2] ? '📱 ' : y[0]+' ')+esc(y[1])+'</button>').join("");
+  const link = '<a class="openBtn" href="'+TK_URL+x[3]+'" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:17px;padding:10px 20px;background:#1E6B45;">🚚 '+esc(x[4])+' ↗</a>';
   const arrow = "flex:0 0 auto;width:56px;height:56px;border-radius:50%;border:2px solid #c7d2fe;background:#fff;font-size:22px;cursor:pointer;";
   return await head(p, "現場はQRだけ。記録と情報は、ひとつのアプリに。") +
     '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'+thumbs+'</div>'+
     '<div style="display:flex;align-items:center;justify-content:center;gap:16px;">'+
       '<button style="'+arrow+'" onclick="tkGo('+(tkIdx-1)+')" aria-label="前の画像">◀</button>'+
-      '<div style="flex:1;min-width:0;text-align:center;">'+tkImg(x[0], x[1], "max-width:100%;max-height:calc(100vh - 290px);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);")+'</div>'+
+      '<div style="flex:1;min-width:0;text-align:center;">'+tkImg(x[0], x[1], "max-width:100%;max-height:calc(100vh - 340px);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);")+'</div>'+
       '<button style="'+arrow+'" onclick="tkGo('+(tkIdx+1)+')" aria-label="次の画像">▶</button>'+
     '</div>'+
-    '<div class="note" style="text-align:center;margin-top:10px;">'+(tkIdx+1)+' / '+TENKEN_IMGS.length+'　画像の上の番号か ◀ ▶ で切り替えます</div>';
+    '<div style="display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;">'+
+      (x[2] ? '<span class="badge b-ok">📱 実際のアプリの画面</span>' : '')+link+'</div>'+
+    '<div class="note" style="text-align:center;margin-top:8px;">'+(tkIdx+1)+' / '+TENKEN_IMGS.length+'　上のボタンか ◀ ▶ で切り替えます(点線のボタンは実際の画面)</div>';
 }
 
 async function renderManual(p){
@@ -1047,7 +1062,7 @@ async function printAll(){
     if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); toc += '<div style="font-weight:900;color:#3730a3;margin-top:6px;break-inside:avoid;">'+esc(c.name)+(c.clause ? '(ISO14001 '+esc(c.clause)+')' : '')+'</div>'; lastCh = x.ch; }
     toc += '<div>'+n+'.　'+x.icon+' '+esc(x.name)+'</div>'; });
   const cover = '<div class="pslide"><div class="slide"><div class="cover" style="padding-top:40px;"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
-    (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+'</div>' : '')+'<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在('+esc(COURSES[course].name)+')</div></div>'+
+    (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+'</div>' : '')+'<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在</div></div>'+
     '<h3 class="sec" style="margin-top:24px;">目次</h3><div style="column-count:3;column-gap:24px;font-size:12pt;line-height:1.9;">'+toc+'</div></div></div>';
   doPrint(cover + parts.join(""));
 }
