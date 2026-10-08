@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>車両・設備の写真</title>
+<title>写真の記録</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
   body { background:#f4f4f5; padding-bottom:60px; }
@@ -45,6 +45,16 @@
   .pd .same { margin:6px; border:none; border-radius:8px; padding:7px; font-size:12px; font-weight:bold; background:#ccfbf1; color:#115e59; cursor:pointer; }
   .pd .rm { margin:0 6px 6px; border:none; border-radius:8px; padding:6px; font-size:12px; background:#f4f4f5; color:#71717a; cursor:pointer; }
   .progress { font-size:15px; font-weight:bold; color:#0f766e; margin-top:12px; }
+  .modes { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .modes button { border:3px solid #99f6e4; background:#fff; color:#0f766e; border-radius:14px; padding:12px 8px; font-size:16px; font-weight:bold; cursor:pointer; }
+  .modes button.on { background:#0f766e; border-color:#0f766e; color:#fff; }
+  .modes button small { display:block; font-size:11px; font-weight:normal; opacity:.85; margin-top:2px; }
+  .cats { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
+  .cats span { background:#f0fdfa; border:1px solid #99f6e4; color:#115e59; border-radius:99px; padding:5px 6px 5px 12px; font-size:13px; font-weight:bold; display:inline-flex; align-items:center; gap:4px; }
+  .cats span button { border:none; background:none; color:#94a3b8; font-size:14px; cursor:pointer; padding:0 4px; }
+  .catAdd { display:flex; gap:6px; margin-top:6px; }
+  .catAdd input { flex:1; }
+  .catAdd button { border:none; border-radius:10px; padding:0 16px; background:#0f766e; color:#fff; font-weight:bold; font-size:14px; cursor:pointer; white-space:nowrap; }
   .empty { text-align:center; color:#a1a1aa; padding:36px 10px; font-size:14px; line-height:1.9; }
   .noPhoto { font-size:12px; color:#a1a1aa; }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.25s; z-index:50; }
@@ -65,19 +75,31 @@
 <body>
 
 <header>
-  <h1>📷 車両・設備の写真</h1>
-  <div class="sub">ここに入れた写真は「見せるモード」の「主な設備・車両」に出ます</div>
+  <h1>📷 写真の記録</h1>
+  <div class="sub">車両・設備の写真と、書類の保管・掲示の状況の写真。ここに入れた写真が「見せるモード」に出ます</div>
 </header>
 
 <div class="wrap">
 <button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+
+<div class="modes">
+  <button id="m_veh" onclick="setMode('veh')">🚛 車両・設備<small>見せるモード「主な設備・車両」</small></button>
+  <button id="m_rec" onclick="setMode('rec')">📁 保管・掲示の状況<small>見せるモード「保管・掲示の状況」</small></button>
+</div>
+
+<div class="upCard" id="catCard" style="display:none;">
+  <h2>📁 項目</h2>
+  <div class="note" style="margin-top:0;">写真を振り分ける項目です。必要な項目は下から追加できます(写真が入っていない項目は × で消せます)。</div>
+  <div class="cats" id="cats"></div>
+  <div class="catAdd"><input id="newCat" placeholder="例: 産業廃棄物の保管場所の掲示板"><button onclick="addCat()">＋ 追加</button></div>
+</div>
 
 <div class="upCard">
   <h2>📤 写真を追加する</h2>
   <label for="files">① 写真を選ぶ(まとめて何枚でも)</label>
   <input type="file" id="files" accept="image/*" multiple onchange="addPending(this.files)">
   <div class="note">選んだ写真が下に並びます。写真ごとに「どの車両・設備か」を選んでください。<br>
-  ファイル名に呼び名が入っていれば(例: <b>340.jpg</b>、<b>265_右.jpg</b>)、最初から選ばれた状態になります。</div>
+  ファイル名に呼び名や項目の言葉が入っていれば(例: <b>340.jpg</b>、<b>265_右.jpg</b>、<b>マニフェスト棚.jpg</b>)、最初から選ばれた状態になります。</div>
   <div id="pendArea" style="display:none;">
     <div class="progress" id="progress"></div>
     <label for="memo">ひと言メモ(全部の写真に付きます・なくてもOK)</label>
@@ -122,6 +144,16 @@ const FILE_COL = "isoPhotoFiles";
 const FIXED_EQUIP = ["トラックスケール", "天井クレーン"];  // 沿革に出てくる設備
 
 let vehicles = [], equips = [], photos = [], filter = "all";
+let mode = new URLSearchParams(location.search).get("mode") === "rec" ? "rec" : "veh";   // veh=車両・設備 / rec=保管・掲示の状況
+/* 保管・掲示の状況の項目(isoPhotoSettings/recordCats)。q は見せるモードに出す「調査票のどの質問か」 */
+const DEFAULT_REC = [
+  { name:"マニフェストの保管状況", q:"委託先調査票 D1-20・21 帳簿の作成・保存" },
+  { name:"契約書の保管状況", q:"委託先調査票 D2-1 契約書の内容確認" },
+  { name:"社内の緊急連絡先の掲示板", q:"委託先調査票 D1-26 緊急時連絡先一覧の掲示" },
+  { name:"許可証の掲示・携行", q:"委託先調査票 D2-8 許可証(写し)の携行" },
+  { name:"環境方針の掲示", q:"環境方針の周知" }
+];
+let recCats = DEFAULT_REC.slice();
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -140,6 +172,7 @@ function eqNameList(){
 function optionsHtml(sel){
   const vs = vehicles.slice().sort(vSort);
   const o = (v, l) => '<option value="'+esc(v)+'"'+(v === sel ? ' selected' : '')+'>'+esc(l)+'</option>';
+  if (mode === "rec") return o("", "-- どの項目？ --") + recCats.map(c => o("r:"+c.name, c.name)).join("") + o("other", "＋ 新しい項目(名前を入力)");
   return o("", "-- どの車両・設備？ --") +
     '<optgroup label="🚛 車両">' + vs.map(v => o("v:"+v.id, vName(v)+(v.model ? "　("+v.model+")" : ""))).join("") + '</optgroup>' +
     '<optgroup label="⚙️ 設備">' + eqNameList().map(n => o("e:"+n, n)).join("") + o("other", "＋ ほかの設備(名前を入力)") + '</optgroup>';
@@ -153,6 +186,11 @@ const norm = s => String(s||"").normalize("NFKC").toLowerCase().replace(/\s+/g, 
 // ファイル名から車両・設備を当てる(長い名前から優先。「340」と「3400」の取り違えを防ぐため、数字の前後が数字でないことも確認)
 function guessTarget(fileName){
   const base = norm(fileName.replace(/\.[^.]+$/, ""));
+  if (mode === "rec"){   // 「マニフェスト」「契約書」「緊急連絡先」など、項目名の中心の言葉がファイル名にあれば選ぶ
+    const hit = recCats.map(c => ({ c, k:norm(c.name.replace(/^社内の/, "").replace(/の(保管状況|保管|掲示板|掲示・携行|掲示)$/, "")) }))
+      .filter(x => x.k && base.includes(x.k)).sort((a, b) => b.k.length - a.k.length)[0];
+    return hit ? "r:"+hit.c.name : "";
+  }
   const cands = vehicles.map(v => ({ val:"v:"+v.id, key:norm(vName(v)) }))
     .concat(vehicles.filter(v => v.number).map(v => ({ val:"v:"+v.id, key:norm(v.number) })))
     .concat(eqNameList().map(n => ({ val:"e:"+n, key:norm(n) })))
@@ -180,7 +218,7 @@ function renderPending(){
     '<div class="pd'+(p.sel ? ' ok' : '')+'"><img src="'+p.url+'" alt="">'+
     '<div class="fn">'+esc(p.file.name)+'</div>'+
     '<select aria-label="車両・設備" onchange="setSel('+p.id+',this.value)">'+optionsHtml(p.sel)+'</select>'+
-    (p.sel === "other" ? '<input placeholder="設備の名前" value="'+esc(p.other)+'" oninput="setOther('+p.id+',this.value)">' : '')+
+    (p.sel === "other" ? '<input placeholder="'+(mode === "rec" ? '新しい項目の名前' : '設備の名前')+'" value="'+esc(p.other)+'" oninput="setOther('+p.id+',this.value)">' : '')+
     (i < pending.length-1 && p.sel ? '<button class="same" onclick="fillDown('+p.id+')">↓ この下の写真も同じにする</button>' : '')+
     '<button class="rm" onclick="rmPending('+p.id+')">この写真を外す</button></div>').join("");
 }
@@ -200,10 +238,42 @@ Promise.all([db.collection("compressorMachines").get(), db.collection("freonEqui
   equips = a.docs.map(d => d.data().name).concat(b.docs.map(d => d.data().name)).filter(Boolean);
   buildSelect();
 }).catch(() => {});
+db.collection("isoPhotoSettings").doc("recordCats").onSnapshot(d => {
+  if (d.exists && Array.isArray(d.data().items)) recCats = d.data().items;
+  renderCats(); buildSelect(); render();
+}, () => {});
+function saveCats(){ return db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats }); }
+function renderCats(){
+  const used = new Set(photos.filter(p => p.kind === "record").map(p => p.targetName));
+  document.getElementById("cats").innerHTML = recCats.map((c, i) => '<span>'+esc(c.name)+(used.has(c.name) ? '' : '<button onclick="askDelCat('+i+')" aria-label="項目を消す">×</button>')+'</span>').join("");
+}
+async function addCat(name){
+  const n = (name ?? document.getElementById("newCat").value).trim();
+  if (!n) { toast("項目の名前を入れてください"); return; }
+  if (recCats.some(c => c.name === n)) { if (name == null) toast("同じ名前の項目があります"); return; }
+  recCats = recCats.concat([{ name:n, q:"" }]);
+  renderCats(); buildSelect(); if (mode === "rec") render();
+  try { await saveCats(); if (name == null){ document.getElementById("newCat").value = ""; toast("＋ 項目を追加しました"); } } catch(e){ toast("❌ "+e.message); }
+}
+function askDelCat(i){
+  const c = recCats[i]; if (!c) return;
+  document.getElementById("confirmMsg").textContent = "項目「"+c.name+"」を消しますか？";
+  confirmCb = async () => { recCats = recCats.filter((_, k) => k !== i); renderCats(); buildSelect(); if (mode === "rec") render(); try { await saveCats(); toast("項目を消しました"); } catch(e){ toast("❌ "+e.message); } };
+  document.getElementById("confirmBg").classList.add("show");
+}
+function setMode(m){
+  mode = m; filter = "all";
+  document.getElementById("m_veh").classList.toggle("on", m === "veh");
+  document.getElementById("m_rec").classList.toggle("on", m === "rec");
+  document.getElementById("catCard").style.display = m === "rec" ? "" : "none";
+  pending.forEach(p => { p.sel = guessTarget(p.file.name); p.other = ""; });   // 振り分け中の写真は選び直し
+  renderPending(); render();
+}
+
 db.collection(PHOTO_COL).onSnapshot(s => {
   photos = s.docs.map(d => ({ id:d.id, ...d.data() }));
   photos.sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
-  buildSelect(); render();
+  buildSelect(); renderCats(); render();
 }, e => { console.error(e); toast("⚠️ 写真の読み込みエラー: "+e.message); });
 
 /* ---------- 写真を小さくする(長辺 px、JPEG) ---------- */
@@ -233,6 +303,7 @@ async function makeFull(file){
 
 function targetOf(p){
   if (!p.sel) return null;
+  if (mode === "rec"){ const name = p.sel === "other" ? p.other.trim() : p.sel.slice(2); return name ? { kind:"record", targetId:"r:"+name, targetName:name } : null; }
   if (p.sel.startsWith("v:")){ const id = p.sel.slice(2), v = vehicles.find(x => x.id === id); return { kind:"vehicle", targetId:id, targetName: v ? vName(v) : "" }; }
   const name = p.sel === "other" ? p.other.trim() : p.sel.slice(2);
   return name ? { kind:"equip", targetId:"e:"+name, targetName:name } : null;
@@ -255,6 +326,7 @@ async function uploadPhotos(){
       await ref.set({ kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName, memo, thumb, isMain: !hasMain.has(tg.targetId),
         createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       hasMain.add(tg.targetId); ok++;
+      if (tg.kind === "record" && !recCats.some(c => c.name === tg.targetName)) await addCat(tg.targetName);   // 新しい項目は項目一覧にも足す
       rmPending(p.id, true);   // 保存できた写真は並びから外す
     }
     toast(`✅ ${ok}枚 保存しました`+(pending.length ? `(選んでいない写真 ${pending.length}枚が残っています)` : ""));
@@ -267,8 +339,9 @@ async function uploadPhotos(){
 /* ---------- 一覧 ---------- */
 function setFilter(f){ filter = f; render(); }
 function render(){
+  if (mode === "rec") return renderRec();
   const cntV = photos.filter(p => p.kind === "vehicle").length, cntE = photos.filter(p => p.kind === "equip").length;
-  document.getElementById("tabs").innerHTML = [["all","すべて "+photos.length],["vehicle","🚛 車両 "+cntV],["equip","⚙️ 設備 "+cntE],["none","写真がない車両"]]
+  document.getElementById("tabs").innerHTML = [["all","すべて "+(cntV+cntE)],["vehicle","🚛 車両 "+cntV],["equip","⚙️ 設備 "+cntE],["none","写真がない車両"]]
     .map(([k, l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
   const box = document.getElementById("list");
   const byT = {}; photos.forEach(p => (byT[p.targetId] = byT[p.targetId] || []).push(p));
@@ -290,6 +363,22 @@ function render(){
     if (es.length) html += '<div class="grpHead">⚙️ 設備</div>' + es.map(k => tgtHtml(byT[k][0].targetName, "", byT[k])).join("");
   }
   box.innerHTML = html || '<div class="empty">まだ写真がありません。<br>上の「写真を追加する」から入れてください</div>';
+}
+function renderRec(){
+  const recs = photos.filter(p => p.kind === "record");
+  document.getElementById("tabs").innerHTML = [["all","すべて "+recs.length],["none","写真がない項目"]]
+    .map(([k, l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
+  const box = document.getElementById("list");
+  const byN = {}; recs.forEach(p => (byN[p.targetName] = byN[p.targetName] || []).push(p));
+  if (filter === "none"){
+    const no = recCats.filter(c => !byN[c.name]);
+    box.innerHTML = no.length ? '<div class="tgt"><div class="ttl">まだ写真がない項目 '+no.length+'</div><div class="noPhoto" style="font-size:14px;line-height:2;">'+no.map(c => esc(c.name)).join("<br>")+'</div></div>'
+      : '<div class="empty">全部の項目に写真が入っています 🎉</div>';
+    return;
+  }
+  const names = recCats.map(c => c.name).filter(n => byN[n]).concat(Object.keys(byN).filter(n => !recCats.some(c => c.name === n)));
+  box.innerHTML = names.length ? '<div class="grpHead">📁 保管・掲示の状況</div>' + names.map(n => tgtHtml(n, "", byN[n])).join("")
+    : '<div class="empty">まだ写真がありません。<br>上の「写真を追加する」から入れてください</div>';
 }
 function tgtHtml(name, model, list){
   return '<div class="tgt"><div class="ttl">'+esc(name)+(model ? '<small>'+esc(model)+'</small>' : '')+'<small>'+list.length+'枚</small></div><div class="ph">'+
@@ -335,6 +424,7 @@ async function openLb(id){
 }
 function closeLb(){ document.getElementById("lb").classList.remove("show"); document.getElementById("lbImg").src = ""; }
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeLb(); });
+setMode(mode);
 </script>
 </body>
 </html>
