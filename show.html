@@ -48,6 +48,15 @@ table.t td.nw { white-space:nowrap; }
 .badge { display:inline-block; border-radius:999px; padding:2px 12px; font-size:15px; font-weight:900; white-space:nowrap; }
 .b-ok { background:#dcfce7; color:#166534; } .b-wn { background:#fef3c7; color:#92400e; } .b-ng { background:#fee2e2; color:#991b1b; } .b-gr { background:#f1f5f9; color:#475569; }
 .openBtn { border:none; background:#4338ca; color:#fff; border-radius:8px; padding:6px 14px; font-size:15px; font-weight:bold; white-space:nowrap; margin:2px; }
+.eqSum { font-size:20px; font-weight:bold; color:#1e1b4b; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; padding:12px 18px; margin:4px 0 6px; }
+.eqSum b { font-size:30px; margin:0 2px; }
+.eqSum span { display:block; font-size:15px; color:#4338ca; margin-top:2px; }
+.eqCnt { font-size:14px; color:#6366f1; margin-left:10px; font-weight:bold; }
+.eqg { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; margin-bottom:8px; }
+.eqc { background:#fff; border:1px solid #c7d2fe; border-radius:12px; overflow:hidden; break-inside:avoid; }
+.eqb { padding:8px 12px 10px; }
+.eqn { font-size:20px; font-weight:900; color:#1e1b4b; line-height:1.3; }
+.eqs { font-size:13px; color:#64748b; margin-top:2px; }
 .kpis { display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 14px; }
 .kpi { flex:1; min-width:200px; background:linear-gradient(135deg,#eef2ff,#f8fafc); border:1px solid #c7d2fe; border-radius:14px; padding:14px 18px; }
 .kpi .k { font-size:15px; color:#475569; font-weight:bold; }
@@ -69,6 +78,19 @@ table.t td.nw { white-space:nowrap; }
 .tile .ic { font-size:38px; } .tile .nm { font-size:17px; font-weight:900; margin-top:6px; color:#1e1b4b; line-height:1.4; }
 
 /* 沿革(年表) */
+.hsSum { font-size:18px; font-weight:bold; color:#1e1b4b; margin:2px 0 12px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }
+.hsSum b { font-size:26px; color:#4338ca; }
+.hsSum span { display:flex; flex-wrap:wrap; gap:6px; }
+.hsSum i, .hsX i { font-style:normal; font-size:13px; font-weight:bold; border-radius:99px; padding:2px 10px; white-space:nowrap; }
+.hs { max-width:1100px; }
+.hsEra { font-size:22px; font-weight:900; color:#fff; background:#4338ca; border-radius:10px; padding:6px 16px; margin:14px 0 4px; break-after:avoid; }
+.hsEra small { font-size:14px; font-weight:bold; opacity:.85; margin-left:12px; }
+.hsRow { display:flex; gap:18px; align-items:baseline; padding:9px 4px; border-bottom:1px solid #e0e7ff; break-inside:avoid; }
+.hsD { width:190px; flex-shrink:0; }
+.hsD b { display:block; font-size:19px; color:#1e1b4b; }
+.hsD small { font-size:13px; color:#6366f1; font-weight:bold; }
+.hsX { font-size:19px; font-weight:bold; color:#1e293b; display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+@media (max-width:700px){ .hsRow { flex-direction:column; gap:2px; } .hsD { width:auto; } }
 .tl { position:relative; margin:10px 0 0 10px; }
 .tl::before { content:""; position:absolute; left:142px; top:6px; bottom:6px; width:4px; background:#c7d2fe; border-radius:2px; }
 .tl .row { display:flex; align-items:baseline; gap:30px; padding:8px 0; position:relative; }
@@ -171,11 +193,13 @@ table.t td.nw { white-space:nowrap; }
   .slide { box-shadow:none; border-radius:0; padding:0; min-height:0; max-width:none; }
   .per button, .openBtn, .tile, .course { display:none !important; }
   .dash { grid-template-columns:repeat(3,1fr); } .dc .v { font-size:22pt; }
+  .eqg { grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px; } .eqn { font-size:12pt; } .eqs { font-size:9pt; } .eqSum { font-size:13pt; }
   .policy { font-size:15pt; } .policySign { font-size:13pt; } .kv { font-size:12pt; }
   .pol .ph { font-size:16pt; margin:10px 0 6px; } .pol .pt, .pol .pe { font-size:11pt; } .pol .pc b { font-size:11.5pt; } .pol .pc span { font-size:10pt; } .pol .pc { padding:6px 10px; }
   .per span { min-width:0; }
   table.t { font-size:11pt; } table.t th, table.t td { padding:4px 6px; }
   .sHead h2 { font-size:20pt; }
+  .hsD b, .hsX { font-size:11pt; } .hsRow { padding:3px 2px; } .hsEra { font-size:13pt; padding:3px 10px; margin:6px 0 2px; } .hsD { width:130px; }
   .tl .d, .tl .x { font-size:12pt; } .tl .row { padding:3px 0; }
   .org .box { font-size:12pt; padding:6px 12px; } .org .items div { font-size:11pt; padding:4px 4px 4px 14px; }
   table.t tr { break-inside:avoid; }
@@ -350,7 +374,6 @@ const PAGES = [
   { key:"check", ch:0, icon:"✅", name:"審査前チェック", render: renderCheck },
   { key:"numbers", ch:0, icon:"✨", name:"数字で見る関根商店", render: renderNumbers },
   { key:"policy", ch:1, icon:"🌿", name:"環境方針", render: renderPolicy },
-  { key:"cert", ch:1, icon:"🏅", name:"会社概要・認証の情報", render: renderCert },
   { key:"history", ch:1, icon:"📜", name:"沿革", purpose:"company", render: renderHistory },
   { key:"org", ch:1, icon:"🏢", name:"組織図", purpose:"company", render: renderOrg },
   { key:"equip", ch:1, icon:"🚛", name:"主な設備・車両", render: renderEquip },
@@ -420,7 +443,7 @@ async function renderDash(p){
   card(exp.length ? "r" : soon.length ? "y" : "g", "📜 許可の期限", exp.length ? "期限切れ "+exp.length+"件" : soon.length ? "90日以内 "+soon.length+"件" : "すべて有効",
     (exp.concat(soon).slice(0,3).map(d => esc(d.type)+"("+fd(d.date)+")").join("<br>")) || "許可 "+lim.length+"件を管理", "kyoka");
   // 認証
-  if (pf.certExpiry){ const dl = daysLeft(pf.certExpiry); card(dl < 0 ? "r" : dl <= 120 ? "y" : "g", "🏅 ISO認証の有効期限", dl < 0 ? "期限切れ" : "あと"+dl+"日", fd(pf.certExpiry)+(pf.nextAudit ? "<br>"+esc(pf.nextAudit) : ""), "cert"); }
+  if (pf.certExpiry){ const dl = daysLeft(pf.certExpiry); card(dl < 0 ? "r" : dl <= 120 ? "y" : "g", "🏅 ISO認証の有効期限", dl < 0 ? "期限切れ" : "あと"+dl+"日", fd(pf.certExpiry)+(pf.nextAudit ? "<br>"+esc(pf.nextAudit) : ""), "history"); }
   // 是正・監査
   const coOpen = co.filter(x => x.status !== "done").length, auOpen = au.filter(x => x.status !== "done").length;
   card(coOpen + auOpen ? "y" : "g", "🛠 対応中の是正・指摘", (coOpen + auOpen)+"件", "是正処置 "+coOpen+"件 / 内部監査の指摘 "+auOpen+"件", coOpen ? "corrective" : "audit");
@@ -468,8 +491,7 @@ async function renderCheck(p){
   const latest = (list, f) => list.map(x => f ? f(x) : x.date).filter(Boolean).sort().pop() || "";
   // 会社・方針
   add(0, "環境方針", pf.policy ? "入力済み" : "表示中(EMS-A-02-01の方針。直すときは⚙️から)", "policy");
-  add(pf.certNo && pf.certExpiry ? 0 : 1, "認証の情報", pf.certNo && pf.certExpiry ? "登録番号・有効期限 入力済み" : "登録番号・有効期限を⚙️から入力してください", "cert");
-  if (pf.certExpiry){ const dl = daysLeft(pf.certExpiry); add(dl < 0 ? 2 : dl <= 120 ? 1 : 0, "ISO認証の有効期限", fd(pf.certExpiry)+(dl < 0 ? "(期限切れ)" : "(あと"+dl+"日)"), "cert"); }
+  if (pf.certExpiry){ const dl = daysLeft(pf.certExpiry); add(dl < 0 ? 2 : dl <= 120 ? 1 : 0, "ISO認証の有効期限", fd(pf.certExpiry)+(dl < 0 ? "(期限切れ)" : "(あと"+dl+"日)"), "history"); }
   // 許可
   const g = {}; kd.forEach(d => { const k = d.type||""; if (!g[k] || String(d.date) > String(g[k].date)) g[k] = d; });
   const lim = Object.values(g).filter(d => (d.dateKind||"許可期限") === "許可期限" && d.date);
@@ -543,21 +565,6 @@ async function renderSkills(p){
 /* ---------- 主な設備・車両 ---------- */
 /* 車両・設備の写真(ISO管理の「📷 車両・設備の写真」で登録。isoPhotos=一覧用の小さい写真、isoPhotoFiles=拡大用) */
 let eqPhotos = [], eqLb = { list:[], i:0 };
-function eqGallery(vs, photos){
-  eqPhotos = photos;
-  if (!photos.length) return '<div class="note" style="margin:4px 0 12px;">📷 写真はISO管理の「車両・設備の写真」から入れると、ここに並びます。</div>';
-  const byT = {}; photos.slice().sort((a,b) => (a.createdMs||0) - (b.createdMs||0)).forEach(x => (byT[x.targetId] = byT[x.targetId] || []).push(x));
-  const vn = v => String(v.nickname || v.number || "").trim();
-  const vsorted = vs.slice().sort((a,b) => { const na = vn(a), nb = vn(b), ia = /^\d/.test(na), ib = /^\d/.test(nb); return ia !== ib ? (ia ? -1 : 1) : na.localeCompare(nb, "ja", { numeric:true }); });
-  const cards = [];
-  vsorted.forEach(v => { if (byT[v.id]) cards.push({ t:v.id, name:vn(v), sub:v.model || "", list:byT[v.id] }); });
-  Object.keys(byT).filter(k => byT[k][0].kind === "equip").sort((a,b) => a.localeCompare(b,"ja")).forEach(k => cards.push({ t:k, name:byT[k][0].targetName, sub:"設備", list:byT[k] }));
-  return '<h3 class="sec">📷 写真で見る車両・設備</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:16px;">'+
-    cards.map(c => { const m = c.list.find(x => x.isMain) || c.list[0];
-      return '<div style="background:#fff;border:1px solid #c7d2fe;border-radius:14px;overflow:hidden;cursor:zoom-in;break-inside:avoid;" onclick="eqOpen(\''+esc(c.t)+'\')">'+
-        '<img src="'+m.thumb+'" alt="'+esc(c.name)+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;">'+
-        '<div style="padding:8px 12px;"><div style="font-weight:900;font-size:17px;">'+esc(c.name)+'</div><div class="note">'+esc(c.sub)+(c.list.length > 1 ? '　📷'+c.list.length+'枚' : '')+'</div></div></div>'; }).join("")+'</div>';
-}
 function eqOpen(t){
   eqLb.list = eqPhotos.filter(x => x.targetId === t).sort((a,b) => (b.isMain?1:0) - (a.isMain?1:0) || (a.createdMs||0) - (b.createdMs||0));
   eqLb.i = 0; eqShow();
@@ -587,19 +594,35 @@ document.addEventListener("keydown", e => {
 
 async function renderEquip(p){
   const [vs, cm, fe, ph] = await Promise.all([col("master_vehicles"), col("compressorMachines"), col("freonEquipments"), col("isoPhotos")]);
+  eqPhotos = ph;
+  const byT = {}; ph.slice().sort((a,b) => (a.createdMs||0) - (b.createdMs||0)).forEach(x => (byT[x.targetId] = byT[x.targetId] || []).push(x));
+  const mainOf = k => byT[k] ? (byT[k].find(x => x.isMain) || byT[k][0]) : null;
+  const anyPhoto = ph.length > 0;
+  const vn = v => String(v.nickname || v.number || "").trim();
+  const vsort = (a, b) => { const na = vn(a), nb = vn(b), ia = /^\d/.test(na), ib = /^\d/.test(nb); return ia !== ib ? (ia ? -1 : 1) : na.localeCompare(nb, "ja", { numeric:true }); };
+  const load = s => { const n = Number(String(s||"").replace(/[^\d.]/g, "")); return n > 0 ? "最大積載量 "+n.toLocaleString()+"kg" : ""; };
+  // カード1枚(写真があれば写真、なければ写真の場所に薄いアイコン。写真が1枚もないうちは文字だけのカード)
+  const card = (key, name, sub, icon) => {
+    const m = key ? mainOf(key) : null, n = key && byT[key] ? byT[key].length : 0;
+    const pic = anyPhoto ? (m ? '<img src="'+m.thumb+'" alt="'+esc(name)+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;">'
+      : '<div style="width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:#f1f5f9;font-size:34px;opacity:.5;">'+icon+'</div>') : '';
+    return '<div class="eqc"'+(m ? ' style="cursor:zoom-in;" onclick="eqOpen(\''+esc(key)+'\')"' : '')+'>'+pic+
+      '<div class="eqb"><div class="eqn">'+esc(name)+'</div>'+(sub ? '<div class="eqs">'+esc(sub)+'</div>' : '')+(n > 1 ? '<div class="eqs">📷 '+n+'枚</div>' : '')+'</div></div>';
+  };
   const byModel = {}; vs.forEach(v => { const k = (v.model || "その他").trim() || "その他"; (byModel[k] = byModel[k] || []).push(v); });
   const models = Object.keys(byModel).sort((a,b) => byModel[b].length - byModel[a].length);
-  const vname = v => String(v.nickname || v.number || "").trim();
-  return await head(p, "車両はマスタ管理の車両から自動で表示") +
-    '<div class="kpis"><div class="kpi"><div class="k">車両</div><div class="v">'+vs.length+'<small>台</small></div></div>'+
-    models.slice(0,5).map(m => '<div class="kpi" style="min-width:150px;"><div class="k">'+esc(m)+'</div><div class="v">'+byModel[m].length+'<small>台</small></div></div>').join("")+'</div>'+
-    eqGallery(vs, ph)+
-    '<h3 class="sec">🚛 車両(車体の形状ごと)</h3><div class="tw"><table class="t"><tr><th style="width:200px">車体の形状</th><th style="width:80px">台数</th><th>車両</th></tr>'+models.map(m =>
-      '<tr><td><b>'+esc(m)+'</b></td><td class="c">'+byModel[m].length+'</td><td>'+byModel[m].map(v => esc(vname(v))+(v.maxLoad ? '<span class="note">('+esc(v.maxLoad)+')</span>' : '')).join("　")+'</td></tr>').join("")+'</table></div>'+
-    ((cm.length || fe.length) ? '<h3 class="sec">⚙️ 主な設備</h3><div class="tw"><table class="t"><tr><th>種類</th><th>名前・型式</th><th>メーカー・冷媒など</th></tr>'+
-      cm.map(c => '<tr><td>'+esc(c.type || "圧縮機")+'</td><td><b>'+esc(c.name)+'</b></td><td>'+esc(c.maker||"")+'</td></tr>').join("")+
-      fe.map(f => '<tr><td>フロン類使用機器</td><td><b>'+esc(f.name)+'</b></td><td>'+esc([f.refrigerant, f.chargeKg ? f.chargeKg+"kg" : ""].filter(Boolean).join(" / "))+'</td></tr>').join("")+'</table></div>' : '')+
-    '<div class="note">天井クレーン・トラックスケールなどの設備は、沿革のページにも載っています。</div>';
+  const sum = '<div class="eqSum">🚛 車両 <b>'+vs.length+'</b>台'+(models.length ? '<span>'+models.map(m => esc(m)+' '+byModel[m].length).join("・")+'</span>' : '')+'</div>';
+  const vehHtml = models.map(m => '<h3 class="sec">'+esc(m)+'<span class="eqCnt">'+byModel[m].length+'台</span></h3><div class="eqg">'+
+    byModel[m].slice().sort(vsort).map(v => card(v.id, vn(v), load(v.maxLoad), "🚛")).join("")+'</div>').join("");
+  // 設備: 圧縮機・フロン機器のマスター＋写真だけ入っている設備(トラックスケールなど)
+  const eqItems = [];
+  cm.forEach(c => eqItems.push({ name:c.name, sub:[c.type || "圧縮機", c.maker].filter(Boolean).join("・") }));
+  fe.forEach(f => eqItems.push({ name:f.name, sub:["フロン類使用機器", f.refrigerant, f.chargeKg ? f.chargeKg+"kg" : ""].filter(Boolean).join("・") }));
+  Object.keys(byT).filter(k => byT[k][0].kind === "equip" && !eqItems.some(e => "e:"+e.name === k)).forEach(k => eqItems.push({ name:byT[k][0].targetName, sub:"" }));
+  const eqHtml = eqItems.length ? '<h3 class="sec">⚙️ 主な設備<span class="eqCnt">'+eqItems.length+'</span></h3><div class="eqg">'+eqItems.map(e => card("e:"+e.name, e.name, e.sub, "⚙️")).join("")+'</div>' : '';
+  return await head(p, "車両は共通マスタ管理の車両から自動で表示") + sum + vehHtml + eqHtml +
+    (anyPhoto ? '<div class="note" style="margin-top:10px;">写真を押すと大きく表示されます。写真はISO管理の「📷 車両・設備の写真」から入れられます。</div>'
+              : '<div class="note" style="margin-top:10px;">📷 ISO管理の「車両・設備の写真」から写真を入れると、カードに写真が出ます。天井クレーン・トラックスケールなどの設備も写真を入れるとここに並びます。</div>');
 }
 
 /* ---------- 数字で見る関根商店(視察・見学向け) ---------- */
@@ -686,11 +709,44 @@ async function renderCert(p){
 }
 
 /* ---------- 沿革 ---------- */
+/* 沿革: 昭和・平成・令和で区切った1本の年表。日付は「昭和49年9月」「昭和49年9月1日」「1974年9月1日」どれでも読める。
+   日まで入っていれば日まで表示(ISO管理の「会社情報(沿革・組織図)」の✏️で入力) */
+const ERA_BASE = { 昭和:1925, 平成:1988, 令和:2018 };
+function histDate(s){
+  const z = String(s||"").normalize("NFKC").replace(/\s+/g, "");
+  let m = z.match(/(昭和|平成|令和)(\d+|元)年(?:(\d{1,2})月)?(?:(\d{1,2})日)?/);
+  if (m){ const n = m[2] === "元" ? 1 : Number(m[2]); return { era:m[1], ey:n, y:ERA_BASE[m[1]] + n, mo:m[3] ? Number(m[3]) : 0, d:m[4] ? Number(m[4]) : 0 }; }
+  m = z.match(/(\d{4})[年\/.-](?:(\d{1,2})[月\/.-]?)?(?:(\d{1,2})日?)?/);
+  if (m){ const y = Number(m[1]), era = y >= 2019 ? "令和" : y >= 1989 ? "平成" : "昭和"; return { era, ey:y - ERA_BASE[era], y, mo:m[2] ? Number(m[2]) : 0, d:m[3] ? Number(m[3]) : 0 }; }
+  return null;
+}
+const HIST_KIND = [
+  { k:"許可", c:"#b91c1c", bg:"#fee2e2", re:/許可/ },
+  { k:"認証・登録", c:"#1d4ed8", bg:"#dbeafe", re:/ISO|認証|登録|加入|健康経営|認定/ },
+  { k:"表彰", c:"#a16207", bg:"#fef3c7", re:/表彰|賞/ },
+  { k:"設備", c:"#047857", bg:"#d1fae5", re:/設置|導入|倉庫|設備|機/ },
+  { k:"会社", c:"#6d28d9", bg:"#ede9fe", re:/./ }
+];
 async function renderHistory(p){
   const h = await docGet("companyInfo", "history"); const items = (h && h.items) || [];
-  return await head(p, COMPANY) + (items.length
-    ? '<div class="tl'+(items.length > 14 ? ' two' : '')+'">'+items.map(x => '<div class="row"><div class="d">'+esc(x.date)+'</div><div class="x">'+esc(x.text)+'</div></div>').join("")+'</div>'
-    : empty("沿革が登録されていません"));
+  if (!items.length) return await head(p, COMPANY) + empty("沿革が登録されていません");
+  const rows = items.map((x, i) => ({ x, i, dt:histDate(x.date), kind:HIST_KIND.find(k => k.re.test(x.text||"")) }));
+  rows.sort((a, b) => a.dt && b.dt ? (a.dt.y - b.dt.y) || (a.dt.mo - b.dt.mo) || (a.dt.d - b.dt.d) || (a.i - b.i) : a.i - b.i);
+  const first = rows.find(r => r.dt), years = first ? new Date().getFullYear() - first.dt.y : 0;
+  const counts = HIST_KIND.map(k => ({ k, n:rows.filter(r => r.kind === k).length })).filter(o => o.n);
+  let html = '<div class="hsSum">'+(first ? '創業 <b>'+first.dt.y+'</b>年から <b>'+years+'</b>年　' : '')+'出来事 <b>'+rows.length+'</b>件'+
+    '<span>'+counts.map(o => '<i style="background:'+o.k.bg+';color:'+o.k.c+';">'+o.k.k+' '+o.n+'</i>').join("")+'</span></div><div class="hs">';
+  let lastEra = "";
+  rows.forEach(r => {
+    const d = r.dt;
+    if (d && d.era !== lastEra){ const ys = rows.filter(q => q.dt && q.dt.era === d.era).map(q => q.dt.y);
+      html += '<div class="hsEra">'+d.era+'<small>'+Math.min(...ys)+'〜'+Math.max(...ys)+'年</small></div>'; lastEra = d.era; }
+    const main = d ? d.y+'年'+(d.mo ? d.mo+'月' : '')+(d.d ? d.d+'日' : '') : esc(r.x.date);
+    const sub = d ? d.era+(d.ey === 1 ? '元' : d.ey)+'年'+(d.mo ? d.mo+'月' : '')+(d.d ? d.d+'日' : '') : '';
+    html += '<div class="hsRow"><div class="hsD"><b>'+main+'</b>'+(sub ? '<small>'+sub+'</small>' : '')+'</div>'+
+      '<div class="hsX"><i style="background:'+r.kind.bg+';color:'+r.kind.c+';">'+r.kind.k+'</i>'+esc(r.x.text)+'</div></div>';
+  });
+  return await head(p, COMPANY) + html + '</div><div class="note" style="margin-top:10px;">日付は ISO管理の「会社情報(沿革・組織図)」の ✏️ で「昭和49年9月1日」のように日まで入れると、日まで表示されます。</div>';
 }
 
 /* ---------- 組織図 ---------- */
