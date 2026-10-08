@@ -48,6 +48,11 @@ table.t td.nw { white-space:nowrap; }
 .badge { display:inline-block; border-radius:999px; padding:2px 12px; font-size:15px; font-weight:900; white-space:nowrap; }
 .b-ok { background:#dcfce7; color:#166534; } .b-wn { background:#fef3c7; color:#92400e; } .b-ng { background:#fee2e2; color:#991b1b; } .b-gr { background:#f1f5f9; color:#475569; }
 .openBtn { border:none; background:#4338ca; color:#fff; border-radius:8px; padding:6px 14px; font-size:15px; font-weight:bold; white-space:nowrap; margin:2px; }
+.recQ { font-size:13px; font-weight:bold; color:#0f766e; background:#ccfbf1; border-radius:99px; padding:2px 10px; margin-left:10px; vertical-align:middle; }
+.recg { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px; margin-bottom:10px; }
+.recc { background:#fff; border:1px solid #c7d2fe; border-radius:12px; overflow:hidden; cursor:zoom-in; break-inside:avoid; }
+.recc img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+.recm { font-size:14px; color:#334155; padding:6px 10px 8px; }
 .eqSum { font-size:20px; font-weight:bold; color:#1e1b4b; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; padding:12px 18px; margin:4px 0 6px; }
 .eqSum b { font-size:30px; margin:0 2px; }
 .eqSum span { display:block; font-size:15px; color:#4338ca; margin-top:2px; }
@@ -381,6 +386,7 @@ const PAGES = [
   { key:"sdgs", ch:2, icon:"🎯", name:"環境目標・SDGs", purpose:"sdgs", render: renderSdgs },
   { key:"manual", ch:3, icon:"📖", name:"環境手順書", purpose:"manual", render: renderManual },
   { key:"tenken", ch:3, icon:"🚚", name:"車両点検アプリ(点検ラクラク)", render: renderTenken },
+  { key:"records", ch:3, icon:"📁", name:"保管・掲示の状況", render: renderRecords },
   { key:"skills", ch:3, icon:"🪪", name:"力量(資格の一覧)", render: renderSkills },
   { key:"training", ch:3, icon:"🎓", name:"教育訓練", purpose:"safety", render: renderTraining },
   { key:"shokaki", ch:3, icon:"🧯", name:"消火器・防火管理", render: renderShokaki },
@@ -591,6 +597,32 @@ document.addEventListener("keydown", e => {
   }
 }, true);
 
+/* ---------- 保管・掲示の状況(ISO管理の「📷 写真の記録」→「保管・掲示の状況」で登録した写真) ---------- */
+const DEFAULT_REC_CATS = [
+  { name:"マニフェストの保管状況", q:"委託先調査票 D1-20・21 帳簿の作成・保存" },
+  { name:"契約書の保管状況", q:"委託先調査票 D2-1 契約書の内容確認" },
+  { name:"社内の緊急連絡先の掲示板", q:"委託先調査票 D1-26 緊急時連絡先一覧の掲示" },
+  { name:"許可証の掲示・携行", q:"委託先調査票 D2-8 許可証(写し)の携行" },
+  { name:"環境方針の掲示", q:"環境方針の周知" }
+];
+async function renderRecords(p){
+  const [ph, st] = await Promise.all([col("isoPhotos"), docGet("isoPhotoSettings", "recordCats")]);
+  eqPhotos = ph;   // 拡大表示(eqOpen)で使う
+  const cats = (st && Array.isArray(st.items)) ? st.items : DEFAULT_REC_CATS;
+  const recs = ph.filter(x => x.kind === "record").sort((a,b) => (b.isMain?1:0) - (a.isMain?1:0) || (a.createdMs||0) - (b.createdMs||0));
+  const byN = {}; recs.forEach(x => (byN[x.targetName] = byN[x.targetName] || []).push(x));
+  const names = cats.map(c => c.name).filter(n => byN[n]).concat(Object.keys(byN).filter(n => !cats.some(c => c.name === n)));
+  if (!names.length) return await head(p, "書類の保管や掲示の様子を写真で") + empty("ISO管理の「📷 写真の記録」→「保管・掲示の状況」から写真を入れると、ここに並びます");
+  const qOf = n => (cats.find(c => c.name === n) || {}).q || "";
+  const missing = cats.filter(c => !byN[c.name]);
+  return await head(p, "書類の保管や掲示の様子を写真で") + names.map(n =>
+    '<h3 class="sec">'+esc(n)+(qOf(n) ? '<span class="recQ">'+esc(qOf(n))+'</span>' : '')+'</h3>'+
+    '<div class="recg">'+byN[n].map(x => '<div class="recc" onclick="eqLb.list=eqPhotos.filter(y=>y.targetId===\''+esc(x.targetId)+'\').sort((a,b)=>(b.isMain?1:0)-(a.isMain?1:0)||(a.createdMs||0)-(b.createdMs||0));eqLb.i=eqLb.list.findIndex(y=>y.id===\''+x.id+'\');eqShow()">'+
+      '<img src="'+x.thumb+'" alt="'+esc(n)+'">'+(x.memo ? '<div class="recm">'+esc(x.memo)+'</div>' : '')+'</div>').join("")+'</div>').join("")+
+    (missing.length ? '<div class="note" style="margin-top:12px;">まだ写真がない項目：'+missing.map(c => esc(c.name)).join("、")+'</div>' : '')+
+    '<div class="note" style="margin-top:6px;">写真を押すと大きく表示されます。</div>';
+}
+
 async function renderEquip(p){
   const [vs, cm, fe, ph] = await Promise.all([col("master_vehicles"), col("compressorMachines"), col("freonEquipments"), col("isoPhotos")]);
   eqPhotos = ph;
@@ -620,8 +652,8 @@ async function renderEquip(p){
   Object.keys(byT).filter(k => byT[k][0].kind === "equip" && !eqItems.some(e => "e:"+e.name === k)).forEach(k => eqItems.push({ name:byT[k][0].targetName, sub:"" }));
   const eqHtml = eqItems.length ? '<h3 class="sec">⚙️ 主な設備<span class="eqCnt">'+eqItems.length+'</span></h3><div class="eqg">'+eqItems.map(e => card("e:"+e.name, e.name, e.sub, "⚙️")).join("")+'</div>' : '';
   return await head(p, "車両は共通マスタ管理の車両から自動で表示") + sum + vehHtml + eqHtml +
-    (anyPhoto ? '<div class="note" style="margin-top:10px;">写真を押すと大きく表示されます。写真はISO管理の「📷 車両・設備の写真」から入れられます。</div>'
-              : '<div class="note" style="margin-top:10px;">📷 ISO管理の「車両・設備の写真」から写真を入れると、カードに写真が出ます。天井クレーン・トラックスケールなどの設備も写真を入れるとここに並びます。</div>');
+    (anyPhoto ? '<div class="note" style="margin-top:10px;">写真を押すと大きく表示されます。写真はISO管理の「📷 写真の記録」から入れられます。</div>'
+              : '<div class="note" style="margin-top:10px;">📷 ISO管理の「写真の記録」から写真を入れると、カードに写真が出ます。天井クレーン・トラックスケールなどの設備も写真を入れるとここに並びます。</div>');
 }
 
 /* ---------- 数字で見る関根商店(視察・見学向け) ---------- */
