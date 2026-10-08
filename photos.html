@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>車両・設備の写真</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
+  body { background:#f4f4f5; padding-bottom:60px; }
+  header { background:#0f766e; color:#fff; padding:14px 16px; }
+  header h1 { font-size:19px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:2px; }
+  .wrap { padding:12px; max-width:960px; margin:0 auto; }
+  .backBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#555; color:#fff; font-size:15px; font-weight:bold; margin-bottom:10px; cursor:pointer; }
+  .upCard { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:14px; }
+  .upCard h2 { font-size:16px; margin-bottom:6px; }
+  label { display:block; font-size:13px; font-weight:bold; color:#52525b; margin:10px 0 4px; }
+  input, select { width:100%; padding:11px; font-size:15px; border:1px solid #d4d4d8; border-radius:10px; background:#fff; }
+  .upBtn { width:100%; padding:14px; border:none; border-radius:12px; background:#0f766e; color:#fff; font-size:16px; font-weight:bold; margin-top:12px; cursor:pointer; }
+  .upBtn:disabled { opacity:.5; }
+  .note { font-size:12px; color:#71717a; line-height:1.7; margin-top:8px; }
+  .tabs { display:flex; gap:6px; margin:4px 0 10px; flex-wrap:wrap; }
+  .tabs button { border:2px solid #99f6e4; background:#fff; color:#0f766e; border-radius:99px; padding:7px 16px; font-size:14px; font-weight:bold; cursor:pointer; }
+  .tabs button.on { background:#0f766e; border-color:#0f766e; color:#fff; }
+  .grpHead { font-size:16px; font-weight:bold; color:#0f766e; margin:16px 0 8px; border-bottom:2px solid #0f766e; padding-bottom:4px; }
+  .tgt { background:#fff; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .tgt .ttl { font-size:15px; font-weight:bold; margin-bottom:8px; }
+  .tgt .ttl small { font-weight:normal; color:#71717a; font-size:12px; margin-left:6px; }
+  .ph { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+  .pc { border:1px solid #e4e4e7; border-radius:10px; overflow:hidden; background:#fafafa; display:flex; flex-direction:column; }
+  .pc.main { border:3px solid #f59e0b; }
+  .pc img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; background:#e4e4e7; }
+  .pc .memo { font-size:12px; color:#3f3f46; padding:6px 8px 0; min-height:20px; word-break:break-all; }
+  .pc .btns { display:flex; gap:6px; padding:6px 8px 8px; }
+  .pc .btns button { flex:1; border:none; border-radius:8px; padding:8px 4px; font-size:12px; font-weight:bold; cursor:pointer; }
+  .mainBtn { background:#fef3c7; color:#92400e; }
+  .mainBtn.is { background:#f59e0b; color:#fff; }
+  .delBtn { background:#fee2e2; color:#b91c1c; flex:0 0 44px !important; }
+  .empty { text-align:center; color:#a1a1aa; padding:36px 10px; font-size:14px; line-height:1.9; }
+  .noPhoto { font-size:12px; color:#a1a1aa; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.25s; z-index:50; }
+  #toast.show { opacity:1; }
+  #lb { position:fixed; inset:0; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; z-index:40; flex-direction:column; gap:10px; padding:16px; }
+  #lb.show { display:flex; }
+  #lb img { max-width:100%; max-height:82vh; border-radius:8px; }
+  #lb .cap { color:#fff; font-size:15px; text-align:center; }
+  #lb .x { position:absolute; top:12px; right:16px; background:#fff; border:none; border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; }
+  #confirmBg { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:60; padding:16px; }
+  #confirmBg.show { display:flex; }
+  #confirmBg .box { background:#fff; border-radius:14px; padding:20px; max-width:360px; width:100%; }
+  #confirmBg .box p { font-size:15px; line-height:1.7; margin-bottom:14px; }
+  #confirmBg .row { display:flex; gap:8px; }
+  #confirmBg .row button { flex:1; border:none; border-radius:10px; padding:12px; font-size:15px; font-weight:bold; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📷 車両・設備の写真</h1>
+  <div class="sub">ここに入れた写真は「見せるモード」の「主な設備・車両」に出ます</div>
+</header>
+
+<div class="wrap">
+<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+
+<div class="upCard">
+  <h2>📤 写真を追加する</h2>
+  <label for="tgtSel">どの車両・設備の写真？</label>
+  <select id="tgtSel" onchange="toggleOther()"><option value="">読み込み中…</option></select>
+  <div id="otherRow" style="display:none;">
+    <label for="otherName">設備の名前</label>
+    <input id="otherName" placeholder="例: ブリケットマシン">
+  </div>
+  <label for="memo">ひと言メモ(なくてもOK)</label>
+  <input id="memo" placeholder="例: 2026年10月 撮影 / 右側から">
+  <label for="files">写真(まとめて何枚でも選べます)</label>
+  <input type="file" id="files" accept="image/*" multiple>
+  <button class="upBtn" id="upBtn" onclick="uploadPhotos()">📤 写真を保存する</button>
+  <div class="note">写真は自動で小さくしてから保存します。最初に入れた写真がその車両・設備の「代表の写真」になり、見せるモードに大きく出ます。代表は ⭐ で変えられます。</div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div id="list"><div class="empty">読み込み中…</div></div>
+</div>
+
+<div id="lb" onclick="if(event.target===this)closeLb()">
+  <button class="x" onclick="closeLb()" aria-label="閉じる">✕</button>
+  <img id="lbImg" alt="">
+  <div class="cap" id="lbCap"></div>
+</div>
+<div id="confirmBg"><div class="box"><p id="confirmMsg"></p><div class="row"><button style="background:#e4e4e7;" onclick="confirmAns(false)">やめる</button><button style="background:#b91c1c;color:#fff;" onclick="confirmAns(true)">削除する</button></div></div></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* 保存先(Firestore)
+   isoPhotos     … 1枚ごとの情報＋一覧用の小さい写真(thumb)
+   isoPhotoFiles … 大きい写真(同じID)。見せるモードで拡大したときだけ読む */
+const PHOTO_COL = "isoPhotos";
+const FILE_COL = "isoPhotoFiles";
+const FIXED_EQUIP = ["トラックスケール", "天井クレーン"];  // 沿革に出てくる設備
+
+let vehicles = [], equips = [], photos = [], filter = "all";
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
+function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function vName(v){ return String(v.nickname || v.number || "").trim() || "(名前なし)"; }
+// 数字の車番は小さい順、名前の車両は後ろ
+function vSort(a, b){
+  const na = vName(a), nb = vName(b), ia = /^\d/.test(na), ib = /^\d/.test(nb);
+  if (ia !== ib) return ia ? -1 : 1;
+  return na.localeCompare(nb, "ja", { numeric:true });
+}
+
+/* ---------- 選択肢(車両はマスタ管理と連動) ---------- */
+function buildSelect(){
+  const sel = document.getElementById("tgtSel"), keep = sel.value;
+  const vs = vehicles.slice().sort(vSort);
+  const eqNames = Array.from(new Set(equips.concat(FIXED_EQUIP).concat(photos.filter(p => p.kind === "equip").map(p => p.targetName)))).filter(Boolean);
+  sel.innerHTML = '<option value="">-- 選んでください --</option>' +
+    '<optgroup label="🚛 車両(マスタ管理の車両)">' + vs.map(v => '<option value="v:'+esc(v.id)+'">'+esc(vName(v))+(v.model ? '　('+esc(v.model)+')' : '')+'</option>').join("") + '</optgroup>' +
+    '<optgroup label="⚙️ 設備">' + eqNames.map(n => '<option value="e:'+esc(n)+'">'+esc(n)+'</option>').join("") + '<option value="other">＋ ほかの設備(名前を入力)</option></optgroup>';
+  if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+function toggleOther(){ document.getElementById("otherRow").style.display = document.getElementById("tgtSel").value === "other" ? "" : "none"; }
+
+db.collection("master_vehicles").onSnapshot(s => { vehicles = s.docs.map(d => ({ id:d.id, ...d.data() })); buildSelect(); render(); }, e => toast("⚠️ 車両の読み込みエラー: "+e.message));
+Promise.all([db.collection("compressorMachines").get(), db.collection("freonEquipments").get()]).then(([a, b]) => {
+  equips = a.docs.map(d => d.data().name).concat(b.docs.map(d => d.data().name)).filter(Boolean);
+  buildSelect();
+}).catch(() => {});
+db.collection(PHOTO_COL).onSnapshot(s => {
+  photos = s.docs.map(d => ({ id:d.id, ...d.data() }));
+  photos.sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+  buildSelect(); render();
+}, e => { console.error(e); toast("⚠️ 写真の読み込みエラー: "+e.message); });
+
+/* ---------- 写真を小さくする(長辺 px、JPEG) ---------- */
+function shrink(file, maxPx, quality){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("写真を読み込めませんでした(HEICなどの形式は、JPEGで撮り直すか変換してください)")); };
+    img.src = url;
+  });
+}
+async function makeFull(file){
+  // Firestoreの1件1MBの上限に収まるよう、大きすぎたら画質を下げて作り直す
+  for (const [px, q] of [[1600, .82], [1400, .75], [1200, .7], [1000, .65]]){
+    const d = await shrink(file, px, q);
+    if (d.length < 900 * 1024) return d;
+  }
+  throw new Error("写真が大きすぎて保存できませんでした");
+}
+
+async function uploadPhotos(){
+  const sel = document.getElementById("tgtSel").value;
+  const files = [...document.getElementById("files").files];
+  const memo = document.getElementById("memo").value.trim();
+  if (!sel){ toast("どの車両・設備の写真か選んでください"); return; }
+  if (!files.length){ toast("写真を選んでください"); return; }
+  let kind, targetId, targetName;
+  if (sel.startsWith("v:")){ kind = "vehicle"; targetId = sel.slice(2); const v = vehicles.find(x => x.id === targetId); targetName = v ? vName(v) : ""; }
+  else if (sel === "other"){ kind = "equip"; targetName = document.getElementById("otherName").value.trim(); targetId = "e:"+targetName; if (!targetName){ toast("設備の名前を入れてください"); return; } }
+  else { kind = "equip"; targetName = sel.slice(2); targetId = "e:"+targetName; }
+  const btn = document.getElementById("upBtn"); btn.disabled = true;
+  let hasMain = photos.some(p => p.targetId === targetId && p.isMain);
+  let ok = 0;
+  try{
+    for (let i = 0; i < files.length; i++){
+      btn.textContent = `保存中… ${i+1}/${files.length}`;
+      const full = await makeFull(files[i]);
+      const thumb = await shrink(files[i], 480, .72);
+      const ref = db.collection(PHOTO_COL).doc();
+      await db.collection(FILE_COL).doc(ref.id).set({ data: full });   // 先に大きい写真
+      await ref.set({ kind, targetId, targetName, memo, thumb, isMain: !hasMain, createdMs: Date.now(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      hasMain = true; ok++;
+    }
+    document.getElementById("files").value = ""; document.getElementById("memo").value = "";
+    toast(`✅ ${ok}枚 保存しました`);
+  }catch(e){ console.error(e); toast("❌ "+e.message+(ok ? `(${ok}枚は保存済み)` : "")); }
+  btn.disabled = false; btn.textContent = "📤 写真を保存する";
+}
+
+/* ---------- 一覧 ---------- */
+function setFilter(f){ filter = f; render(); }
+function render(){
+  const cntV = photos.filter(p => p.kind === "vehicle").length, cntE = photos.filter(p => p.kind === "equip").length;
+  document.getElementById("tabs").innerHTML = [["all","すべて "+photos.length],["vehicle","🚛 車両 "+cntV],["equip","⚙️ 設備 "+cntE],["none","写真がない車両"]]
+    .map(([k, l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
+  const box = document.getElementById("list");
+  const byT = {}; photos.forEach(p => (byT[p.targetId] = byT[p.targetId] || []).push(p));
+  if (filter === "none"){
+    const no = vehicles.slice().sort(vSort).filter(v => !byT[v.id]);
+    box.innerHTML = no.length ? '<div class="tgt"><div class="ttl">まだ写真がない車両 '+no.length+'台</div><div class="noPhoto" style="font-size:14px;line-height:2;">'+no.map(v => esc(vName(v))).join("　")+'</div></div>'
+      : '<div class="empty">全部の車両に写真が入っています 🎉</div>';
+    return;
+  }
+  let html = "";
+  if (filter !== "equip"){
+    const vs = vehicles.slice().sort(vSort).filter(v => byT[v.id]);
+    // マスタから消えた車両の写真も残っていれば出す
+    const gone = Object.keys(byT).filter(k => byT[k][0].kind === "vehicle" && !vehicles.some(v => v.id === k));
+    if (vs.length || gone.length) html += '<div class="grpHead">🚛 車両</div>' + vs.map(v => tgtHtml(vName(v), v.model, byT[v.id])).join("") + gone.map(k => tgtHtml(byT[k][0].targetName+"(マスタにない車両)", "", byT[k])).join("");
+  }
+  if (filter !== "vehicle"){
+    const es = Object.keys(byT).filter(k => byT[k][0].kind === "equip").sort((a,b) => a.localeCompare(b, "ja"));
+    if (es.length) html += '<div class="grpHead">⚙️ 設備</div>' + es.map(k => tgtHtml(byT[k][0].targetName, "", byT[k])).join("");
+  }
+  box.innerHTML = html || '<div class="empty">まだ写真がありません。<br>上の「写真を追加する」から入れてください</div>';
+}
+function tgtHtml(name, model, list){
+  return '<div class="tgt"><div class="ttl">'+esc(name)+(model ? '<small>'+esc(model)+'</small>' : '')+'<small>'+list.length+'枚</small></div><div class="ph">'+
+    list.map(p => '<div class="pc'+(p.isMain ? ' main' : '')+'"><img src="'+p.thumb+'" alt="'+esc(name)+'" onclick="openLb(\''+p.id+'\')">'+
+      '<div class="memo">'+(p.isMain ? '⭐ ' : '')+esc(p.memo || "")+'</div>'+
+      '<div class="btns"><button class="mainBtn'+(p.isMain ? ' is' : '')+'" onclick="setMain(\''+p.id+'\')">'+(p.isMain ? '⭐ 代表' : '☆ 代表にする')+'</button>'+
+      '<button class="delBtn" onclick="askDel(\''+p.id+'\')" aria-label="削除">🗑</button></div></div>').join("")+'</div></div>';
+}
+
+async function setMain(id){
+  const p = photos.find(x => x.id === id); if (!p || p.isMain) return;
+  const b = db.batch();
+  photos.filter(x => x.targetId === p.targetId && x.isMain).forEach(x => b.update(db.collection(PHOTO_COL).doc(x.id), { isMain:false }));
+  b.update(db.collection(PHOTO_COL).doc(id), { isMain:true });
+  try { await b.commit(); toast("⭐ 代表の写真にしました"); } catch(e){ toast("❌ "+e.message); }
+}
+
+let confirmCb = null;
+function askDel(id){
+  const p = photos.find(x => x.id === id); if (!p) return;
+  document.getElementById("confirmMsg").textContent = "「"+p.targetName+"」の写真を1枚削除します。元に戻せません。よろしいですか？";
+  confirmCb = () => delPhoto(id);
+  document.getElementById("confirmBg").classList.add("show");
+}
+function confirmAns(yes){ document.getElementById("confirmBg").classList.remove("show"); if (yes && confirmCb) confirmCb(); confirmCb = null; }
+async function delPhoto(id){
+  const p = photos.find(x => x.id === id); if (!p) return;
+  try{
+    const b = db.batch();
+    b.delete(db.collection(PHOTO_COL).doc(id)); b.delete(db.collection(FILE_COL).doc(id));
+    // 代表を消したら、同じ車両・設備の一番古い写真を代表にする
+    if (p.isMain){ const next = photos.find(x => x.targetId === p.targetId && x.id !== id); if (next) b.update(db.collection(PHOTO_COL).doc(next.id), { isMain:true }); }
+    await b.commit(); toast("🗑 削除しました");
+  }catch(e){ toast("❌ 削除に失敗: "+e.message); }
+}
+
+async function openLb(id){
+  const p = photos.find(x => x.id === id); if (!p) return;
+  const img = document.getElementById("lbImg");
+  img.src = p.thumb; document.getElementById("lbCap").textContent = p.targetName + (p.memo ? "　" + p.memo : "");
+  document.getElementById("lb").classList.add("show");
+  try { const d = await db.collection(FILE_COL).doc(id).get(); if (d.exists && document.getElementById("lb").classList.contains("show")) img.src = d.data().data; } catch(e){}
+}
+function closeLb(){ document.getElementById("lb").classList.remove("show"); document.getElementById("lbImg").src = ""; }
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLb(); });
+</script>
+</body>
+</html>
