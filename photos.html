@@ -36,6 +36,15 @@
   .mainBtn { background:#fef3c7; color:#92400e; }
   .mainBtn.is { background:#f59e0b; color:#fff; }
   .delBtn { background:#fee2e2; color:#b91c1c; flex:0 0 44px !important; }
+  .pend { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; margin-top:12px; }
+  .pd { border:2px solid #e4e4e7; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+  .pd.ok { border-color:#0f766e; }
+  .pd img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#e4e4e7; }
+  .pd .fn { font-size:11px; color:#71717a; padding:4px 6px 0; word-break:break-all; }
+  .pd select, .pd input { margin:4px 6px 0; width:calc(100% - 12px); padding:8px; font-size:13px; }
+  .pd .same { margin:6px; border:none; border-radius:8px; padding:7px; font-size:12px; font-weight:bold; background:#ccfbf1; color:#115e59; cursor:pointer; }
+  .pd .rm { margin:0 6px 6px; border:none; border-radius:8px; padding:6px; font-size:12px; background:#f4f4f5; color:#71717a; cursor:pointer; }
+  .progress { font-size:15px; font-weight:bold; color:#0f766e; margin-top:12px; }
   .empty { text-align:center; color:#a1a1aa; padding:36px 10px; font-size:14px; line-height:1.9; }
   .noPhoto { font-size:12px; color:#a1a1aa; }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.25s; z-index:50; }
@@ -65,18 +74,18 @@
 
 <div class="upCard">
   <h2>📤 写真を追加する</h2>
-  <label for="tgtSel">どの車両・設備の写真？</label>
-  <select id="tgtSel" onchange="toggleOther()"><option value="">読み込み中…</option></select>
-  <div id="otherRow" style="display:none;">
-    <label for="otherName">設備の名前</label>
-    <input id="otherName" placeholder="例: ブリケットマシン">
+  <label for="files">① 写真を選ぶ(まとめて何枚でも)</label>
+  <input type="file" id="files" accept="image/*" multiple onchange="addPending(this.files)">
+  <div class="note">選んだ写真が下に並びます。写真ごとに「どの車両・設備か」を選んでください。<br>
+  ファイル名に呼び名が入っていれば(例: <b>340.jpg</b>、<b>265_右.jpg</b>)、最初から選ばれた状態になります。</div>
+  <div id="pendArea" style="display:none;">
+    <div class="progress" id="progress"></div>
+    <label for="memo">ひと言メモ(全部の写真に付きます・なくてもOK)</label>
+    <input id="memo" placeholder="例: 2026年10月 撮影">
+    <div class="pend" id="pend"></div>
+    <button class="upBtn" id="upBtn" onclick="uploadPhotos()">📤 選んだ写真を保存する</button>
+    <div class="note">車両・設備を選んでいない写真は保存されません(いらない写真はそのままでOK)。最初に入れた写真がその車両・設備の「代表の写真」になり、見せるモードに大きく出ます。代表は ⭐ で変えられます。</div>
   </div>
-  <label for="memo">ひと言メモ(なくてもOK)</label>
-  <input id="memo" placeholder="例: 2026年10月 撮影 / 右側から">
-  <label for="files">写真(まとめて何枚でも選べます)</label>
-  <input type="file" id="files" accept="image/*" multiple>
-  <button class="upBtn" id="upBtn" onclick="uploadPhotos()">📤 写真を保存する</button>
-  <div class="note">写真は自動で小さくしてから保存します。最初に入れた写真がその車両・設備の「代表の写真」になり、見せるモードに大きく出ます。代表は ⭐ で変えられます。</div>
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -125,16 +134,66 @@ function vSort(a, b){
 }
 
 /* ---------- 選択肢(車両はマスタ管理と連動) ---------- */
-function buildSelect(){
-  const sel = document.getElementById("tgtSel"), keep = sel.value;
-  const vs = vehicles.slice().sort(vSort);
-  const eqNames = Array.from(new Set(equips.concat(FIXED_EQUIP).concat(photos.filter(p => p.kind === "equip").map(p => p.targetName)))).filter(Boolean);
-  sel.innerHTML = '<option value="">-- 選んでください --</option>' +
-    '<optgroup label="🚛 車両(マスタ管理の車両)">' + vs.map(v => '<option value="v:'+esc(v.id)+'">'+esc(vName(v))+(v.model ? '　('+esc(v.model)+')' : '')+'</option>').join("") + '</optgroup>' +
-    '<optgroup label="⚙️ 設備">' + eqNames.map(n => '<option value="e:'+esc(n)+'">'+esc(n)+'</option>').join("") + '<option value="other">＋ ほかの設備(名前を入力)</option></optgroup>';
-  if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+function eqNameList(){
+  return Array.from(new Set(equips.concat(FIXED_EQUIP).concat(photos.filter(p => p.kind === "equip").map(p => p.targetName)))).filter(Boolean);
 }
-function toggleOther(){ document.getElementById("otherRow").style.display = document.getElementById("tgtSel").value === "other" ? "" : "none"; }
+function optionsHtml(sel){
+  const vs = vehicles.slice().sort(vSort);
+  const o = (v, l) => '<option value="'+esc(v)+'"'+(v === sel ? ' selected' : '')+'>'+esc(l)+'</option>';
+  return o("", "-- どの車両・設備？ --") +
+    '<optgroup label="🚛 車両">' + vs.map(v => o("v:"+v.id, vName(v)+(v.model ? "　("+v.model+")" : ""))).join("") + '</optgroup>' +
+    '<optgroup label="⚙️ 設備">' + eqNameList().map(n => o("e:"+n, n)).join("") + o("other", "＋ ほかの設備(名前を入力)") + '</optgroup>';
+}
+function buildSelect(){ if (pending.length) renderPending(); }
+
+/* ---------- 選んだ写真の振り分け ---------- */
+let pending = [];   // {id, file, url, sel, other}
+let pendSeq = 0;
+const norm = s => String(s||"").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+// ファイル名から車両・設備を当てる(長い名前から優先。「340」と「3400」の取り違えを防ぐため、数字の前後が数字でないことも確認)
+function guessTarget(fileName){
+  const base = norm(fileName.replace(/\.[^.]+$/, ""));
+  const cands = vehicles.map(v => ({ val:"v:"+v.id, key:norm(vName(v)) }))
+    .concat(vehicles.filter(v => v.number).map(v => ({ val:"v:"+v.id, key:norm(v.number) })))
+    .concat(eqNameList().map(n => ({ val:"e:"+n, key:norm(n) })))
+    .filter(c => c.key && c.key !== "(名前なし)").sort((a, b) => b.key.length - a.key.length);
+  for (const c of cands){
+    const i = base.indexOf(c.key);
+    if (i < 0) continue;
+    const before = base[i-1], after = base[i + c.key.length];
+    if (/\d/.test(c.key[0]) && before && /\d/.test(before)) continue;
+    if (/\d/.test(c.key[c.key.length-1]) && after && /\d/.test(after)) continue;
+    return c.val;
+  }
+  return "";
+}
+function addPending(files){
+  [...files].forEach(f => pending.push({ id: ++pendSeq, file:f, url:URL.createObjectURL(f), sel:guessTarget(f.name), other:"" }));
+  document.getElementById("files").value = "";
+  renderPending();
+}
+function countDone(){ return pending.filter(p => p.sel && (p.sel !== "other" || p.other.trim())).length; }
+function renderPending(){
+  document.getElementById("pendArea").style.display = pending.length ? "" : "none";
+  document.getElementById("progress").textContent = pending.length+"枚中 "+countDone()+"枚 選択済み";
+  document.getElementById("pend").innerHTML = pending.map((p, i) =>
+    '<div class="pd'+(p.sel ? ' ok' : '')+'"><img src="'+p.url+'" alt="">'+
+    '<div class="fn">'+esc(p.file.name)+'</div>'+
+    '<select aria-label="車両・設備" onchange="setSel('+p.id+',this.value)">'+optionsHtml(p.sel)+'</select>'+
+    (p.sel === "other" ? '<input placeholder="設備の名前" value="'+esc(p.other)+'" oninput="setOther('+p.id+',this.value)">' : '')+
+    (i < pending.length-1 && p.sel ? '<button class="same" onclick="fillDown('+p.id+')">↓ この下の写真も同じにする</button>' : '')+
+    '<button class="rm" onclick="rmPending('+p.id+')">この写真を外す</button></div>').join("");
+}
+function setSel(id, v){ const p = pending.find(x => x.id === id); if (p){ p.sel = v; renderPending(); } }
+function setOther(id, v){ const p = pending.find(x => x.id === id); if (p){ p.other = v; document.getElementById("progress").textContent = pending.length+"枚中 "+countDone()+"枚 選択済み"; } }
+// 押した写真より下で、まだ選んでいない写真を同じ車両・設備にする
+function fillDown(id){
+  const i = pending.findIndex(x => x.id === id); if (i < 0) return;
+  const src = pending[i]; let n = 0;
+  for (let k = i+1; k < pending.length; k++){ if (!pending[k].sel){ pending[k].sel = src.sel; pending[k].other = src.other; n++; } }
+  renderPending(); toast(n ? "↓ "+n+"枚を同じにしました" : "下の写真はもう全部選ばれています");
+}
+function rmPending(id, quiet){ const i = pending.findIndex(x => x.id === id); if (i >= 0){ URL.revokeObjectURL(pending[i].url); pending.splice(i, 1); if (!quiet) renderPending(); } }
 
 db.collection("master_vehicles").onSnapshot(s => { vehicles = s.docs.map(d => ({ id:d.id, ...d.data() })); buildSelect(); render(); }, e => toast("⚠️ 車両の読み込みエラー: "+e.message));
 Promise.all([db.collection("compressorMachines").get(), db.collection("freonEquipments").get()]).then(([a, b]) => {
@@ -172,34 +231,37 @@ async function makeFull(file){
   throw new Error("写真が大きすぎて保存できませんでした");
 }
 
+function targetOf(p){
+  if (!p.sel) return null;
+  if (p.sel.startsWith("v:")){ const id = p.sel.slice(2), v = vehicles.find(x => x.id === id); return { kind:"vehicle", targetId:id, targetName: v ? vName(v) : "" }; }
+  const name = p.sel === "other" ? p.other.trim() : p.sel.slice(2);
+  return name ? { kind:"equip", targetId:"e:"+name, targetName:name } : null;
+}
 async function uploadPhotos(){
-  const sel = document.getElementById("tgtSel").value;
-  const files = [...document.getElementById("files").files];
+  const todo = pending.filter(p => targetOf(p));
+  if (!todo.length){ toast("写真ごとに、どの車両・設備か選んでください"); return; }
   const memo = document.getElementById("memo").value.trim();
-  if (!sel){ toast("どの車両・設備の写真か選んでください"); return; }
-  if (!files.length){ toast("写真を選んでください"); return; }
-  let kind, targetId, targetName;
-  if (sel.startsWith("v:")){ kind = "vehicle"; targetId = sel.slice(2); const v = vehicles.find(x => x.id === targetId); targetName = v ? vName(v) : ""; }
-  else if (sel === "other"){ kind = "equip"; targetName = document.getElementById("otherName").value.trim(); targetId = "e:"+targetName; if (!targetName){ toast("設備の名前を入れてください"); return; } }
-  else { kind = "equip"; targetName = sel.slice(2); targetId = "e:"+targetName; }
   const btn = document.getElementById("upBtn"); btn.disabled = true;
-  let hasMain = photos.some(p => p.targetId === targetId && p.isMain);
+  const hasMain = new Set(photos.filter(p => p.isMain).map(p => p.targetId));
   let ok = 0;
   try{
-    for (let i = 0; i < files.length; i++){
-      btn.textContent = `保存中… ${i+1}/${files.length}`;
-      const full = await makeFull(files[i]);
-      const thumb = await shrink(files[i], 480, .72);
+    for (const p of todo){
+      btn.textContent = `保存中… ${ok+1}/${todo.length}`;
+      const tg = targetOf(p);
+      const full = await makeFull(p.file);
+      const thumb = await shrink(p.file, 480, .72);
       const ref = db.collection(PHOTO_COL).doc();
       await db.collection(FILE_COL).doc(ref.id).set({ data: full });   // 先に大きい写真
-      await ref.set({ kind, targetId, targetName, memo, thumb, isMain: !hasMain, createdMs: Date.now(),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      hasMain = true; ok++;
+      await ref.set({ kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName, memo, thumb, isMain: !hasMain.has(tg.targetId),
+        createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      hasMain.add(tg.targetId); ok++;
+      rmPending(p.id, true);   // 保存できた写真は並びから外す
     }
-    document.getElementById("files").value = ""; document.getElementById("memo").value = "";
-    toast(`✅ ${ok}枚 保存しました`);
+    toast(`✅ ${ok}枚 保存しました`+(pending.length ? `(選んでいない写真 ${pending.length}枚が残っています)` : ""));
+    if (!pending.length) document.getElementById("memo").value = "";
   }catch(e){ console.error(e); toast("❌ "+e.message+(ok ? `(${ok}枚は保存済み)` : "")); }
-  btn.disabled = false; btn.textContent = "📤 写真を保存する";
+  renderPending();
+  btn.disabled = false; btn.textContent = "📤 選んだ写真を保存する";
 }
 
 /* ---------- 一覧 ---------- */
