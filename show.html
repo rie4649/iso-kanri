@@ -541,14 +541,59 @@ async function renderSkills(p){
 }
 
 /* ---------- 主な設備・車両 ---------- */
+/* 車両・設備の写真(ISO管理の「📷 車両・設備の写真」で登録。isoPhotos=一覧用の小さい写真、isoPhotoFiles=拡大用) */
+let eqPhotos = [], eqLb = { list:[], i:0 };
+function eqGallery(vs, photos){
+  eqPhotos = photos;
+  if (!photos.length) return '<div class="note" style="margin:4px 0 12px;">📷 写真はISO管理の「車両・設備の写真」から入れると、ここに並びます。</div>';
+  const byT = {}; photos.slice().sort((a,b) => (a.createdMs||0) - (b.createdMs||0)).forEach(x => (byT[x.targetId] = byT[x.targetId] || []).push(x));
+  const vn = v => String(v.nickname || v.number || "").trim();
+  const vsorted = vs.slice().sort((a,b) => { const na = vn(a), nb = vn(b), ia = /^\d/.test(na), ib = /^\d/.test(nb); return ia !== ib ? (ia ? -1 : 1) : na.localeCompare(nb, "ja", { numeric:true }); });
+  const cards = [];
+  vsorted.forEach(v => { if (byT[v.id]) cards.push({ t:v.id, name:vn(v), sub:v.model || "", list:byT[v.id] }); });
+  Object.keys(byT).filter(k => byT[k][0].kind === "equip").sort((a,b) => a.localeCompare(b,"ja")).forEach(k => cards.push({ t:k, name:byT[k][0].targetName, sub:"設備", list:byT[k] }));
+  return '<h3 class="sec">📷 写真で見る車両・設備</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:16px;">'+
+    cards.map(c => { const m = c.list.find(x => x.isMain) || c.list[0];
+      return '<div style="background:#fff;border:1px solid #c7d2fe;border-radius:14px;overflow:hidden;cursor:zoom-in;break-inside:avoid;" onclick="eqOpen(\''+esc(c.t)+'\')">'+
+        '<img src="'+m.thumb+'" alt="'+esc(c.name)+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;">'+
+        '<div style="padding:8px 12px;"><div style="font-weight:900;font-size:17px;">'+esc(c.name)+'</div><div class="note">'+esc(c.sub)+(c.list.length > 1 ? '　📷'+c.list.length+'枚' : '')+'</div></div></div>'; }).join("")+'</div>';
+}
+function eqOpen(t){
+  eqLb.list = eqPhotos.filter(x => x.targetId === t).sort((a,b) => (b.isMain?1:0) - (a.isMain?1:0) || (a.createdMs||0) - (b.createdMs||0));
+  eqLb.i = 0; eqShow();
+}
+async function eqShow(){
+  let bg = document.getElementById("eqLb");
+  if (!bg){ bg = document.createElement("div"); bg.id = "eqLb";
+    bg.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:90;display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;";
+    bg.onclick = e => { if (e.target === bg) bg.remove(); }; document.body.appendChild(bg); }
+  const x = eqLb.list[eqLb.i], n = eqLb.list.length, nav = "width:56px;height:56px;border-radius:50%;border:none;font-size:22px;cursor:pointer;flex:0 0 auto;";
+  bg.innerHTML = (n > 1 ? '<button style="'+nav+'" onclick="eqLb.i=(eqLb.i+'+(n-1)+')%'+n+';eqShow()" aria-label="前の写真">◀</button>' : '')+
+    '<div style="text-align:center;min-width:0;"><img id="eqLbImg" src="'+x.thumb+'" alt="" style="max-width:100%;max-height:82vh;border-radius:10px;"><div style="color:#fff;font-size:18px;margin-top:8px;">'+esc(x.targetName)+(x.memo ? '　'+esc(x.memo) : '')+(n > 1 ? '　('+(eqLb.i+1)+' / '+n+')' : '')+'</div></div>'+
+    (n > 1 ? '<button style="'+nav+'" onclick="eqLb.i=(eqLb.i+1)%'+n+';eqShow()" aria-label="次の写真">▶</button>' : '')+
+    '<button style="position:absolute;top:14px;right:18px;'+nav+'width:48px;height:48px;" onclick="document.getElementById(\'eqLb\').remove()" aria-label="閉じる">✕</button>';
+  try { const d = await db.collection("isoPhotoFiles").doc(x.id).get(); const im = document.getElementById("eqLbImg"); if (d.exists && im && eqLb.list[eqLb.i] === x) im.src = d.data().data; } catch(e){}
+}
+// 写真を拡大している間は、← → で写真をめくる(ページは進めない)・Escで閉じる
+document.addEventListener("keydown", e => {
+  const b = document.getElementById("eqLb"); if (!b) return;
+  const n = eqLb.list.length;
+  if (e.key === "Escape"){ b.remove(); e.stopImmediatePropagation(); e.preventDefault(); }
+  else if (["ArrowRight","ArrowLeft"," ","PageDown","PageUp"].includes(e.key)){
+    e.stopImmediatePropagation(); e.preventDefault();
+    if (n > 1){ eqLb.i = (eqLb.i + (["ArrowLeft","PageUp"].includes(e.key) ? n-1 : 1)) % n; eqShow(); }
+  }
+}, true);
+
 async function renderEquip(p){
-  const [vs, cm, fe] = await Promise.all([col("master_vehicles"), col("compressorMachines"), col("freonEquipments")]);
+  const [vs, cm, fe, ph] = await Promise.all([col("master_vehicles"), col("compressorMachines"), col("freonEquipments"), col("isoPhotos")]);
   const byModel = {}; vs.forEach(v => { const k = (v.model || "その他").trim() || "その他"; (byModel[k] = byModel[k] || []).push(v); });
   const models = Object.keys(byModel).sort((a,b) => byModel[b].length - byModel[a].length);
   const vname = v => String(v.nickname || v.number || "").trim();
   return await head(p, "車両はマスタ管理の車両から自動で表示") +
     '<div class="kpis"><div class="kpi"><div class="k">車両</div><div class="v">'+vs.length+'<small>台</small></div></div>'+
     models.slice(0,5).map(m => '<div class="kpi" style="min-width:150px;"><div class="k">'+esc(m)+'</div><div class="v">'+byModel[m].length+'<small>台</small></div></div>').join("")+'</div>'+
+    eqGallery(vs, ph)+
     '<h3 class="sec">🚛 車両(車体の形状ごと)</h3><div class="tw"><table class="t"><tr><th style="width:200px">車体の形状</th><th style="width:80px">台数</th><th>車両</th></tr>'+models.map(m =>
       '<tr><td><b>'+esc(m)+'</b></td><td class="c">'+byModel[m].length+'</td><td>'+byModel[m].map(v => esc(vname(v))+(v.maxLoad ? '<span class="note">('+esc(v.maxLoad)+')</span>' : '')).join("　")+'</td></tr>').join("")+'</table></div>'+
     ((cm.length || fe.length) ? '<h3 class="sec">⚙️ 主な設備</h3><div class="tw"><table class="t"><tr><th>種類</th><th>名前・型式</th><th>メーカー・冷媒など</th></tr>'+
