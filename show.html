@@ -174,6 +174,119 @@ table.t td.nw { white-space:nowrap; }
 #toast.show { opacity:1; }
 #loading { text-align:center; padding:60px; color:#64748b; font-size:20px; }
 
+/* =====================================================================
+   落ち着いたデザイン(2026-10 見直し)
+   濃紺の文字+深緑の差し色1色・絵文字なし・太さ控えめ・角は小さめ
+   ===================================================================== */
+:root { --ink:#1c2733; --sub:#5b6675; --line:#d9dee5; --soft:#f5f7f9; --bg:#eceff3; --ac:#1d5446; --acs:#e8f1ee; }
+body { background:var(--bg); color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif; }
+#bar { background:var(--ink); height:54px; box-shadow:none; border-bottom:1px solid #0f161e; }
+#bar .bt { background:transparent; border:1px solid rgba(255,255,255,.22); border-radius:6px; font-weight:500; font-size:14px; padding:7px 12px; }
+#bar .bt:hover { background:rgba(255,255,255,.1); }
+#bar .nav { font-size:14px; padding:7px 14px; }
+#bar .ttl { font-size:16px; font-weight:600; letter-spacing:.04em; }
+#bar .pg { opacity:.6; font-size:12px; }
+#stage { padding:72px 18px 30px; }
+.slide { border-radius:4px; box-shadow:0 1px 3px rgba(16,24,40,.08); padding:34px 44px 40px; }
+.sHead { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:20px; position:relative; }
+.sHead::after { content:""; position:absolute; left:0; bottom:-1px; width:72px; height:3px; background:var(--ac); }
+.sHead h2 { font-size:28px; font-weight:700; color:var(--ink); letter-spacing:.03em; }
+.sHead .sub { font-size:14px; color:var(--sub); font-weight:500; }
+.chTag { background:transparent; color:var(--ac); border:1px solid var(--ac); border-radius:3px; font-weight:600; font-size:12px; padding:2px 8px; }
+.updated { color:#8a94a1; font-weight:400; font-size:12px; }
+.per button { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:4px; font-weight:500; font-size:14px; width:40px; height:36px; }
+.per span { color:var(--ink); font-weight:600; font-size:17px; }
+.purpose { background:var(--soft); border:none; border-left:3px solid var(--ac); border-radius:0; color:var(--ink); font-size:15px; }
+.purpose b { color:var(--ac); font-weight:600; }
+h3.sec { font-size:18px; font-weight:700; color:var(--ink); border-left:3px solid var(--ac); padding-left:10px; margin:26px 0 12px; letter-spacing:.03em; }
+.note { color:var(--sub); font-size:13px; }
+.empty { color:#8a94a1; font-size:17px; }
+table.t { font-size:16px; }
+table.t th { background:var(--soft); color:var(--ink); font-weight:600; border:1px solid var(--line); }
+table.t td { border:1px solid var(--line); }
+table.t tr:nth-child(even) td { background:#fafbfc; }
+.ok { color:#1d6b4f; font-weight:700; } .ng { color:#b42318; font-weight:700; } .wn { color:#a15c07; font-weight:700; }
+.badge { border-radius:3px; font-weight:600; font-size:13px; padding:2px 8px; }
+.b-ok { background:#e6f2ec; color:#1d6b4f; } .b-wn { background:#fdf3e1; color:#8a4b05; } .b-ng { background:#fbe9e7; color:#9b1c13; } .b-gr { background:#eef1f4; color:#5b6675; }
+.openBtn { background:var(--ac); border-radius:4px; font-weight:500; }
+.recQ { background:var(--acs); color:var(--ac); border-radius:3px; font-weight:600; }
+.recc, .eqc { border:1px solid var(--line); border-radius:4px; }
+.eqSum { background:var(--soft); border:none; border-left:3px solid var(--ac); border-radius:0; color:var(--ink); font-size:17px; font-weight:500; }
+.eqSum b { font-size:26px; font-weight:600; }
+.eqSum span { color:var(--sub); font-size:14px; }
+.eqCnt { color:var(--sub); font-weight:500; font-size:13px; }
+.eqn { font-size:17px; font-weight:600; color:var(--ink); }
+.kpi { background:#fff; border:1px solid var(--line); border-top:3px solid var(--ac); border-radius:4px; }
+.kpi .k { color:var(--sub); font-weight:500; font-size:14px; }
+.kpi .v { color:var(--ink); font-weight:600; font-size:32px; font-variant-numeric:tabular-nums; }
+.kpi .v small { color:var(--sub); font-weight:500; }
+.bar { height:10px; background:#e5e9ee; border-radius:2px; }
+.bar i { background:var(--ac); }
+/* 数字で見る関根商店 */
+.numg { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px !important; margin-top:8px; }
+.numg .kpi { min-width:0; padding:20px 22px 18px; }
+.numg .k { font-size:14px; letter-spacing:.06em; }
+.numg .v { font-size:50px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
+.numg .v small { font-size:18px; margin-left:6px; }
+.numg .note { margin:0; }
+/* 表紙・目次 */
+.cover { padding:36px 0 10px; }
+.cover .co { font-size:20px; font-weight:500; color:var(--sub); letter-spacing:.12em; }
+.cover h1 { font-size:40px; font-weight:700; color:var(--ink); letter-spacing:.06em; margin:12px 0 14px; }
+.cover .iso { background:transparent; color:var(--ac); border:1px solid var(--ac); border-radius:3px; font-size:16px; font-weight:600; padding:5px 18px; letter-spacing:.08em; }
+.cover .dt { font-size:14px; color:var(--sub); }
+.chHead { background:transparent; color:var(--ink); border-radius:0; border-bottom:2px solid var(--ink); padding:6px 2px; font-size:16px; font-weight:700; letter-spacing:.04em; }
+.chHead small { color:var(--sub); opacity:1; font-weight:500; font-size:12px; }
+.tiles { grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+.tile { border:1px solid var(--line); background:#fff; border-radius:4px; padding:14px 16px; text-align:left; display:flex; align-items:baseline; gap:12px; }
+.tile:hover { border-color:var(--ac); background:var(--acs); transform:none; }
+.tile .ic { font-size:13px; font-weight:600; color:var(--ac); font-variant-numeric:tabular-nums; min-width:22px; }
+.tile .nm { font-size:15px; font-weight:600; margin-top:0; color:var(--ink); }
+/* 沿革・組織図など */
+.hsSum b { color:var(--ac); font-weight:600; }
+.hsEra { background:var(--ink); border-radius:2px; font-weight:600; font-size:18px; }
+.hsRow { border-bottom:1px solid var(--line); }
+.hsD b { font-weight:600; color:var(--ink); } .hsD small { color:var(--ac); font-weight:500; }
+.hsX { font-weight:500; }
+.hsSum i, .hsX i { border-radius:3px; font-weight:600; }
+.tl::before { background:var(--line); width:2px; }
+.tl .d { color:var(--ac); font-weight:600; }
+.tl .row::before { border:3px solid var(--ac); width:12px; height:12px; }
+.tl .x { font-weight:500; }
+.org .box { border-radius:4px; font-weight:600; box-shadow:none; border:1px solid var(--line); }
+.org .dept .box { background:var(--ac); border-color:var(--ac); }
+.org .items div { font-weight:500; }
+.course button { border:1px solid var(--line); border-radius:4px; color:var(--ink); font-weight:600; font-size:16px; }
+.course button.on { background:var(--ink); border-color:var(--ink); }
+/* ひと目で分かるまとめ */
+.dc { background:#fff; border:1px solid var(--line); border-left:4px solid #9aa4b1; border-radius:4px; }
+.dc:hover { border-color:var(--ac); }
+.dc .k { font-weight:600; color:var(--sub); font-size:14px; }
+.dc .v { font-weight:600; font-size:32px; }
+.dc .s { color:var(--sub); font-size:13px; }
+.dc.g { background:#fff; border-color:var(--line); border-left-color:#1d6b4f; } .dc.g .v { color:#1d6b4f; }
+.dc.y { background:#fff; border-color:var(--line); border-left-color:#c27a0e; } .dc.y .v { color:#a15c07; }
+.dc.r { background:#fff; border-color:var(--line); border-left-color:#b42318; } .dc.r .v { color:#b42318; }
+.dc.n .v { color:var(--ink); }
+/* 環境方針・会社概要 */
+.policy { font-weight:500; color:var(--ink); font-size:21px; }
+.pol { color:var(--ink); }
+.pol .ph { color:var(--ink); font-weight:700; border-bottom:1px solid var(--line); font-size:24px; }
+.pol .pc { background:var(--soft); border:none; border-left:3px solid var(--ac); border-radius:0; }
+.pol .pc b { color:var(--ink); font-weight:600; font-size:18px; }
+.pol .pt { font-size:18px; }
+.pol .pe { font-weight:600; font-size:18px; }
+.policySign { font-weight:500; color:var(--ink); font-size:17px; }
+.kv { font-size:17px; }
+.kv th { background:var(--soft); color:var(--ink); font-weight:600; border:1px solid var(--line); }
+.kv td { font-weight:500; border:1px solid var(--line); }
+#toast { background:var(--ink); border-radius:4px; }
+#setBg .box { border-radius:6px; }
+#setBg h3 { color:var(--ink); } #setBg .grp { color:var(--ac); border-top-color:var(--line); }
+#setBg input, #setBg textarea { border-radius:4px; }
+#setBg .btns button { border-radius:4px; }
+
+
 @media (max-width:760px){
   #bar { height:auto; flex-wrap:wrap; padding:6px 8px; gap:5px; }
   #bar .ttl { order:-1; flex-basis:100%; font-size:16px; }
@@ -198,6 +311,7 @@ table.t td.nw { white-space:nowrap; }
   .slide { box-shadow:none; border-radius:0; padding:0; min-height:0; max-width:none; }
   .per button, .openBtn, .tile, .course { display:none !important; }
   .dash { grid-template-columns:repeat(3,1fr); } .dc .v { font-size:22pt; }
+  .numg { grid-template-columns:repeat(4,1fr); } .numg .v { font-size:30pt; } .tile { display:none !important; }
   .eqg { grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px; } .eqn { font-size:12pt; } .eqs { font-size:9pt; } .eqSum { font-size:13pt; }
   .policy { font-size:15pt; } .policySign { font-size:13pt; } .kv { font-size:12pt; }
   .pol .ph { font-size:16pt; margin:10px 0 6px; } .pol .pt, .pol .pe { font-size:11pt; } .pol .pc b { font-size:11.5pt; } .pol .pc span { font-size:10pt; } .pol .pc { padding:6px 10px; }
@@ -215,20 +329,20 @@ table.t td.nw { white-space:nowrap; }
 
 <div id="bar">
   <button class="bt" onclick="location.href='index.html'">← ISO管理</button>
-  <button class="bt" onclick="go(0)">☰ 目次</button>
-  <button class="bt nav" onclick="step(-1)">◀</button>
+  <button class="bt" onclick="go(0)">目次</button>
+  <button class="bt nav" onclick="step(-1)" aria-label="前のページ">◀</button>
   <div class="ttl" id="barTtl">見せるモード</div>
   <span class="pg" id="barPg"></span>
-  <button class="bt nav" onclick="step(1)">▶</button>
-  <button class="bt" onclick="toggleFull()">⛶ 全画面</button>
-  <button class="bt" onclick="printCurrent()">🖨 このページ</button>
-  <button class="bt" onclick="printAll()">📄 全部PDF</button>
+  <button class="bt nav" onclick="step(1)" aria-label="次のページ">▶</button>
+  <button class="bt" onclick="toggleFull()">全画面</button>
+  <button class="bt" onclick="printCurrent()">このページを印刷</button>
+  <button class="bt" onclick="printAll()">全ページPDF</button>
 </div>
 
 <!-- 表紙・環境方針・認証の情報の入力 -->
 <div id="setBg" onclick="if(event.target===this)closeSet()">
   <div class="box">
-    <h3>⚙️ 会社概要・環境方針・認証の情報</h3>
+    <h3>会社概要・環境方針・認証の情報</h3>
     <div class="note">ここに入れた内容が「見せるモード」の表紙・環境方針・認証の情報のページに出ます。</div>
     <div class="grp">🏢 会社概要</div>
     <div class="row2"><div><label>会社名</label><input id="s_company" placeholder="株式会社関根商店"></div><div><label>代表者</label><input id="s_rep" placeholder="代表取締役社長 ◯◯ ◯◯"></div></div>
@@ -354,7 +468,7 @@ async function head(p, sub, perPart){
   const pm = await loadPurposes(); const x = p.purpose ? pm[p.purpose] : null;
   const lines = x ? [x.emsCode ? "<b>管理コード</b>　"+esc(x.emsCode) : "", x.text ? "<b>目的</b>　"+esc(x.text) : "", x.management ? "<b>管理</b>　"+esc(x.management) : ""].filter(Boolean) : [];
   const lu = lastUpdated(), ch = CHAPTERS.find(c => c.id === p.ch);
-  return '<div class="sHead">'+(ch && ch.clause ? '<span class="chTag">'+esc(ch.clause)+'</span>' : '')+'<h2>'+p.icon+' '+esc(p.name)+'</h2>'+(sub ? '<span class="sub">'+sub+'</span>' : '')+(perPart||"")+
+  return '<div class="sHead">'+(ch && ch.clause ? '<span class="chTag">'+esc(ch.clause)+'</span>' : '')+'<h2>'+esc(p.name)+'</h2>'+(sub ? '<span class="sub">'+sub+'</span>' : '')+(perPart||"")+
     (lu && !perPart ? '<span class="updated">最終入力 '+esc(fd(lu))+'</span>' : '')+'</div>'+(lu && perPart ? '<div class="note" style="text-align:right;margin:-10px 0 8px;">最終入力 '+esc(fd(lu))+'</div>' : '')+
     (lines.length ? '<div class="purpose">'+lines.join("\n")+'</div>' : '');
 }
@@ -424,7 +538,7 @@ async function renderCover(p){
   let tiles = "", lastCh = -1;
   cp.forEach(x => { if (x.key === "cover") return;
     if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); tiles += '<div class="chHead">'+esc(c.name)+(c.clause ? '<small>ISO14001 '+esc(c.clause)+'</small>' : '')+'</div>'; lastCh = x.ch; }
-    tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+x.icon+'</div><div class="nm">'+esc(x.name)+'</div></div>'; });
+    tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+String(cp.indexOf(x)).padStart(2,"0")+'</div><div class="nm">'+esc(x.name)+'</div></div>'; });
   return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+(pf.certBody ? '　'+esc(pf.certBody) : '')+'</div>' : '')+
     '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ</div></div>'+
@@ -648,8 +762,9 @@ async function renderEquip(p){
   // 設備: 圧縮機・フロン機器のマスター＋写真だけ入っている設備(トラックスケールなど)
   const eqItems = [];
   cm.forEach(c => eqItems.push({ name:c.name, sub:[c.type || "圧縮機", c.maker].filter(Boolean).join("・") }));
-  fe.forEach(f => eqItems.push({ name:f.name, sub:["フロン類使用機器", f.refrigerant, f.chargeKg ? f.chargeKg+"kg" : ""].filter(Boolean).join("・") }));
-  Object.keys(byT).filter(k => byT[k][0].kind === "equip" && !eqItems.some(e => "e:"+e.name === k)).forEach(k => eqItems.push({ name:byT[k][0].targetName, sub:"" }));
+  // フロン類使用機器(事務所のエアコン等)は「主な設備」には出さない(フロン簡易点検のページで扱う) 2026-10
+  const feNames = new Set(fe.map(f => "e:"+f.name));
+  Object.keys(byT).filter(k => byT[k][0].kind === "equip" && !feNames.has(k) && !eqItems.some(e => "e:"+e.name === k)).forEach(k => eqItems.push({ name:byT[k][0].targetName, sub:"" }));
   const eqHtml = eqItems.length ? '<h3 class="sec">⚙️ 主な設備<span class="eqCnt">'+eqItems.length+'</span></h3><div class="eqg">'+eqItems.map(e => card("e:"+e.name, e.name, e.sub, "⚙️")).join("")+'</div>' : '';
   return await head(p, "車両は共通マスタ管理の車両から自動で表示") + sum + vehHtml + eqHtml +
     (anyPhoto ? '<div class="note" style="margin-top:10px;">写真を押すと大きく表示されます。写真はISO管理の「📷 写真の記録」から入れられます。</div>'
@@ -662,7 +777,7 @@ async function renderNumbers(p){
   const [h, emps, vs, ev, marks, types, dr, sg, sp2, pf] = await Promise.all([docGet("companyInfo","history"), col("employees"), col("master_vehicles"), col("isoEvents"), col("eventMarks"),
     col("activityTypes"), col("dieselRecords"), col("sdgsGoals"), col("sdgsProgress"), profile()]);
   const cards = [];
-  const big = (ic, k, v, u, s) => cards.push('<div class="kpi" style="min-width:260px;text-align:center;padding:22px;"><div style="font-size:40px">'+ic+'</div><div class="k" style="font-size:18px;">'+k+'</div><div class="v" style="font-size:52px;">'+v+'<small style="font-size:20px;">'+u+'</small></div>'+(s ? '<div class="note">'+s+'</div>' : '')+'</div>');
+  const big = (ic, k, v, u, s) => cards.push('<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+'<small>'+u+'</small></div>'+(s ? '<div class="note">'+s+'</div>' : '')+'</div>');
   // 創業から
   const first = ((h && h.items) || [])[0];
   if (first){ const m = String(first.date).match(/(昭和|平成|令和)(\d+|元)年/); if (m){ const base = { 昭和:1925, 平成:1988, 令和:2018 }[m[1]] + (m[2] === "元" ? 1 : Number(m[2])); big("🏢", "創業から", new Date().getFullYear() - base, "年", esc(first.date)+" 設立"); } }
@@ -686,7 +801,7 @@ async function renderNumbers(p){
   const curRecs = dr.filter(x => x.yearMonth && fyOf(x.yearMonth) === fy), ms = curRecs.map(x => x.yearMonth.slice(5,7));
   const c1 = curRecs.reduce((a,x) => a + lit(x), 0), c0 = dr.filter(x => x.yearMonth && fyOf(x.yearMonth) === prevFy && ms.includes(x.yearMonth.slice(5,7))).reduce((a,x) => a + lit(x), 0);
   if (c1 && c0){ const r = (1 - c1 / c0) * 100; if (r > 0) big("⛽", "軽油の使用量を削減", num(r), "%減", "前年度の同じ時期と比べて"); }
-  return await head(p, esc(pf.company || COMPANY)) + (cards.length ? '<div class="kpis" style="gap:18px;">'+cards.join("")+'</div>' : empty("表示できる数字がまだありません"));
+  return await head(p, esc(pf.company || COMPANY)) + (cards.length ? '<div class="kpis numg">'+cards.join("")+'</div>' : empty("表示できる数字がまだありません"));
 }
 
 /* ---------- 環境方針 ---------- */
@@ -887,12 +1002,12 @@ async function renderTenken(p){
       (i ? '<div style="break-before:page;"></div>' : '')+'<div style="text-align:center;">'+tkImg(x[0], x[1], "max-width:100%;max-height:245mm;")+'</div>').join("");
   }
   const x = TENKEN_IMGS[tkIdx];
-  const btn = "border:2px solid #c7d2fe;background:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
+  const btn = "border:2px solid #d9dee5;background:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
   const on = "border:2px solid #1E6B45;background:#1E6B45;color:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
   const real = "border:2px dashed #93c5fd;background:#f8fbff;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer;";
   const thumbs = TENKEN_IMGS.map((y, i) => '<button style="'+(i === tkIdx ? on : (y[2] ? real : btn))+'" onclick="tkGo('+i+')">'+(y[2] ? '📱 ' : y[0]+' ')+esc(y[1])+'</button>').join("");
   const link = '<a class="openBtn" href="'+TK_URL+x[3]+'" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:17px;padding:10px 20px;background:#1E6B45;">🚚 '+esc(x[4])+' ↗</a>';
-  const arrow = "flex:0 0 auto;width:56px;height:56px;border-radius:50%;border:2px solid #c7d2fe;background:#fff;font-size:22px;cursor:pointer;";
+  const arrow = "flex:0 0 auto;width:56px;height:56px;border-radius:50%;border:2px solid #d9dee5;background:#fff;font-size:22px;cursor:pointer;";
   return await head(p, "現場はQRだけ。記録と情報は、ひとつのアプリに。") +
     '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'+thumbs+'</div>'+
     '<div style="display:flex;align-items:center;justify-content:center;gap:16px;">'+
@@ -946,7 +1061,7 @@ async function renderReview(p){
 /* ---------- 年間の活動(カレンダー) ---------- */
 async function renderCalendar(p){
   const [ev, marks] = await Promise.all([col("isoEvents"), col("eventMarks")]);
-  const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#4338ca");
+  const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#1d5446");
   const P = regPer(p.key, pickPeriods(ev.map(x => fyOf(x.date)), p.key));
   const l = ev.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(a.date).localeCompare(String(b.date)));
   const cnt = {}; l.forEach(x => { const k = x.mark || "未分類"; cnt[k] = (cnt[k]||0) + 1; });
@@ -1076,7 +1191,7 @@ async function renderDiesel(p){
     (prevTot ? '<div class="kpi"><div class="k">前年度の同じ時期と比べて</div><div class="v">'+num(tot / prevTot * 100)+'<small>%</small></div></div>' : '')+
     (t ? '<div class="kpi"><div class="k">目標</div><div class="v">'+num(t.targetLiters)+'<small>L</small></div></div>' : '')+'</div>'+
     '<div class="tw"><table class="t"><tr><th style="width:80px">月</th><th style="width:160px">使用量(L)</th><th>グラフ</th></tr>'+byM.map(x =>
-      '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.has ? num(x.v) : "-")+'</td><td><div class="bar" style="height:18px;"><i style="width:'+(x.v / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#4338ca)"></i></div></td></tr>').join("")+'</table></div>'+
+      '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.has ? num(x.v) : "-")+'</td><td><div class="bar" style="height:18px;"><i style="width:'+(x.v / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#1d5446)"></i></div></td></tr>').join("")+'</table></div>'+
     '<div class="note">CO₂換算係数 2.58kg-CO₂/L</div>' : empty());
 }
 
@@ -1171,7 +1286,7 @@ async function renderSdgs(p){
       else if (ys.length){ const y = ys[ys.length-1]; val = by[y]; detail = y+"年の値"; }
       if (ys.length) detail += (detail ? "　" : "") + ys.map(y => y+"年 "+num(by[y])).join(" / ");
     }
-    return '<div class="kpi" style="min-width:320px;"><div class="k" style="font-size:18px;color:#1e1b4b;">🌱 '+esc(x.name)+'</div>'+
+    return '<div class="kpi" style="min-width:320px;"><div class="k" style="font-size:18px;color:#1c2733;">🌱 '+esc(x.name)+'</div>'+
       (x.indicator ? '<div class="note">指標：'+esc(x.indicator)+'</div>' : '')+
       '<div class="v">'+(val == null ? '-' : num(val))+'<small>'+esc(x.unit||"")+(x.targetValue ? ' / 目標 '+num(x.targetValue)+' '+esc(x.unit||"") : '')+'</small></div>'+
       (pct != null ? '<div class="bar" style="margin-top:6px;"><i style="width:'+Math.min(100, pct)+'%"></i></div><div class="note">達成率 '+num(pct)+'%</div>' : '')+
@@ -1184,17 +1299,22 @@ async function renderSdgs(p){
    画面の切り替え・印刷
    ===================================================================== */
 let cur = 0;
+/* 絵文字を外す(落ち着いた見た目に)。表の ✅/⬜ は ✓/－ に置き換え。◀ ▶ ©は残す */
+function plain(h){
+  return String(h).replace(/✅/g, "✓").replace(/⬜/g, "－").replace(/⚠️?/g, "※")
+    .replace(/(?![◀▶©®™])\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?[ \u3000]?/gu, "");
+}
 async function show(i){
   const cp = coursePages();
   cur = Math.max(0, Math.min(cp.length-1, i));
   const p = cp[cur];
-  document.getElementById("barTtl").textContent = p.icon+" "+p.name;
+  document.getElementById("barTtl").textContent = p.name;
   document.getElementById("barPg").textContent = COURSES[course].name+"　"+(cur+1)+" / "+cp.length;
   try { history.replaceState(null, "", "#"+p.key); } catch(e){}
   touched = new Set();
   const html = await p.render(p);
   if (coursePages()[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
-  document.getElementById("stage").innerHTML = '<div class="slide">'+html+'</div>';
+  document.getElementById("stage").innerHTML = '<div class="slide">'+plain(html)+'</div>';
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
 function step(d){ go(cur + d); }
@@ -1216,7 +1336,7 @@ function toggleFull(){
   else document.exitFullscreen && document.exitFullscreen();
 }
 function doPrint(html){
-  document.getElementById("printArea").innerHTML = html;
+  document.getElementById("printArea").innerHTML = plain(html);
   setTimeout(() => window.print(), 300);
 }
 async function printCurrent(){
@@ -1224,7 +1344,7 @@ async function printCurrent(){
   doPrint('<div class="pslide"><div class="slide">'+await p.render(p)+'</div></div>');
 }
 async function printAll(){
-  toast("📄 全部のページを準備しています…");
+  toast("全部のページを準備しています…");
   const cp = coursePages(), parts = [], pf = await profile();
   tkPrinting = true;
   try {
@@ -1233,8 +1353,8 @@ async function printAll(){
   const t = new Date();
   let toc = "", lastCh = -1, n = 0;
   cp.forEach(x => { if (x.key === "cover") return; n++;
-    if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); toc += '<div style="font-weight:900;color:#3730a3;margin-top:6px;break-inside:avoid;">'+esc(c.name)+(c.clause ? '(ISO14001 '+esc(c.clause)+')' : '')+'</div>'; lastCh = x.ch; }
-    toc += '<div>'+n+'.　'+x.icon+' '+esc(x.name)+'</div>'; });
+    if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); toc += '<div style="font-weight:700;color:#1d5446;margin-top:6px;break-inside:avoid;">'+esc(c.name)+(c.clause ? '(ISO14001 '+esc(c.clause)+')' : '')+'</div>'; lastCh = x.ch; }
+    toc += '<div>'+n+'.　'+esc(x.name)+'</div>'; });
   const cover = '<div class="pslide"><div class="slide"><div class="cover" style="padding-top:40px;"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+'</div>' : '')+'<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在</div></div>'+
     '<h3 class="sec" style="margin-top:24px;">目次</h3><div style="column-count:3;column-gap:24px;font-size:12pt;line-height:1.9;">'+toc+'</div></div></div>';
@@ -1257,7 +1377,7 @@ async function saveSet(){
   const b = document.getElementById("s_save"); b.disabled = true;
   try {
     await db.collection("companyInfo").doc("profile").set(data, { merge:true });
-    delete cache["companyInfo/profile"]; closeSet(); toast("✅ 保存しました"); show(cur);
+    delete cache["companyInfo/profile"]; closeSet(); toast("保存しました"); show(cur);
   } catch(e){ console.error(e); alert("保存できませんでした: "+e.message); }
   finally { b.disabled = false; }
 }
