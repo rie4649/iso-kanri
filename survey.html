@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>委託先調査票の回答</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .secHead { font-size:14px; font-weight:700; color:var(--navy); margin:16px 0 6px; border-bottom:1px solid var(--navy); padding-bottom:4px; }
+  .it { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:6px; }
+  .it.done { border-left-color:var(--navy); }
+  .it.pre { border-left-color:#16a34a; background:var(--okBg); }
+  .it.off { opacity:.6; }
+  .q { font-size:14px; font-weight:600; line-height:1.55; }
+  .q .no { color:var(--muted); font-weight:normal; margin-right:6px; }
+  .hint { font-size:12px; color:var(--muted); margin-top:3px; }
+  .ans { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto auto; gap:6px; margin-top:8px; align-items:center; }
+  .ans select, .ans input { font-size:14px; padding:8px; }
+  .onChk { font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:4px; margin:0; font-weight:600; }
+  .onChk input { width:18px; height:18px; }
+  .saveBar { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px 12px; display:flex; gap:10px; align-items:center; justify-content:center; z-index:20; }
+  .saveBar .cnt { font-size:13px; font-weight:700; color:var(--navy); }
+  .btn.dirty { background:var(--danger); border-color:var(--danger); color:#fff; }
+  @media (max-width:640px){ .ans { grid-template-columns:1fr 1fr; } .ans input[aria-label="補足"] { grid-column:1/-1; order:-1; } }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="goBack()">← ISO管理に戻る</button>
+  <div><h1>委託先調査票の回答</h1>
+  <div class="sub">廃棄物処理委託先調査票(共通事項・収集運搬)への当社回答。見せるモード「委託先調査への対応」に表示</div></div>
+</header>
+<div class="wrap">
+  <div class="help"><div class="ttl">入力のしかた</div>
+  項目ごとに当社の回答を選び、必要に応じて補足(根拠・数値・名称)を入力し、画面下の「保存」を押してください。<br>
+  <span class="tag ok">仮の回答</span>はアプリのデータから仮に入れた回答です(保存で確定)。「クリア」でその項目の回答を消せます。
+  「見せる」を外した項目は見せるモードに表示されません(売上・財務などは初期状態で非表示)。</div>
+  <div class="tabs" id="tabs"></div>
+  <div id="list"><div class="empty">読み込み中…</div></div>
+</div>
+<div class="saveBar"><span class="cnt" id="cnt"></span>
+  <button class="btn" id="undoBtn" onclick="undoAll()">変更を取り消す</button>
+  <button class="btn pri" id="saveBtn" onclick="saveAll()">保存</button></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="survey-items.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ref = db.collection("isoSurvey").doc("answers");
+
+let saved = null, ans = {}, filter = "all", dirty = false;
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
+function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+// 保存済みがなければ、仮の回答(pre)と「見せる」の初期値を入れておく
+function initAns(items){
+  ans = {};
+  SURVEY_ITEMS.forEach(it => {
+    const s = items && items[it.id];
+    ans[it.id] = s ? { ans:s.ans||"", num:s.num||"", memo:s.memo||"", on:s.on !== false, isPre:false }
+      : { ans: it.pre ? it.pre[0] : "", num: it.pre ? it.pre[1] : "", memo:"", on: !it.off, isPre: !!it.pre };
+  });
+}
+ref.get().then(d => { saved = d.exists ? (d.data().items || {}) : null; initAns(saved); render(); })
+  .catch(e => { initAns(null); render(); toast("読み込みエラー: "+e.message); });
+
+const answered = a => !!(a.ans || a.num);
+function setFilter(f){ filter = f; render(); }
+function render(){
+  const all = SURVEY_ITEMS, n = all.filter(it => answered(ans[it.id])).length;
+  document.getElementById("tabs").innerHTML = [["all","すべて<small>"+all.length+"項目</small>"],["D1","D1 共通事項<small>"+all.filter(i=>i.f==="D1").length+"項目</small>"],["D2","D2 収集運搬<small>"+all.filter(i=>i.f==="D2").length+"項目</small>"],["todo","未回答<small>"+(all.length-n)+"項目</small>"]]
+    .map(([k,l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
+  const list = all.filter(it => filter === "all" || (filter === "todo" ? !answered(ans[it.id]) : it.f === filter));
+  let h = "", last = "";
+  list.forEach(it => {
+    const a = ans[it.id], head = it.f+" "+(it.f === "D1" ? "共通事項" : "収集運搬 ― "+it.sec);
+    if (head !== last){ h += '<div class="secHead">'+esc(head)+'</div>'; last = head; }
+    const sel = it.opts.length ? '<select aria-label="当社の回答" onchange="setA(\''+it.id+'\',\'ans\',this.value)"><option value="">-- 回答 --</option>'+
+      it.opts.map(o => '<option'+(a.ans===o?' selected':'')+'>'+esc(o)+'</option>').join("")+'</select>'
+      : '<input aria-label="数値" inputmode="decimal" placeholder="数値('+esc(it.unit)+')" value="'+esc(a.ans)+'" oninput="setA(\''+it.id+'\',\'ans\',this.value)">';
+    h += '<div class="it'+(a.isPre ? ' pre' : answered(a) ? ' done' : '')+(a.on ? '' : ' off')+'" id="it_'+it.id+'">'+
+      '<div class="q"><span class="no">'+it.f+'-'+it.no+'</span>'+esc(it.q)+(it.imp ? ' <span class="tag sig">重点</span>' : '')+(a.isPre ? '<span class="tag ok">仮の回答</span>' : '')+'</div>'+
+      (it.hint ? '<div class="hint">参考: '+esc(it.hint)+'</div>' : '')+
+      '<div class="ans">'+sel+'<input aria-label="補足" placeholder="補足(根拠・数値・名称など)" value="'+esc(a.num)+'" oninput="setA(\''+it.id+'\',\'num\',this.value)">'+
+      '<label class="onChk"><input type="checkbox"'+(a.on?' checked':'')+' onchange="setA(\''+it.id+'\',\'on\',this.checked,true)">見せる</label>'+
+      '<button class="btn sm del" onclick="clearA(\''+it.id+'\')"'+(answered(a) ? '' : ' disabled')+'>クリア</button></div></div>';
+  });
+  document.getElementById("list").innerHTML = h || '<div class="empty">この条件の項目はありません</div>';
+  updCnt();
+}
+function setA(id, k, v, rerender){
+  ans[id][k] = v; dirty = true;
+  const el = document.getElementById("it_"+id);
+  if (el){ el.classList.toggle("done", answered(ans[id]) && !ans[id].isPre); el.classList.toggle("off", !ans[id].on);
+    const cb = el.querySelector(".btn.del"); if (cb) cb.disabled = !answered(ans[id]); }
+  if (rerender && filter === "todo") render(); else updCnt();
+}
+function updCnt(){
+  const n = SURVEY_ITEMS.filter(it => answered(ans[it.id])).length;
+  document.getElementById("cnt").textContent = "回答済み "+n+" / "+SURVEY_ITEMS.length;
+  const b = document.getElementById("saveBtn"); b.classList.toggle("dirty", dirty || !saved); b.textContent = (dirty || !saved) ? "保存(未保存の変更あり)" : "保存済み";
+  document.getElementById("undoBtn").disabled = !dirty;
+}
+async function saveAll(){
+  const items = {};
+  SURVEY_ITEMS.forEach(it => { const a = ans[it.id]; items[it.id] = { ans:a.ans||"", num:a.num||"", memo:a.memo||"", on:!!a.on }; });
+  try {
+    await ref.set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    saved = items; dirty = false; SURVEY_ITEMS.forEach(it => ans[it.id].isPre = false);
+    render(); toast("保存しました(見せるモードに反映されます)");
+  } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+function clearA(id){
+  const it = SURVEY_ITEMS.find(x => x.id === id); if (!it) return;
+  if (!confirm("「"+it.f+"-"+it.no+" "+it.q+"」の回答と補足を消します。よろしいですか？\n(画面下の「保存」を押すまで確定しません)")) return;
+  ans[id].ans = ""; ans[id].num = ""; ans[id].isPre = false; dirty = true; render();
+}
+function undoAll(){
+  if (!dirty) return;
+  if (!confirm("保存していない変更をすべて取り消して、最後に保存した状態に戻します。よろしいですか？")) return;
+  initAns(saved); dirty = false; render(); toast("変更を取り消しました");
+}
+function goBack(){
+  if (dirty && !confirm("保存していない変更があります。保存せずにISO管理に戻りますか？")) return;
+  dirty = false; location.href = "index.html";
+}
+window.addEventListener("beforeunload", e => { if (dirty){ e.preventDefault(); e.returnValue = ""; } });
+</script>
+</body>
+</html>

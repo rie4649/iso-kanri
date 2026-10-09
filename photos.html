@@ -4,109 +4,85 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>写真の記録</title>
+<link rel="stylesheet" href="biz.css">
 <style>
-  * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
-  body { background:#f4f4f5; padding-bottom:60px; }
-  header { background:#0f766e; color:#fff; padding:14px 16px; }
-  header h1 { font-size:19px; }
-  header .sub { font-size:12px; opacity:.85; margin-top:2px; }
-  .wrap { padding:12px; max-width:960px; margin:0 auto; }
-  .backBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#555; color:#fff; font-size:15px; font-weight:bold; margin-bottom:10px; cursor:pointer; }
-  .upCard { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:14px; }
-  .upCard h2 { font-size:16px; margin-bottom:6px; }
-  label { display:block; font-size:13px; font-weight:bold; color:#52525b; margin:10px 0 4px; }
-  input, select { width:100%; padding:11px; font-size:15px; border:1px solid #d4d4d8; border-radius:10px; background:#fff; }
-  .upBtn { width:100%; padding:14px; border:none; border-radius:12px; background:#0f766e; color:#fff; font-size:16px; font-weight:bold; margin-top:12px; cursor:pointer; }
-  .upBtn:disabled { opacity:.5; }
-  .note { font-size:12px; color:#71717a; line-height:1.7; margin-top:8px; }
-  .tabs { display:flex; gap:6px; margin:4px 0 10px; flex-wrap:wrap; }
-  .tabs button { border:2px solid #99f6e4; background:#fff; color:#0f766e; border-radius:99px; padding:7px 16px; font-size:14px; font-weight:bold; cursor:pointer; }
-  .tabs button.on { background:#0f766e; border-color:#0f766e; color:#fff; }
-  .grpHead { font-size:16px; font-weight:bold; color:#0f766e; margin:16px 0 8px; border-bottom:2px solid #0f766e; padding-bottom:4px; }
-  .tgt { background:#fff; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
-  .tgt .ttl { font-size:15px; font-weight:bold; margin-bottom:8px; }
-  .tgt .ttl small { font-weight:normal; color:#71717a; font-size:12px; margin-left:6px; }
-  .ph { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
-  .pc { border:1px solid #e4e4e7; border-radius:10px; overflow:hidden; background:#fafafa; display:flex; flex-direction:column; }
-  .pc.main { border:3px solid #f59e0b; }
-  .pc img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; background:#e4e4e7; }
-  .pc .memo { font-size:12px; color:#3f3f46; padding:6px 8px 0; min-height:20px; word-break:break-all; }
-  .pc .btns { display:flex; gap:6px; padding:6px 8px 8px; }
-  .pc .btns button { flex:1; border:none; border-radius:8px; padding:8px 4px; font-size:12px; font-weight:bold; cursor:pointer; }
-  .mainBtn { background:#fef3c7; color:#92400e; }
-  .mainBtn.is { background:#f59e0b; color:#fff; }
-  .delBtn { background:#fee2e2; color:#b91c1c; flex:0 0 44px !important; }
+  .upCard { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:14px; margin-bottom:12px; }
+  .upCard h2 { font-size:15px; color:var(--navy); margin-bottom:6px; }
+  .seg { display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--navy); border-radius:6px; overflow:hidden; margin-bottom:12px; }
+  .seg button { border:none; background:#fff; color:var(--navy); padding:10px 8px; font-size:15px; font-weight:700; cursor:pointer; text-align:center; }
+  .seg button + button { border-left:1px solid var(--navy); }
+  .seg button.on { background:var(--navy); color:#fff; }
+  .seg button small { display:block; font-size:11px; font-weight:normal; opacity:.85; margin-top:2px; }
+  .grpHead { font-size:14px; font-weight:700; color:var(--navy); margin:16px 0 8px; border-bottom:1px solid var(--navy); padding-bottom:4px; }
+  .tgt { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:12px; margin-bottom:10px; }
+  .tgt .ttl { font-size:15px; font-weight:700; margin-bottom:8px; }
+  .tgt .ttl small { font-weight:normal; color:var(--muted); font-size:12px; margin-left:8px; }
+  .ph { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:10px; }
+  .pc { border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fafafa; display:flex; flex-direction:column; }
+  .pc.main { border:2px solid var(--navy); }
+  .pc img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; cursor:zoom-in; background:var(--line2); }
+  .pc .memo { font-size:12px; color:#374151; padding:6px 8px 0; min-height:22px; word-break:break-all; }
+  .pc .btns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; padding:6px 8px 8px; }
+  .pc .btns .btn { padding:6px 2px; font-size:12px; }
+  .btn.is { background:var(--navyBg); color:var(--navy); border-color:var(--navy2); cursor:default; }
   .pend { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; margin-top:12px; }
-  .pd { border:2px solid #e4e4e7; border-radius:10px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
-  .pd.ok { border-color:#0f766e; }
-  .pd img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#e4e4e7; }
-  .pd .fn { font-size:11px; color:#71717a; padding:4px 6px 0; word-break:break-all; }
-  .pd select, .pd input { margin:4px 6px 0; width:calc(100% - 12px); padding:8px; font-size:13px; }
-  .pd .same { margin:6px; border:none; border-radius:8px; padding:7px; font-size:12px; font-weight:bold; background:#ccfbf1; color:#115e59; cursor:pointer; }
-  .pd .rm { margin:0 6px 6px; border:none; border-radius:8px; padding:6px; font-size:12px; background:#f4f4f5; color:#71717a; cursor:pointer; }
-  .progress { font-size:15px; font-weight:bold; color:#0f766e; margin-top:12px; }
-  .modes { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
-  .modes button { border:3px solid #99f6e4; background:#fff; color:#0f766e; border-radius:14px; padding:12px 8px; font-size:16px; font-weight:bold; cursor:pointer; }
-  .modes button.on { background:#0f766e; border-color:#0f766e; color:#fff; }
-  .modes button small { display:block; font-size:11px; font-weight:normal; opacity:.85; margin-top:2px; }
-  .cats { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
-  .cats span { background:#f0fdfa; border:1px solid #99f6e4; color:#115e59; border-radius:99px; padding:5px 6px 5px 12px; font-size:13px; font-weight:bold; display:inline-flex; align-items:center; gap:4px; }
-  .cats span button { border:none; background:none; color:#94a3b8; font-size:14px; cursor:pointer; padding:0 4px; }
-  .catAdd { display:flex; gap:6px; margin-top:6px; }
+  .pd { border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+  .pd.ok { border:2px solid var(--navy); }
+  .pd img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:var(--line2); }
+  .pd .fn { font-size:11px; color:var(--muted); padding:4px 6px 0; word-break:break-all; }
+  .pd select, .pd input { margin:4px 6px 0; width:calc(100% - 12px); padding:7px; font-size:13px; }
+  .pd .btn { margin:6px 6px 0; font-size:12px; padding:6px; }
+  .pd .btn:last-child { margin-bottom:6px; }
+  .progress { font-size:14px; font-weight:700; color:var(--navy); margin-top:12px; }
+  .cats { display:flex; flex-direction:column; gap:4px; margin:6px 0 4px; }
+  .cats .row { display:flex; align-items:center; gap:6px; border:1px solid var(--line2); border-radius:6px; padding:6px 8px; font-size:14px; }
+  .cats .row .nm { flex:1; font-weight:600; }
+  .cats .row .q { font-size:11px; color:var(--muted); font-weight:normal; display:block; }
+  .catAdd { display:flex; gap:6px; margin-top:8px; }
   .catAdd input { flex:1; }
-  .catAdd button { border:none; border-radius:10px; padding:0 16px; background:#0f766e; color:#fff; font-weight:bold; font-size:14px; cursor:pointer; white-space:nowrap; }
-  .empty { text-align:center; color:#a1a1aa; padding:36px 10px; font-size:14px; line-height:1.9; }
-  .noPhoto { font-size:12px; color:#a1a1aa; }
-  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 22px; border-radius:999px; font-size:14px; opacity:0; pointer-events:none; transition:.25s; z-index:50; }
-  #toast.show { opacity:1; }
-  #lb { position:fixed; inset:0; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; z-index:40; flex-direction:column; gap:10px; padding:16px; }
+  .noPhoto { font-size:14px; color:var(--muted); line-height:2; }
+  #lb { position:fixed; inset:0; background:rgba(17,24,39,.9); display:none; align-items:center; justify-content:center; z-index:40; flex-direction:column; gap:10px; padding:16px; }
   #lb.show { display:flex; }
-  #lb img { max-width:100%; max-height:82vh; border-radius:8px; }
+  #lb img { max-width:100%; max-height:80vh; border-radius:4px; }
   #lb .cap { color:#fff; font-size:15px; text-align:center; }
-  #lb .x { position:absolute; top:12px; right:16px; background:#fff; border:none; border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; }
-  #confirmBg { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:60; padding:16px; }
-  #confirmBg.show { display:flex; }
-  #confirmBg .box { background:#fff; border-radius:14px; padding:20px; max-width:360px; width:100%; }
-  #confirmBg .box p { font-size:15px; line-height:1.7; margin-bottom:14px; }
-  #confirmBg .row { display:flex; gap:8px; }
-  #confirmBg .row button { flex:1; border:none; border-radius:10px; padding:12px; font-size:15px; font-weight:bold; cursor:pointer; }
+  #lb .x { position:absolute; top:12px; right:16px; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>📷 写真の記録</h1>
-  <div class="sub">車両・設備の写真と、書類の保管・掲示の状況の写真。ここに入れた写真が「見せるモード」に出ます</div>
+<header class="bz">
+  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>写真の記録</h1>
+  <div class="sub">車両・設備の写真と、書類の保管・掲示の状況の写真。ここで登録した写真が見せるモードに表示されます</div></div>
 </header>
 
 <div class="wrap">
-<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
-
-<div class="modes">
-  <button id="m_veh" onclick="setMode('veh')">🚛 車両・設備<small>見せるモード「主な設備・車両」</small></button>
-  <button id="m_rec" onclick="setMode('rec')">📁 保管・掲示の状況<small>見せるモード「保管・掲示の状況」</small></button>
+<div class="seg">
+  <button id="m_veh" onclick="setMode('veh')">車両・設備<small>見せるモード「主な設備・車両」</small></button>
+  <button id="m_rec" onclick="setMode('rec')">保管・掲示の状況<small>見せるモード「保管・掲示の状況」</small></button>
 </div>
 
 <div class="upCard" id="catCard" style="display:none;">
-  <h2>📁 項目</h2>
-  <div class="note" style="margin-top:0;">写真を振り分ける項目です。必要な項目は下から追加できます(写真が入っていない項目は × で消せます)。</div>
+  <h2>項目の管理</h2>
+  <div class="note" style="margin-top:0;">写真を振り分ける項目です。名前の変更・削除ができます(写真が入っている項目は、写真を移すか削除してから削除してください)。</div>
   <div class="cats" id="cats"></div>
-  <div class="catAdd"><input id="newCat" placeholder="例: 産業廃棄物の保管場所の掲示板"><button onclick="addCat()">＋ 追加</button></div>
+  <div class="catAdd"><input id="newCat" placeholder="例: 産業廃棄物の保管場所の掲示板"><button class="btn pri" onclick="addCat()">＋ 追加</button></div>
 </div>
 
 <div class="upCard">
-  <h2>📤 写真を追加する</h2>
-  <label for="files">① 写真を選ぶ(まとめて何枚でも)</label>
+  <h2>写真を追加する</h2>
+  <label for="files">1. 写真を選ぶ(複数まとめて選べます)</label>
   <input type="file" id="files" accept="image/*" multiple onchange="addPending(this.files)">
-  <div class="note">選んだ写真が下に並びます。写真ごとに「どの車両・設備か」を選んでください。<br>
-  ファイル名に呼び名や項目の言葉が入っていれば(例: <b>340.jpg</b>、<b>265_右.jpg</b>、<b>マニフェスト棚.jpg</b>)、最初から選ばれた状態になります。</div>
+  <div class="note">選んだ写真が下に並びます。写真ごとに振り分け先を選んでください。<br>
+  ファイル名に呼び名や項目の言葉が入っていれば(例: <b>340.jpg</b>、<b>265_右.jpg</b>、<b>マニフェスト棚.jpg</b>)、自動で選ばれます。</div>
   <div id="pendArea" style="display:none;">
     <div class="progress" id="progress"></div>
-    <label for="memo">ひと言メモ(全部の写真に付きます・なくてもOK)</label>
+    <label for="memo">2. メモ(全部の写真に付きます・任意)</label>
     <input id="memo" placeholder="例: 2026年10月 撮影">
     <div class="pend" id="pend"></div>
-    <button class="upBtn" id="upBtn" onclick="uploadPhotos()">📤 選んだ写真を保存する</button>
-    <div class="note">車両・設備を選んでいない写真は保存されません(いらない写真はそのままでOK)。最初に入れた写真がその車両・設備の「代表の写真」になり、見せるモードに大きく出ます。代表は ⭐ で変えられます。</div>
+    <div class="bar" style="margin-top:12px;"><button class="btn pri" id="upBtn" onclick="uploadPhotos()">3. 選んだ写真を保存する</button>
+    <button class="btn" onclick="clearPending()">選び直す(全部外す)</button></div>
+    <div class="note">振り分け先を選んでいない写真は保存されません。最初に入れた写真が「代表の写真」になり、見せるモードに大きく表示されます。保存後も「編集」で振り分け先とメモを変えられます。</div>
   </div>
 </div>
 
@@ -115,11 +91,29 @@
 </div>
 
 <div id="lb" onclick="if(event.target===this)closeLb()">
-  <button class="x" onclick="closeLb()" aria-label="閉じる">✕</button>
+  <button class="btn x" onclick="closeLb()">閉じる</button>
   <img id="lbImg" alt="">
   <div class="cap" id="lbCap"></div>
 </div>
-<div id="confirmBg"><div class="box"><p id="confirmMsg"></p><div class="row"><button style="background:#e4e4e7;" onclick="confirmAns(false)">やめる</button><button style="background:#b91c1c;color:#fff;" onclick="confirmAns(true)">削除する</button></div></div></div>
+<div class="bg" id="confirmBg"><div class="modal" style="max-width:400px;"><h2>確認</h2><p id="confirmMsg" style="font-size:15px;line-height:1.7;margin-top:8px;"></p>
+  <div class="mBtns"><button class="btn" onclick="confirmAns(false)">キャンセル</button><button class="btn pri" style="background:var(--danger);border-color:var(--danger);" onclick="confirmAns(true)">削除する</button></div></div></div>
+<div class="bg" id="editBg" onclick="if(event.target===this)closeEdit()"><div class="modal">
+  <h2 id="editTtl">写真の編集</h2>
+  <img id="editImg" alt="" style="width:100%;max-height:240px;object-fit:contain;background:var(--line2);border-radius:4px;margin-top:8px;">
+  <label for="editSel">振り分け先</label>
+  <select id="editSel" onchange="document.getElementById('editOther').style.display=this.value==='other'?'':'none'"></select>
+  <input id="editOther" placeholder="新しい名前" style="display:none;margin-top:6px;">
+  <label for="editMemo">メモ</label>
+  <input id="editMemo" placeholder="例: 2026年10月 撮影">
+  <div class="mBtns"><button class="btn del" style="margin-right:auto;" onclick="editDel()">削除</button><button class="btn" onclick="closeEdit()">キャンセル</button><button class="btn pri" onclick="saveEdit()">保存</button></div>
+</div></div>
+<div class="bg" id="catBg" onclick="if(event.target===this)closeCat()"><div class="modal" style="max-width:460px;">
+  <h2>項目の名前を変更</h2>
+  <label for="catName">項目名</label><input id="catName">
+  <label for="catQ">根拠(見せるモードに小さく表示・任意)</label><input id="catQ" placeholder="例: 委託先調査票 D1-26 緊急時連絡先一覧の掲示">
+  <div class="note">写真が入っている項目は、写真の振り分け先も一緒に新しい名前に変わります。</div>
+  <div class="mBtns"><button class="btn" onclick="closeCat()">キャンセル</button><button class="btn pri" onclick="saveCat()">保存</button></div>
+</div></div>
 <div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -228,7 +222,6 @@
   };
 })();
 </script>
-
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -274,13 +267,14 @@ function vSort(a, b){
 function eqNameList(){
   return Array.from(new Set(equips.concat(FIXED_EQUIP).concat(photos.filter(p => p.kind === "equip").map(p => p.targetName)))).filter(Boolean);
 }
-function optionsHtml(sel){
+function optionsHtml(sel, m){
+  m = m || mode;
   const vs = vehicles.slice().sort(vSort);
   const o = (v, l) => '<option value="'+esc(v)+'"'+(v === sel ? ' selected' : '')+'>'+esc(l)+'</option>';
-  if (mode === "rec") return o("", "-- どの項目？ --") + recCats.map(c => o("r:"+c.name, c.name)).join("") + o("other", "＋ 新しい項目(名前を入力)");
+  if (m === "rec") return o("", "-- どの項目？ --") + recCats.map(c => o("r:"+c.name, c.name)).join("") + o("other", "＋ 新しい項目(名前を入力)");
   return o("", "-- どの車両・設備？ --") +
-    '<optgroup label="🚛 車両">' + vs.map(v => o("v:"+v.id, vName(v)+(v.model ? "　("+v.model+")" : ""))).join("") + '</optgroup>' +
-    '<optgroup label="⚙️ 設備">' + eqNameList().map(n => o("e:"+n, n)).join("") + o("other", "＋ ほかの設備(名前を入力)") + '</optgroup>';
+    '<optgroup label="車両">' + vs.map(v => o("v:"+v.id, vName(v)+(v.model ? "　("+v.model+")" : ""))).join("") + '</optgroup>' +
+    '<optgroup label="設備">' + eqNameList().map(n => o("e:"+n, n)).join("") + o("other", "＋ ほかの設備(名前を入力)") + '</optgroup>';
 }
 function buildSelect(){ if (pending.length) renderPending(); }
 
@@ -324,8 +318,8 @@ function renderPending(){
     '<div class="fn">'+esc(p.file.name)+'</div>'+
     '<select aria-label="車両・設備" onchange="setSel('+p.id+',this.value)">'+optionsHtml(p.sel)+'</select>'+
     (p.sel === "other" ? '<input placeholder="'+(mode === "rec" ? '新しい項目の名前' : '設備の名前')+'" value="'+esc(p.other)+'" oninput="setOther('+p.id+',this.value)">' : '')+
-    (i < pending.length-1 && p.sel ? '<button class="same" onclick="fillDown('+p.id+')">↓ この下の写真も同じにする</button>' : '')+
-    '<button class="rm" onclick="rmPending('+p.id+')">この写真を外す</button></div>').join("");
+    (i < pending.length-1 && p.sel ? '<button class="btn sm" onclick="fillDown('+p.id+')">↓ 下の写真も同じにする</button>' : '')+
+    '<button class="btn sm del" onclick="rmPending('+p.id+')">この写真を外す</button></div>').join("");
 }
 function setSel(id, v){ const p = pending.find(x => x.id === id); if (p){ p.sel = v; renderPending(); } }
 function setOther(id, v){ const p = pending.find(x => x.id === id); if (p){ p.other = v; document.getElementById("progress").textContent = pending.length+"枚中 "+countDone()+"枚 選択済み"; } }
@@ -334,11 +328,12 @@ function fillDown(id){
   const i = pending.findIndex(x => x.id === id); if (i < 0) return;
   const src = pending[i]; let n = 0;
   for (let k = i+1; k < pending.length; k++){ if (!pending[k].sel){ pending[k].sel = src.sel; pending[k].other = src.other; n++; } }
-  renderPending(); toast(n ? "↓ "+n+"枚を同じにしました" : "下の写真はもう全部選ばれています");
+  renderPending(); toast(n ? n+"枚を同じにしました" : "下の写真はもう全部選ばれています");
 }
+function clearPending(){ pending.forEach(p => URL.revokeObjectURL(p.url)); pending = []; renderPending(); }
 function rmPending(id, quiet){ const i = pending.findIndex(x => x.id === id); if (i >= 0){ URL.revokeObjectURL(pending[i].url); pending.splice(i, 1); if (!quiet) renderPending(); } }
 
-db.collection("master_vehicles").onSnapshot(s => { vehicles = s.docs.map(d => ({ id:d.id, ...d.data() })); buildSelect(); render(); }, e => toast("⚠️ 車両の読み込みエラー: "+e.message));
+db.collection("master_vehicles").onSnapshot(s => { vehicles = s.docs.map(d => ({ id:d.id, ...d.data() })); buildSelect(); render(); }, e => toast("車両の読み込みエラー: "+e.message));
 Promise.all([db.collection("compressorMachines").get(), db.collection("freonEquipments").get()]).then(([a, b]) => {
   equips = a.docs.map(d => d.data().name).concat(b.docs.map(d => d.data().name)).filter(Boolean);
   buildSelect();
@@ -350,7 +345,10 @@ db.collection("isoPhotoSettings").doc("recordCats").onSnapshot(d => {
 function saveCats(){ return db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats }); }
 function renderCats(){
   const used = new Set(photos.filter(p => p.kind === "record").map(p => p.targetName));
-  document.getElementById("cats").innerHTML = recCats.map((c, i) => '<span>'+esc(c.name)+(used.has(c.name) ? '' : '<button onclick="askDelCat('+i+')" aria-label="項目を消す">×</button>')+'</span>').join("");
+  const cnt = {}; photos.filter(p => p.kind === "record").forEach(p => cnt[p.targetName] = (cnt[p.targetName] || 0) + 1);
+  document.getElementById("cats").innerHTML = recCats.map((c, i) => '<div class="row"><span class="nm">'+esc(c.name)+' <span class="tag gray">'+(cnt[c.name] || 0)+'枚</span>'+(c.q ? '<span class="q">'+esc(c.q)+'</span>' : '')+'</span>'+
+    '<button class="btn sm" onclick="openCat('+i+')">編集</button>'+
+    '<button class="btn sm del" onclick="askDelCat('+i+')"'+(used.has(c.name) ? ' disabled title="写真が入っています"' : '')+'>削除</button></div>').join("");
 }
 async function addCat(name){
   const n = (name ?? document.getElementById("newCat").value).trim();
@@ -358,12 +356,12 @@ async function addCat(name){
   if (recCats.some(c => c.name === n)) { if (name == null) toast("同じ名前の項目があります"); return; }
   recCats = recCats.concat([{ name:n, q:"" }]);
   renderCats(); buildSelect(); if (mode === "rec") render();
-  try { await saveCats(); if (name == null){ document.getElementById("newCat").value = ""; toast("＋ 項目を追加しました"); } } catch(e){ toast("❌ "+e.message); }
+  try { await saveCats(); if (name == null){ document.getElementById("newCat").value = ""; toast("項目を追加しました"); } } catch(e){ toast("エラー: "+e.message); }
 }
 function askDelCat(i){
   const c = recCats[i]; if (!c) return;
-  document.getElementById("confirmMsg").textContent = "項目「"+c.name+"」を消しますか？";
-  confirmCb = async () => { recCats = recCats.filter((_, k) => k !== i); renderCats(); buildSelect(); if (mode === "rec") render(); try { await saveCats(); toast("項目を消しました"); } catch(e){ toast("❌ "+e.message); } };
+  document.getElementById("confirmMsg").textContent = "項目「"+c.name+"」を削除します。よろしいですか？";
+  confirmCb = async () => { recCats = recCats.filter((_, k) => k !== i); renderCats(); buildSelect(); if (mode === "rec") render(); try { await saveCats(); toast("項目を消しました"); } catch(e){ toast("エラー: "+e.message); } };
   document.getElementById("confirmBg").classList.add("show");
 }
 function setMode(m){
@@ -379,7 +377,7 @@ db.collection(PHOTO_COL).onSnapshot(s => {
   photos = s.docs.map(d => ({ id:d.id, ...d.data() }));
   photos.sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
   buildSelect(); renderCats(); render();
-}, e => { console.error(e); toast("⚠️ 写真の読み込みエラー: "+e.message); });
+}, e => { console.error(e); toast("写真の読み込みエラー: "+e.message); });
 
 /* ---------- 写真を小さくする(長辺 px、JPEG) ---------- */
 function shrink(file, maxPx, quality){
@@ -434,11 +432,11 @@ async function uploadPhotos(){
       if (tg.kind === "record" && !recCats.some(c => c.name === tg.targetName)) await addCat(tg.targetName);   // 新しい項目は項目一覧にも足す
       rmPending(p.id, true);   // 保存できた写真は並びから外す
     }
-    toast(`✅ ${ok}枚 保存しました`+(pending.length ? `(選んでいない写真 ${pending.length}枚が残っています)` : ""));
+    toast(`${ok}枚 保存しました`+(pending.length ? `(選んでいない写真 ${pending.length}枚が残っています)` : ""));
     if (!pending.length) document.getElementById("memo").value = "";
-  }catch(e){ console.error(e); toast("❌ "+e.message+(ok ? `(${ok}枚は保存済み)` : "")); }
+  }catch(e){ console.error(e); toast("エラー: "+e.message+(ok ? `(${ok}枚は保存済み)` : "")); }
   renderPending();
-  btn.disabled = false; btn.textContent = "📤 選んだ写真を保存する";
+  btn.disabled = false; btn.textContent = "3. 選んだ写真を保存する";
 }
 
 /* ---------- 一覧 ---------- */
@@ -446,14 +444,14 @@ function setFilter(f){ filter = f; render(); }
 function render(){
   if (mode === "rec") return renderRec();
   const cntV = photos.filter(p => p.kind === "vehicle").length, cntE = photos.filter(p => p.kind === "equip").length;
-  document.getElementById("tabs").innerHTML = [["all","すべて "+(cntV+cntE)],["vehicle","🚛 車両 "+cntV],["equip","⚙️ 設備 "+cntE],["none","写真がない車両"]]
+  document.getElementById("tabs").innerHTML = [["all","すべて<small>"+(cntV+cntE)+"枚</small>"],["vehicle","車両<small>"+cntV+"枚</small>"],["equip","設備<small>"+cntE+"枚</small>"],["none","写真がない車両<small>"+vehicles.filter(v => !photos.some(p => p.targetId === v.id)).length+"台</small>"]]
     .map(([k, l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
   const box = document.getElementById("list");
   const byT = {}; photos.forEach(p => (byT[p.targetId] = byT[p.targetId] || []).push(p));
   if (filter === "none"){
     const no = vehicles.slice().sort(vSort).filter(v => !byT[v.id]);
-    box.innerHTML = no.length ? '<div class="tgt"><div class="ttl">まだ写真がない車両 '+no.length+'台</div><div class="noPhoto" style="font-size:14px;line-height:2;">'+no.map(v => esc(vName(v))).join("　")+'</div></div>'
-      : '<div class="empty">全部の車両に写真が入っています 🎉</div>';
+    box.innerHTML = no.length ? '<div class="tgt"><div class="ttl">まだ写真がない車両 '+no.length+'台</div><div class="noPhoto">'+no.map(v => esc(vName(v))).join("　")+'</div></div>'
+      : '<div class="empty">すべての車両に写真が登録されています</div>';
     return;
   }
   let html = "";
@@ -461,36 +459,37 @@ function render(){
     const vs = vehicles.slice().sort(vSort).filter(v => byT[v.id]);
     // マスタから消えた車両の写真も残っていれば出す
     const gone = Object.keys(byT).filter(k => byT[k][0].kind === "vehicle" && !vehicles.some(v => v.id === k));
-    if (vs.length || gone.length) html += '<div class="grpHead">🚛 車両</div>' + vs.map(v => tgtHtml(vName(v), v.model, byT[v.id])).join("") + gone.map(k => tgtHtml(byT[k][0].targetName+"(マスタにない車両)", "", byT[k])).join("");
+    if (vs.length || gone.length) html += '<div class="grpHead">車両</div>' + vs.map(v => tgtHtml(vName(v), v.model, byT[v.id])).join("") + gone.map(k => tgtHtml(byT[k][0].targetName+"(マスタにない車両)", "", byT[k])).join("");
   }
   if (filter !== "vehicle"){
     const es = Object.keys(byT).filter(k => byT[k][0].kind === "equip").sort((a,b) => a.localeCompare(b, "ja"));
-    if (es.length) html += '<div class="grpHead">⚙️ 設備</div>' + es.map(k => tgtHtml(byT[k][0].targetName, "", byT[k])).join("");
+    if (es.length) html += '<div class="grpHead">設備</div>' + es.map(k => tgtHtml(byT[k][0].targetName, "", byT[k])).join("");
   }
   box.innerHTML = html || '<div class="empty">まだ写真がありません。<br>上の「写真を追加する」から入れてください</div>';
 }
 function renderRec(){
   const recs = photos.filter(p => p.kind === "record");
-  document.getElementById("tabs").innerHTML = [["all","すべて "+recs.length],["none","写真がない項目"]]
+  document.getElementById("tabs").innerHTML = [["all","すべて<small>"+recs.length+"枚</small>"],["none","写真がない項目<small>"+recCats.filter(c => !recs.some(p => p.targetName === c.name)).length+"項目</small>"]]
     .map(([k, l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
   const box = document.getElementById("list");
   const byN = {}; recs.forEach(p => (byN[p.targetName] = byN[p.targetName] || []).push(p));
   if (filter === "none"){
     const no = recCats.filter(c => !byN[c.name]);
-    box.innerHTML = no.length ? '<div class="tgt"><div class="ttl">まだ写真がない項目 '+no.length+'</div><div class="noPhoto" style="font-size:14px;line-height:2;">'+no.map(c => esc(c.name)).join("<br>")+'</div></div>'
-      : '<div class="empty">全部の項目に写真が入っています 🎉</div>';
+    box.innerHTML = no.length ? '<div class="tgt"><div class="ttl">まだ写真がない項目 '+no.length+'</div><div class="noPhoto">'+no.map(c => esc(c.name)).join("<br>")+'</div></div>'
+      : '<div class="empty">すべての項目に写真が登録されています</div>';
     return;
   }
   const names = recCats.map(c => c.name).filter(n => byN[n]).concat(Object.keys(byN).filter(n => !recCats.some(c => c.name === n)));
-  box.innerHTML = names.length ? '<div class="grpHead">📁 保管・掲示の状況</div>' + names.map(n => tgtHtml(n, "", byN[n])).join("")
+  box.innerHTML = names.length ? '<div class="grpHead">保管・掲示の状況</div>' + names.map(n => tgtHtml(n, "", byN[n])).join("")
     : '<div class="empty">まだ写真がありません。<br>上の「写真を追加する」から入れてください</div>';
 }
 function tgtHtml(name, model, list){
   return '<div class="tgt"><div class="ttl">'+esc(name)+(model ? '<small>'+esc(model)+'</small>' : '')+'<small>'+list.length+'枚</small></div><div class="ph">'+
     list.map(p => '<div class="pc'+(p.isMain ? ' main' : '')+'"><img src="'+p.thumb+'" alt="'+esc(name)+'" onclick="openLb(\''+p.id+'\')">'+
-      '<div class="memo">'+(p.isMain ? '⭐ ' : '')+esc(p.memo || "")+'</div>'+
-      '<div class="btns"><button class="mainBtn'+(p.isMain ? ' is' : '')+'" onclick="setMain(\''+p.id+'\')">'+(p.isMain ? '⭐ 代表' : '☆ 代表にする')+'</button>'+
-      '<button class="delBtn" onclick="askDel(\''+p.id+'\')" aria-label="削除">🗑</button></div></div>').join("")+'</div></div>';
+      '<div class="memo">'+(p.isMain ? '<span class="tag ok">代表</span>' : '')+esc(p.memo || "")+'</div>'+
+      '<div class="btns"><button class="btn sm'+(p.isMain ? ' is' : '')+'" onclick="setMain(\''+p.id+'\')">'+(p.isMain ? '代表' : '代表にする')+'</button>'+
+      '<button class="btn sm" onclick="openEdit(\''+p.id+'\')">編集</button>'+
+      '<button class="btn sm del" onclick="askDel(\''+p.id+'\')">削除</button></div></div>').join("")+'</div></div>';
 }
 
 async function setMain(id){
@@ -498,7 +497,7 @@ async function setMain(id){
   const b = db.batch();
   photos.filter(x => x.targetId === p.targetId && x.isMain).forEach(x => b.update(db.collection(PHOTO_COL).doc(x.id), { isMain:false }));
   b.update(db.collection(PHOTO_COL).doc(id), { isMain:true });
-  try { await b.commit(); toast("⭐ 代表の写真にしました"); } catch(e){ toast("❌ "+e.message); }
+  try { await b.commit(); toast("代表の写真にしました"); } catch(e){ toast("エラー: "+e.message); }
 }
 
 let confirmCb = null;
@@ -516,8 +515,8 @@ async function delPhoto(id){
     b.delete(db.collection(PHOTO_COL).doc(id)); b.delete(db.collection(FILE_COL).doc(id));
     // 代表を消したら、同じ車両・設備の一番古い写真を代表にする
     if (p.isMain){ const next = photos.find(x => x.targetId === p.targetId && x.id !== id); if (next) b.update(db.collection(PHOTO_COL).doc(next.id), { isMain:true }); }
-    await b.commit(); toast("🗑 削除しました");
-  }catch(e){ toast("❌ 削除に失敗: "+e.message); }
+    await b.commit(); toast("削除しました");
+  }catch(e){ toast("削除に失敗: "+e.message); }
 }
 
 async function openLb(id){
@@ -528,7 +527,72 @@ async function openLb(id){
   try { const d = await db.collection(FILE_COL).doc(id).get(); if (d.exists && document.getElementById("lb").classList.contains("show")) img.src = d.data().data; } catch(e){}
 }
 function closeLb(){ document.getElementById("lb").classList.remove("show"); document.getElementById("lbImg").src = ""; }
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeLb(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeLb(); closeEdit(); closeCat(); confirmAns(false); } });
+
+/* ---------- 写真の編集(振り分け先・メモ) ---------- */
+let editId = null;
+function openEdit(id){
+  const p = photos.find(x => x.id === id); if (!p) return;
+  editId = id;
+  const m = p.kind === "record" ? "rec" : "veh";
+  const cur = p.kind === "vehicle" ? "v:"+p.targetId : p.kind === "record" ? "r:"+p.targetName : "e:"+p.targetName;
+  let opts = optionsHtml(cur, m);
+  if (!opts.includes('value="'+esc(cur)+'"')) opts = '<option value="'+esc(cur)+'" selected>'+esc(p.targetName)+'</option>' + opts;
+  document.getElementById("editSel").innerHTML = opts;
+  document.getElementById("editOther").value = ""; document.getElementById("editOther").style.display = "none";
+  document.getElementById("editMemo").value = p.memo || "";
+  document.getElementById("editImg").src = p.thumb;
+  document.getElementById("editTtl").textContent = "写真の編集 ― " + p.targetName;
+  document.getElementById("editBg").classList.add("show");
+}
+function closeEdit(){ document.getElementById("editBg").classList.remove("show"); editId = null; }
+function editDel(){ const id = editId; closeEdit(); askDel(id); }
+async function saveEdit(){
+  const p = photos.find(x => x.id === editId); if (!p) return closeEdit();
+  const sel = document.getElementById("editSel").value, other = document.getElementById("editOther").value;
+  const m = p.kind === "record" ? "rec" : "veh";
+  const saveMode = mode; mode = m;   // targetOf は mode を見るので一時的に合わせる
+  const tg = sel ? targetOf({ sel, other }) : null; mode = saveMode;
+  if (!tg){ toast("振り分け先を選んでください"); return; }
+  const memo = document.getElementById("editMemo").value.trim();
+  const upd = { memo, kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName };
+  const b = db.batch();
+  if (tg.targetId !== p.targetId){
+    // 移動先に代表がなければ代表にする。移動元の代表だった場合は、残りの一番古い写真を代表にする
+    upd.isMain = !photos.some(x => x.targetId === tg.targetId && x.isMain);
+    if (p.isMain){ const next = photos.find(x => x.targetId === p.targetId && x.id !== p.id); if (next) b.update(db.collection(PHOTO_COL).doc(next.id), { isMain:true }); }
+  }
+  b.update(db.collection(PHOTO_COL).doc(p.id), upd);
+  try {
+    await b.commit();
+    if (tg.kind === "record" && !recCats.some(c => c.name === tg.targetName)) await addCat(tg.targetName);
+    closeEdit(); toast("写真の情報を保存しました");
+  } catch(e){ toast("保存に失敗: "+e.message); }
+}
+
+/* ---------- 項目の名前変更 ---------- */
+let catIdx = -1;
+function openCat(i){
+  const c = recCats[i]; if (!c) return; catIdx = i;
+  document.getElementById("catName").value = c.name; document.getElementById("catQ").value = c.q || "";
+  document.getElementById("catBg").classList.add("show");
+}
+function closeCat(){ document.getElementById("catBg").classList.remove("show"); catIdx = -1; }
+async function saveCat(){
+  const c = recCats[catIdx]; if (!c) return closeCat();
+  const name = document.getElementById("catName").value.trim(), q = document.getElementById("catQ").value.trim();
+  if (!name){ toast("項目名を入れてください"); return; }
+  if (name !== c.name && recCats.some(x => x.name === name)){ toast("同じ名前の項目があります"); return; }
+  const old = c.name;
+  recCats = recCats.map((x, k) => k === catIdx ? { name, q } : x);
+  try {
+    const b = db.batch();
+    b.set(db.collection("isoPhotoSettings").doc("recordCats"), { items: recCats });
+    if (name !== old) photos.filter(p => p.kind === "record" && p.targetName === old)
+      .forEach(p => b.update(db.collection(PHOTO_COL).doc(p.id), { targetName:name, targetId:"r:"+name }));
+    await b.commit(); closeCat(); renderCats(); render(); toast("項目を変更しました");
+  } catch(e){ toast("保存に失敗: "+e.message); }
+}
 setMode(mode);
 </script>
 </body>

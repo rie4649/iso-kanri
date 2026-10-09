@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISOの計画・リスク | ISO管理</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .card .top { display:flex; gap:8px; align-items:flex-start; }
+  .card .ttl { flex:1; min-width:0; font-size:15px; font-weight:700; line-height:1.55; }
+  .card .acts { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .card dl { display:grid; grid-template-columns:auto 1fr; gap:3px 12px; margin-top:8px; font-size:13px; line-height:1.6; }
+  .card dt { color:var(--muted); font-weight:600; white-space:nowrap; }
+  .card dd { white-space:pre-wrap; word-break:break-word; }
+  .scoreRow { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+  .scoreRow .lb { font-size:12px; color:var(--muted); margin-bottom:2px; }
+  .scoreBox { margin-top:8px; padding:9px 12px; border-radius:6px; background:var(--navyBg); font-size:14px; font-weight:600; }
+  .chk { display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:14px; }
+  .chk input { width:18px; height:18px; }
+  .count { font-size:13px; color:var(--muted); margin:0 0 8px; }
+  @media (max-width:560px){ .card .top { flex-direction:column; } .card .acts { justify-content:flex-start; } }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>ISOの計画・リスク</h1><div class="sub">課題・利害関係者・環境側面・リスクと機会・目標・委託先・監視測定・苦情・緊急事態の訓練・校正・マネジメントレビュー。ここで入力した内容が見せるモードに表示されます</div></div>
+</header>
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div id="body"><div class="empty">読み込み中…</div></div>
+</div>
+
+<div class="bg" id="editBg" onclick="if(event.target===this)closeEdit()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTtl">
+    <h2 id="editTtl"></h2>
+    <div id="editForm"></div>
+    <label class="chk"><input type="checkbox" id="editDraft"> 下書きにする(見せるモードには表示しない)</label>
+    <div class="mBtns">
+      <button class="btn del" id="editDelBtn" onclick="delRow(editId, true)">削除</button>
+      <span style="flex:1"></span>
+      <button class="btn" onclick="closeEdit()">キャンセル</button>
+      <button class="btn pri" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
+   ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
+     → 画面に戻ると自動で再開します
+   ・夜間(19時〜翌6時)は、30分さわらなければ休止します(モニター出しっぱなし対策)
+     → 画面をタップすると再開、朝6時には自動で再開します
+   ※このブロックは全アプリ共通です。時間を変えるときは下の数字だけ変えてください */
+(function(){
+  if(!window.firebase || !firebase.firestore) return;
+  var NIGHT_FROM = 19;              // 夜間休止の開始(時)
+  var NIGHT_TO   = 6;               // 夜間休止の終了(時)
+  var HIDDEN_WAIT = 5*60*1000;      // 見えなくなってから休止するまで(5分)
+  var NIGHT_IDLE  = 30*60*1000;     // 夜間、さわらずに休止するまで(30分)
+
+  var subs = [], paused = false, reason = '', hiddenTimer = null, lastInput = Date.now(), overlay = null;
+  function isNight(){ var h = new Date().getHours(); return h >= NIGHT_FROM || h < NIGHT_TO; }
+  function isVisible(){ return document.visibilityState !== 'hidden'; }
+
+  // onSnapshot(リアルタイム監視)を、止めたり再開したりできる形に包む
+  function wrap(proto){
+    if(!proto) return;
+    var orig = proto.onSnapshot;
+    if(!orig || orig.__fsSaver) return;
+    var w = function(){
+      var s = { ref:this, args:Array.prototype.slice.call(arguments), unsub:null, dead:false };
+      s.start = function(){ if(!s.dead && !s.unsub) s.unsub = orig.apply(s.ref, s.args); };
+      s.stop  = function(){ if(s.unsub){ try{ s.unsub(); }catch(e){} s.unsub = null; } };
+      subs.push(s);
+      if(!paused) s.start();
+      return function(){ s.dead = true; s.stop(); var i = subs.indexOf(s); if(i >= 0) subs.splice(i, 1); };
+    };
+    w.__fsSaver = true;
+    proto.onSnapshot = w;
+  }
+  wrap(firebase.firestore.Query && firebase.firestore.Query.prototype);
+  wrap(firebase.firestore.CollectionReference && firebase.firestore.CollectionReference.prototype);
+  wrap(firebase.firestore.DocumentReference && firebase.firestore.DocumentReference.prototype);
+
+  function showOverlay(){
+    if(!document.body) return;
+    if(!overlay){
+      overlay = document.createElement('div');
+      overlay.id = 'fsSaverOverlay';
+      overlay.setAttribute('style', 'position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:16px;cursor:pointer;');
+      overlay.innerHTML = '<div style="background:#fff;color:#1f2937;border-radius:16px;padding:24px 22px;max-width:420px;width:100%;text-align:center;font-family:sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);">'
+        + '<div style="font-size:42px;line-height:1;">💤</div>'
+        + '<div style="font-size:20px;font-weight:bold;margin:10px 0 8px;">通信を休止しています</div>'
+        + '<div style="font-size:14px;line-height:1.7;color:#4b5563;">夜間(' + NIGHT_FROM + '時〜翌' + NIGHT_TO + '時)は、Firebaseの無料枠を節約するため自動で休止します。<br>朝' + NIGHT_TO + '時に自動で再開します。</div>'
+        + '<div style="margin-top:16px;background:#16a34a;color:#fff;border-radius:999px;padding:12px;font-size:16px;font-weight:bold;">👆 タップして再開</div>'
+        + '</div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+  }
+  function hideOverlay(){ if(overlay) overlay.style.display = 'none'; }
+
+  function pause(why){
+    if(paused) return;
+    paused = true; reason = why;
+    subs.forEach(function(s){ s.stop(); });
+    if(why === 'night') showOverlay();
+  }
+  function resume(byTap){
+    lastInput = Date.now();
+    if(!paused) return;
+    paused = false; reason = '';
+    // タップで再開したときは、そのタップが下のボタンに届かないよう少し待ってから幕を外す
+    if(byTap) setTimeout(hideOverlay, 500); else hideOverlay();
+    subs.forEach(function(s){ s.start(); });
+  }
+
+  // 画面の表示・非表示
+  document.addEventListener('visibilitychange', function(){
+    if(isVisible()){
+      if(hiddenTimer){ clearTimeout(hiddenTimer); hiddenTimer = null; }
+      resume(false);
+    }else if(!hiddenTimer){
+      hiddenTimer = setTimeout(function(){ hiddenTimer = null; if(!isVisible()) pause('hidden'); }, HIDDEN_WAIT);
+    }
+  });
+
+  // さわったら「使っている」とみなす(休止中なら再開)
+  ['pointerdown','touchstart','keydown','wheel'].forEach(function(ev){
+    window.addEventListener(ev, function(e){
+      if(paused && reason === 'night'){ resume(true); return; }
+      lastInput = Date.now();
+    }, { capture:true, passive:true });
+  });
+
+  // 1分ごとに夜間・朝の判定
+  setInterval(function(){
+    if(!isVisible()) return;
+    if(!paused && isNight() && Date.now() - lastInput > NIGHT_IDLE) pause('night');
+    else if(paused && reason === 'night' && !isNight()) resume(false);
+  }, 60*1000);
+
+  // 確認用(ブラウザのコンソールで fsSaver.status() と打つと状態が見られます)
+  window.fsSaver = {
+    status: function(){ return { paused:paused, reason:reason, listeners:subs.length }; },
+    pause: function(){ pause('night'); },
+    resume: function(){ resume(false); }
+  };
+})();
+</script>
+<script src="registers.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let rows = [], cur = (location.hash || "").replace("#", ""), editId = null;
+if (!ISO_REGS.some(r => r.key === cur)) cur = ISO_REGS[0].key;
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
+function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const regOf = k => ISO_REGS.find(r => r.key === k);
+const today = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+
+db.collection(ISO_REG_COL).onSnapshot(s => { rows = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); },
+  e => { console.error(e); toast("読み込みエラー: "+e.message); });
+
+function setTab(k){ cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
+
+function sorted(reg){
+  const list = rows.filter(r => r.reg === reg.key);
+  if (reg.dated) return list.sort((a,b) => String(b[reg.dated]||"").localeCompare(String(a[reg.dated]||"")) || (a.createdMs||0) - (b.createdMs||0));
+  if (reg.key === "aspects") return list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
+  return list.sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
+}
+// 期限切れの判定(校正の次回予定・委託先の許可/契約期限)
+function expired(reg, r){
+  const t = today();
+  if (reg.key === "calib") return r.next && r.next < t;
+  if (reg.key === "vendors") return (r.permitExp && r.permitExp < t) || (r.contractExp && r.contractExp < t);
+  return false;
+}
+
+function render(){
+  document.getElementById("tabs").innerHTML = ISO_REGS.map(r => {
+    const n = rows.filter(x => x.reg === r.key && !x.draft).length, d = rows.filter(x => x.reg === r.key && x.draft).length;
+    return '<button class="'+(r.key===cur?"on":"")+'" onclick="setTab(\''+r.key+'\')">'+esc(r.name)+'<small>'+esc(r.clause)+'　'+n+'件'+(d ? '(下書き'+d+')' : '')+'</small></button>';
+  }).join("");
+  const reg = regOf(cur), list = sorted(reg);
+  const hasEx = (reg.examples || []).length && !rows.some(x => x.reg === reg.key && x.fromExample);
+  let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>'+
+    '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 追加</button>'+
+    (hasEx ? '<button class="btn" onclick="addExamples()">一般的な例を下書きで入れる('+reg.examples.length+'件)</button>' : '')+'</div>';
+  if (!list.length) h += '<div class="empty">まだ登録がありません。<br>「＋ 追加」から入力してください。'+(hasEx ? '<br>一般的な例を下書きで入れて、会社に合わせて直すこともできます。' : '')+'</div>';
+  else h += '<div class="count">'+list.length+'件(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>';
+  h += list.map(r => cardHtml(reg, r)).join("");
+  document.getElementById("body").innerHTML = h;
+}
+
+function cardHtml(reg, r){
+  const sc = reg.key === "aspects" ? aspectScore(r) : null;
+  const tags = (r.draft ? '<span class="tag draft">下書き</span>' : '') +
+    (sc ? (sc.sig === null ? '<span class="tag gray">未評価</span>' : sc.sig ? '<span class="tag sig">著しい環境側面 '+sc.total+'点</span>' : '<span class="tag ok">'+sc.total+'点</span>') : '') +
+    (expired(reg, r) ? '<span class="tag sig">期限切れ</span>' : '');
+  const titleF = reg.fields.find(f => f.k === reg.title);
+  const dl = reg.fields.filter(f => f.k !== reg.title && !(reg.title === reg.dated && f.k === reg.dated) && !f.score && r[f.k]).map(f => '<dt>'+esc(f.label)+'</dt><dd>'+esc(regLabel(f, r[f.k]))+'</dd>').join("") +
+    (sc && sc.sig !== null ? '<dt>評価</dt><dd>規模 '+r.scale+'・頻度 '+r.freq+'・法規制 '+r.law+' ＝ '+sc.total+'点</dd>' : '');
+  return '<div class="card'+(r.draft ? ' draft' : '')+(sc && sc.sig ? ' sig' : '')+'"><div class="top"><div class="ttl">'+tags+esc((regLabel(titleF, r[reg.title]) || "(未入力)")+(reg.key === "review" ? " 実施" : ""))+'</div><div class="acts">'+
+    (r.draft ? '<button class="btn sm fix" onclick="confirmRow(\''+r.id+'\')">確定</button>' : '')+
+    '<button class="btn sm" onclick="openEdit(\''+r.id+'\')">編集</button><button class="btn sm del" onclick="delRow(\''+r.id+'\')">削除</button></div></div>'+
+    (dl ? '<dl>'+dl+'</dl>' : '')+'</div>';
+}
+
+/* ---------- 入力フォーム ---------- */
+function fieldHtml(f, v){
+  const id = "f_"+f.k, val = v == null ? "" : v;
+  if (f.type === "select") return '<select id="'+id+'" onchange="updScore()">'+f.options.map(o => '<option value="'+esc(o[0])+'"'+(String(val)===o[0]?' selected':'')+'>'+esc(o[1] || "―")+'</option>').join("")+'</select>';
+  const ph = f.ph ? ' placeholder="'+esc(f.ph)+'"' : '';
+  if (f.type === "textarea") return '<textarea id="'+id+'"'+ph+'>'+esc(val)+'</textarea>';
+  return '<input id="'+id+'" type="'+(f.type === "date" ? "date" : "text")+'"'+ph+' value="'+esc(val)+'">';
+}
+function openEdit(id){
+  const reg = regOf(cur), r = id ? rows.find(x => x.id === id) : null;
+  editId = r ? id : null;
+  document.getElementById("editTtl").textContent = reg.name+(r ? "　編集" : "　新規追加");
+  const normal = reg.fields.filter(f => !f.score), score = reg.fields.filter(f => f.score);
+  let h = normal.map(f => '<label for="f_'+f.k+'">'+esc(f.label)+(f.req ? ' <span style="color:var(--danger)">*</span>' : '')+'</label>'+fieldHtml(f, r ? r[f.k] : (f.type === "date" && reg.dated === f.k ? today() : ""))).join("");
+  if (score.length) h += '<label>評価(1〜3)</label><div class="scoreRow">'+score.map(f => '<div><div class="lb">'+esc(f.label)+'</div>'+fieldHtml(f, r ? r[f.k] : "")+'</div>').join("")+'</div><div class="scoreBox" id="scoreBox"></div>';
+  document.getElementById("editForm").innerHTML = h;
+  document.getElementById("editDraft").checked = r ? !!r.draft : false;
+  document.getElementById("editDelBtn").style.display = r ? "" : "none";
+  document.getElementById("editBg").classList.add("show");
+  updScore();
+  const first = document.querySelector("#editForm input, #editForm select, #editForm textarea"); if (first) first.focus();
+}
+function updScore(){
+  const box = document.getElementById("scoreBox"); if (!box) return;
+  const v = k => (document.getElementById("f_"+k) || {}).value || "";
+  const sc = aspectScore({ scale:v("scale"), freq:v("freq"), law:v("law") });
+  box.innerHTML = sc.sig === null ? "規模・頻度・法規制を選ぶと点数が表示されます" : (sc.sig ? '<span style="color:var(--danger)">'+sc.total+'点 ― 著しい環境側面</span>' : sc.total+'点(合計'+ASPECT_SIGNIFICANT_TOTAL+'点以上、または法規制3で「著しい環境側面」)');
+}
+function closeEdit(){ document.getElementById("editBg").classList.remove("show"); }
+async function saveEdit(){
+  const reg = regOf(cur), data = {};
+  for (const f of reg.fields){
+    const el = document.getElementById("f_"+f.k); data[f.k] = el ? el.value.trim() : "";
+    if (f.req && !data[f.k]){ toast("「"+f.label+"」を入力してください"); if (el) el.focus(); return; }
+  }
+  data.draft = document.getElementById("editDraft").checked;
+  data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+  try {
+    if (editId) await db.collection(ISO_REG_COL).doc(editId).update(data);
+    else await db.collection(ISO_REG_COL).add({ ...data, reg:reg.key, createdMs:Date.now() });
+    closeEdit(); toast("保存しました");
+  } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function confirmRow(id){
+  try { await db.collection(ISO_REG_COL).doc(id).update({ draft:false, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }); toast("確定しました(見せるモードに表示されます)"); }
+  catch(e){ toast("確定できませんでした: "+e.message); }
+}
+async function delRow(id, fromModal){
+  const reg = regOf(cur), r = rows.find(x => x.id === id); if (!r) return;
+  if (!confirm("「"+(regLabel(reg.fields.find(f => f.k === reg.title), r[reg.title]) || "この行")+"」を削除します。元に戻せません。よろしいですか？")) return;
+  try { await db.collection(ISO_REG_COL).doc(id).delete(); if (fromModal) closeEdit(); toast("削除しました"); } catch(e){ toast("削除できませんでした: "+e.message); }
+}
+async function addExamples(){
+  const reg = regOf(cur);
+  if (!confirm(reg.name+"の一般的な例 "+reg.examples.length+"件を、下書きとして追加します。\n会社に合わせて編集してから「確定」してください(不要な行は削除できます)。")) return;
+  const b = db.batch(), t = Date.now();
+  reg.examples.forEach((ex, i) => { b.set(db.collection(ISO_REG_COL).doc(), { ...ex, reg:reg.key, draft:true, fromExample:true, createdMs:t+i, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }); });
+  try { await b.commit(); toast("下書きを追加しました"); } catch(e){ toast("追加できませんでした: "+e.message); }
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeEdit(); });
+render();
+</script>
+</body>
+</html>

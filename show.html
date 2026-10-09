@@ -13,32 +13,32 @@ body { font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif; background:#
 button { font-family:inherit; cursor:pointer; }
 
 /* ===== 上のバー ===== */
-#bar { position:fixed; top:0; left:0; right:0; height:58px; z-index:50; background:#1e1b4b; color:#fff; display:flex; align-items:center; gap:8px; padding:0 12px; box-shadow:0 2px 10px rgba(0,0,0,.25); }
-#bar .bt { border:none; background:rgba(255,255,255,.12); color:#fff; border-radius:10px; padding:9px 14px; font-size:15px; font-weight:bold; white-space:nowrap; }
+#bar { position:fixed; top:0; left:0; right:0; height:58px; z-index:50; background:#1e3a5f; color:#fff; display:flex; align-items:center; gap:8px; padding:0 12px; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+#bar .bt { border:1px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:6px; padding:9px 14px; font-size:15px; font-weight:bold; white-space:nowrap; }
 #bar .bt:hover { background:rgba(255,255,255,.22); }
 #bar .nav { font-size:20px; padding:6px 16px; }
-#bar .ttl { flex:1; text-align:center; font-size:19px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bar .ttl { flex:1; text-align:center; font-size:18px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #bar .pg { font-size:13px; opacity:.75; white-space:nowrap; }
 
 /* ===== スライド ===== */
 #stage { padding:76px 18px 30px; min-height:100%; }
-.slide { background:#fff; border-radius:18px; max-width:1400px; margin:0 auto; padding:30px 38px 36px; box-shadow:0 6px 24px rgba(30,27,75,.12); min-height:calc(100vh - 110px); }
-.sHead { display:flex; align-items:center; gap:14px; flex-wrap:wrap; border-bottom:4px solid #4338ca; padding-bottom:12px; margin-bottom:16px; }
-.sHead h2 { font-size:32px; font-weight:900; color:#1e1b4b; }
+.slide { background:#fff; border-radius:6px; max-width:1400px; margin:0 auto; padding:30px 38px 36px; box-shadow:0 6px 24px rgba(15,23,42,.08); min-height:calc(100vh - 110px); }
+.sHead { display:flex; align-items:center; gap:14px; flex-wrap:wrap; border-bottom:3px solid #1e3a5f; padding-bottom:12px; margin-bottom:16px; }
+.sHead h2 { font-size:30px; font-weight:700; color:#1e3a5f; }
 .sHead .sub { font-size:16px; color:#64748b; font-weight:bold; }
 .per { margin-left:auto; display:flex; align-items:center; gap:8px; }
-.per button { border:2px solid #c7d2fe; background:#eef2ff; color:#3730a3; border-radius:10px; width:46px; height:42px; font-size:18px; font-weight:900; }
+.per button { border:2px solid #cbd5e1; background:#eef2f7; color:#1e3a5f; border-radius:10px; width:46px; height:42px; font-size:18px; font-weight:900; }
 .per button:disabled { opacity:.3; cursor:default; }
-.per span { font-size:20px; font-weight:900; color:#3730a3; min-width:120px; text-align:center; }
+.per span { font-size:20px; font-weight:900; color:#1e3a5f; min-width:120px; text-align:center; }
 .purpose { background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:10px 16px; margin-bottom:18px; font-size:16px; line-height:1.8; color:#78350f; white-space:pre-wrap; }
 .purpose b { color:#92400e; }
-h3.sec { font-size:22px; color:#3730a3; margin:22px 0 10px; padding-left:10px; border-left:6px solid #6366f1; }
+h3.sec { font-size:22px; color:#1e3a5f; margin:22px 0 10px; padding-left:10px; border-left:6px solid #2c4f7c; }
 .note { font-size:14px; color:#64748b; margin:6px 0; }
 .empty { text-align:center; color:#94a3b8; font-size:20px; padding:50px 0; }
 
 /* 表 */
 table.t { width:100%; border-collapse:collapse; font-size:18px; }
-table.t th { background:#eef2ff; color:#1e1b4b; font-weight:900; padding:10px 8px; border:1px solid #c7d2fe; text-align:center; white-space:nowrap; }
+table.t th { background:#eef2f7; color:#1e3a5f; font-weight:900; padding:10px 8px; border:1px solid #cbd5e1; text-align:center; white-space:nowrap; }
 table.t td { padding:9px 10px; border:1px solid #e2e8f0; vertical-align:middle; }
 table.t tr:nth-child(even) td { background:#f8fafc; }
 table.t td.c { text-align:center; } table.t td.r { text-align:right; font-variant-numeric:tabular-nums; }
@@ -47,25 +47,26 @@ table.t td.nw { white-space:nowrap; }
 .ok { color:#15803d; font-weight:900; } .ng { color:#dc2626; font-weight:900; } .wn { color:#d97706; font-weight:900; }
 .badge { display:inline-block; border-radius:999px; padding:2px 12px; font-size:15px; font-weight:900; white-space:nowrap; }
 .b-ok { background:#dcfce7; color:#166534; } .b-wn { background:#fef3c7; color:#92400e; } .b-ng { background:#fee2e2; color:#991b1b; } .b-gr { background:#f1f5f9; color:#475569; }
-.openBtn { border:none; background:#4338ca; color:#fff; border-radius:8px; padding:6px 14px; font-size:15px; font-weight:bold; white-space:nowrap; margin:2px; }
+.openBtn { border:1px solid #1e3a5f; background:#fff; color:#1e3a5f; border-radius:6px; padding:6px 14px; font-size:15px; font-weight:bold; white-space:nowrap; margin:2px; }
+table.t tr.sigRow td { background:#fff1f2 !important; }
 .recQ { font-size:13px; font-weight:bold; color:#0f766e; background:#ccfbf1; border-radius:99px; padding:2px 10px; margin-left:10px; vertical-align:middle; }
 .recg { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px; margin-bottom:10px; }
-.recc { background:#fff; border:1px solid #c7d2fe; border-radius:12px; overflow:hidden; cursor:zoom-in; break-inside:avoid; }
+.recc { background:#fff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; cursor:zoom-in; break-inside:avoid; }
 .recc img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
 .recm { font-size:14px; color:#334155; padding:6px 10px 8px; }
-.eqSum { font-size:20px; font-weight:bold; color:#1e1b4b; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; padding:12px 18px; margin:4px 0 6px; }
+.eqSum { font-size:20px; font-weight:bold; color:#1e3a5f; background:#eef2f7; border:1px solid #cbd5e1; border-radius:12px; padding:12px 18px; margin:4px 0 6px; }
 .eqSum b { font-size:30px; margin:0 2px; }
-.eqSum span { display:block; font-size:15px; color:#4338ca; margin-top:2px; }
-.eqCnt { font-size:14px; color:#6366f1; margin-left:10px; font-weight:bold; }
+.eqSum span { display:block; font-size:15px; color:#1e3a5f; margin-top:2px; }
+.eqCnt { font-size:14px; color:#2c4f7c; margin-left:10px; font-weight:bold; }
 .eqg { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; margin-bottom:8px; }
-.eqc { background:#fff; border:1px solid #c7d2fe; border-radius:12px; overflow:hidden; break-inside:avoid; }
+.eqc { background:#fff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; break-inside:avoid; }
 .eqb { padding:8px 12px 10px; }
-.eqn { font-size:20px; font-weight:900; color:#1e1b4b; line-height:1.3; }
+.eqn { font-size:20px; font-weight:900; color:#1e3a5f; line-height:1.3; }
 .eqs { font-size:13px; color:#64748b; margin-top:2px; }
 .kpis { display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 14px; }
-.kpi { flex:1; min-width:200px; background:linear-gradient(135deg,#eef2ff,#f8fafc); border:1px solid #c7d2fe; border-radius:14px; padding:14px 18px; }
+.kpi { flex:1; min-width:200px; background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #1e3a5f; border-radius:6px; padding:14px 18px; }
 .kpi .k { font-size:15px; color:#475569; font-weight:bold; }
-.kpi .v { font-size:34px; font-weight:900; color:#1e1b4b; line-height:1.2; }
+.kpi .v { font-size:34px; font-weight:900; color:#1e3a5f; line-height:1.2; }
 .kpi .v small { font-size:16px; color:#64748b; margin-left:4px; }
 .bar { height:22px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
 .bar i { display:block; height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); }
@@ -74,40 +75,40 @@ table.t td.nw { white-space:nowrap; }
 /* 表紙・目次 */
 .cover { text-align:center; padding:30px 0 10px; }
 .cover .co { font-size:26px; font-weight:bold; color:#475569; }
-.cover h1 { font-size:46px; font-weight:900; color:#1e1b4b; margin:10px 0 6px; }
-.cover .iso { display:inline-block; background:#4338ca; color:#fff; border-radius:999px; padding:6px 22px; font-size:20px; font-weight:bold; }
+.cover h1 { font-size:46px; font-weight:900; color:#1e3a5f; margin:10px 0 6px; }
+.cover .iso { display:inline-block; background:#1e3a5f; color:#fff; border-radius:4px; padding:6px 22px; font-size:20px; font-weight:bold; }
 .cover .dt { margin-top:10px; color:#64748b; font-size:16px; }
 .tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; margin-top:28px; }
-.tile { border:2px solid #e0e7ff; background:#f8faff; border-radius:16px; padding:18px 12px; text-align:center; cursor:pointer; transition:.15s; }
-.tile:hover { border-color:#6366f1; background:#eef2ff; transform:translateY(-2px); }
-.tile .ic { font-size:38px; } .tile .nm { font-size:17px; font-weight:900; margin-top:6px; color:#1e1b4b; line-height:1.4; }
+.tile { border:1px solid #cbd5e1; background:#fff; border-radius:6px; padding:12px 14px; text-align:left; cursor:pointer; transition:.15s; display:flex; align-items:baseline; gap:10px; }
+.tile:hover { border-color:#1e3a5f; background:#eef2f7; }
+.tile .ic { font-size:14px; color:#64748b; font-variant-numeric:tabular-nums; min-width:22px; text-align:right; } .tile .nm { font-size:17px; font-weight:700; color:#1e3a5f; line-height:1.4; }
 
 /* 沿革(年表) */
-.hsSum { font-size:18px; font-weight:bold; color:#1e1b4b; margin:2px 0 12px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }
-.hsSum b { font-size:26px; color:#4338ca; }
+.hsSum { font-size:18px; font-weight:bold; color:#1e3a5f; margin:2px 0 12px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; }
+.hsSum b { font-size:26px; color:#1e3a5f; }
 .hsSum span { display:flex; flex-wrap:wrap; gap:6px; }
 .hsSum i, .hsX i { font-style:normal; font-size:13px; font-weight:bold; border-radius:99px; padding:2px 10px; white-space:nowrap; }
 .hs { max-width:1100px; }
-.hsEra { font-size:22px; font-weight:900; color:#fff; background:#4338ca; border-radius:10px; padding:6px 16px; margin:14px 0 4px; break-after:avoid; }
+.hsEra { font-size:22px; font-weight:700; color:#fff; background:#1e3a5f; border-radius:4px; padding:6px 16px; margin:14px 0 4px; break-after:avoid; }
 .hsEra small { font-size:14px; font-weight:bold; opacity:.85; margin-left:12px; }
-.hsRow { display:flex; gap:18px; align-items:baseline; padding:9px 4px; border-bottom:1px solid #e0e7ff; break-inside:avoid; }
+.hsRow { display:flex; gap:18px; align-items:baseline; padding:9px 4px; border-bottom:1px solid #e2e8f0; break-inside:avoid; }
 .hsD { width:190px; flex-shrink:0; }
-.hsD b { display:block; font-size:19px; color:#1e1b4b; }
-.hsD small { font-size:13px; color:#6366f1; font-weight:bold; }
+.hsD b { display:block; font-size:19px; color:#1e3a5f; }
+.hsD small { font-size:13px; color:#2c4f7c; font-weight:bold; }
 .hsX { font-size:19px; font-weight:bold; color:#1e293b; display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
 @media (max-width:700px){ .hsRow { flex-direction:column; gap:2px; } .hsD { width:auto; } }
 .tl { position:relative; margin:10px 0 0 10px; }
-.tl::before { content:""; position:absolute; left:142px; top:6px; bottom:6px; width:4px; background:#c7d2fe; border-radius:2px; }
+.tl::before { content:""; position:absolute; left:142px; top:6px; bottom:6px; width:4px; background:#cbd5e1; border-radius:2px; }
 .tl .row { display:flex; align-items:baseline; gap:30px; padding:8px 0; position:relative; }
-.tl .d { width:120px; flex-shrink:0; text-align:right; font-size:18px; font-weight:900; color:#3730a3; white-space:nowrap; }
-.tl .row::before { content:""; position:absolute; left:136px; top:15px; width:16px; height:16px; border-radius:50%; background:#fff; border:4px solid #6366f1; }
+.tl .d { width:120px; flex-shrink:0; text-align:right; font-size:18px; font-weight:900; color:#1e3a5f; white-space:nowrap; }
+.tl .row::before { content:""; position:absolute; left:136px; top:15px; width:16px; height:16px; border-radius:50%; background:#fff; border:4px solid #2c4f7c; }
 .tl .x { font-size:20px; font-weight:bold; padding-left:14px; }
 .tl.two { column-count:2; column-gap:40px; }
 .tl.two .row { break-inside:avoid; }
 
 /* 組織図(線でつながった木の形) */
 .org { text-align:center; padding:10px 0 4px; overflow-x:auto; }
-.org .box { display:inline-block; border-radius:10px; padding:12px 22px; font-size:20px; font-weight:900; color:#1e1b4b; box-shadow:0 2px 6px rgba(0,0,0,.08); white-space:nowrap; }
+.org .box { display:inline-block; border-radius:10px; padding:12px 22px; font-size:20px; font-weight:900; color:#1e3a5f; box-shadow:0 2px 6px rgba(0,0,0,.08); white-space:nowrap; }
 .org .vl { width:3px; height:26px; background:#64748b; margin:0 auto; }
 .org .tr { display:flex; justify-content:center; }
 .org .tc { position:relative; padding:24px 14px 0; display:flex; flex-direction:column; align-items:center; }
@@ -125,24 +126,24 @@ table.t td.nw { white-space:nowrap; }
 .org .items div::before { content:""; position:absolute; left:-12px; top:50%; width:22px; border-top:3px solid #94a3b8; }
 
 /* 章・コース・まとめ・方針 */
-.chHead { grid-column:1/-1; font-size:18px; font-weight:900; color:#fff; background:#4338ca; border-radius:10px; padding:8px 14px; margin-top:8px; }
+.chHead { grid-column:1/-1; font-size:18px; font-weight:900; color:#fff; background:#1e3a5f; border-radius:10px; padding:8px 14px; margin-top:8px; }
 .chHead small { font-weight:bold; opacity:.8; margin-left:8px; font-size:14px; }
 .course { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px; }
-.course button { border:3px solid #c7d2fe; background:#fff; color:#3730a3; border-radius:14px; padding:12px 22px; font-size:18px; font-weight:900; }
-.course button.on { background:#4338ca; border-color:#4338ca; color:#fff; }
+.course button { border:3px solid #cbd5e1; background:#fff; color:#1e3a5f; border-radius:14px; padding:12px 22px; font-size:18px; font-weight:900; }
+.course button.on { background:#1e3a5f; border-color:#1e3a5f; color:#fff; }
 .course button small { display:block; font-size:12px; font-weight:bold; opacity:.8; }
 .dash { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
 .dc { border-radius:16px; padding:16px 18px; border:2px solid #e2e8f0; background:#f8fafc; cursor:pointer; }
-.dc:hover { border-color:#6366f1; }
+.dc:hover { border-color:#2c4f7c; }
 .dc .k { font-size:16px; font-weight:900; color:#334155; } .dc .v { font-size:36px; font-weight:900; line-height:1.2; margin-top:4px; }
 .dc .s { font-size:14px; color:#475569; margin-top:4px; line-height:1.6; }
 .dc.g { background:#f0fdf4; border-color:#86efac; } .dc.g .v { color:#15803d; }
 .dc.y { background:#fffbeb; border-color:#fcd34d; } .dc.y .v { color:#b45309; }
 .dc.r { background:#fef2f2; border-color:#fca5a5; } .dc.r .v { color:#b91c1c; }
-.dc.n .v { color:#3730a3; }
-.policy { max-width:1000px; margin:10px auto; font-size:24px; line-height:2; font-weight:bold; color:#1e1b4b; white-space:pre-wrap; }
+.dc.n .v { color:#1e3a5f; }
+.policy { max-width:1000px; margin:10px auto; font-size:24px; line-height:2; font-weight:bold; color:#1e3a5f; white-space:pre-wrap; }
 /* 環境方針: 見出し・項目名だけ太字、説明はふつうの太さ */
-.pol { max-width:1000px; margin:6px auto 0; color:#1e1b4b; }
+.pol { max-width:1000px; margin:6px auto 0; color:#1e3a5f; }
 .pol .ph { font-size:28px; font-weight:900; color:#14532d; border-bottom:3px solid #bbf7d0; padding-bottom:4px; margin:22px 0 10px; }
 .pol .ph:first-child { margin-top:4px; }
 .pol .pt { font-size:20px; line-height:1.9; margin:4px 0; }
@@ -154,138 +155,25 @@ table.t td.nw { white-space:nowrap; }
 @media (max-width:800px){ .pol .pi { grid-template-columns:1fr; } }
 .policySign { text-align:right; max-width:1000px; margin:20px auto 0; font-size:20px; font-weight:bold; color:#334155; line-height:1.8; }
 .kv { width:100%; border-collapse:collapse; font-size:20px; }
-.kv th { width:240px; text-align:left; background:#eef2ff; color:#1e1b4b; padding:12px 16px; border:1px solid #c7d2fe; white-space:nowrap; }
+.kv th { width:240px; text-align:left; background:#eef2f7; color:#1e3a5f; padding:12px 16px; border:1px solid #cbd5e1; white-space:nowrap; }
 .kv td { padding:12px 16px; border:1px solid #e2e8f0; font-weight:bold; white-space:pre-wrap; }
 .updated { margin-left:auto; font-size:13px; color:#94a3b8; font-weight:bold; white-space:nowrap; }
-.chTag { font-size:14px; font-weight:900; color:#fff; background:#6366f1; border-radius:999px; padding:3px 12px; white-space:nowrap; }
+.chTag { font-size:14px; font-weight:900; color:#fff; background:#2c4f7c; border-radius:999px; padding:3px 12px; white-space:nowrap; }
 /* 設定 */
 #setBg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:90; align-items:center; justify-content:center; padding:14px; }
 #setBg.show { display:flex; }
 #setBg .box { background:#fff; border-radius:16px; width:100%; max-width:720px; max-height:92vh; overflow-y:auto; padding:20px 22px; }
-#setBg h3 { font-size:20px; color:#1e1b4b; margin-bottom:6px; }
+#setBg h3 { font-size:20px; color:#1e3a5f; margin-bottom:6px; }
 #setBg label { display:block; font-size:14px; font-weight:bold; color:#475569; margin:12px 0 4px; }
 #setBg input, #setBg textarea { width:100%; padding:10px; font-size:16px; border:1px solid #cbd5e1; border-radius:10px; font-family:inherit; }
 #setBg .row2 { display:flex; gap:10px; } #setBg .row2 > div { flex:1; min-width:0; }
-#setBg .grp { margin-top:16px; padding-top:10px; border-top:2px solid #eef2ff; font-weight:900; color:#3730a3; }
+#setBg .grp { margin-top:16px; padding-top:10px; border-top:2px solid #eef2f7; font-weight:900; color:#1e3a5f; }
 #setBg .btns { display:flex; gap:10px; margin-top:18px; }
 #setBg .btns button { flex:1; padding:14px; border:none; border-radius:12px; font-size:16px; font-weight:bold; }
 #printArea { display:none; }
-#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1e1b4b; color:#fff; padding:12px 24px; border-radius:999px; font-size:15px; opacity:0; pointer-events:none; transition:.25s; z-index:99; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1e3a5f; color:#fff; padding:12px 24px; border-radius:999px; font-size:15px; opacity:0; pointer-events:none; transition:.25s; z-index:99; }
 #toast.show { opacity:1; }
 #loading { text-align:center; padding:60px; color:#64748b; font-size:20px; }
-
-/* =====================================================================
-   落ち着いたデザイン(2026-10 見直し)
-   濃紺の文字+深緑の差し色1色・絵文字なし・太さ控えめ・角は小さめ
-   ===================================================================== */
-:root { --ink:#1c2733; --sub:#5b6675; --line:#d9dee5; --soft:#f5f7f9; --bg:#eceff3; --ac:#1d5446; --acs:#e8f1ee; }
-body { background:var(--bg); color:var(--ink); font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic","Meiryo",sans-serif; }
-#bar { background:var(--ink); height:54px; box-shadow:none; border-bottom:1px solid #0f161e; }
-#bar .bt { background:transparent; border:1px solid rgba(255,255,255,.22); border-radius:6px; font-weight:500; font-size:14px; padding:7px 12px; }
-#bar .bt:hover { background:rgba(255,255,255,.1); }
-#bar .nav { font-size:14px; padding:7px 14px; }
-#bar .ttl { font-size:16px; font-weight:600; letter-spacing:.04em; }
-#bar .pg { opacity:.6; font-size:12px; }
-#stage { padding:72px 18px 30px; }
-.slide { border-radius:4px; box-shadow:0 1px 3px rgba(16,24,40,.08); padding:34px 44px 40px; }
-.sHead { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:20px; position:relative; }
-.sHead::after { content:""; position:absolute; left:0; bottom:-1px; width:72px; height:3px; background:var(--ac); }
-.sHead h2 { font-size:28px; font-weight:700; color:var(--ink); letter-spacing:.03em; }
-.sHead .sub { font-size:14px; color:var(--sub); font-weight:500; }
-.chTag { background:transparent; color:var(--ac); border:1px solid var(--ac); border-radius:3px; font-weight:600; font-size:12px; padding:2px 8px; }
-.updated { color:#8a94a1; font-weight:400; font-size:12px; }
-.per button { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:4px; font-weight:500; font-size:14px; width:40px; height:36px; }
-.per span { color:var(--ink); font-weight:600; font-size:17px; }
-.purpose { background:var(--soft); border:none; border-left:3px solid var(--ac); border-radius:0; color:var(--ink); font-size:15px; }
-.purpose b { color:var(--ac); font-weight:600; }
-h3.sec { font-size:18px; font-weight:700; color:var(--ink); border-left:3px solid var(--ac); padding-left:10px; margin:26px 0 12px; letter-spacing:.03em; }
-.note { color:var(--sub); font-size:13px; }
-.empty { color:#8a94a1; font-size:17px; }
-table.t { font-size:16px; }
-table.t th { background:var(--soft); color:var(--ink); font-weight:600; border:1px solid var(--line); }
-table.t td { border:1px solid var(--line); }
-table.t tr:nth-child(even) td { background:#fafbfc; }
-.ok { color:#1d6b4f; font-weight:700; } .ng { color:#b42318; font-weight:700; } .wn { color:#a15c07; font-weight:700; }
-.badge { border-radius:3px; font-weight:600; font-size:13px; padding:2px 8px; }
-.b-ok { background:#e6f2ec; color:#1d6b4f; } .b-wn { background:#fdf3e1; color:#8a4b05; } .b-ng { background:#fbe9e7; color:#9b1c13; } .b-gr { background:#eef1f4; color:#5b6675; }
-.openBtn { background:var(--ac); border-radius:4px; font-weight:500; }
-.recQ { background:var(--acs); color:var(--ac); border-radius:3px; font-weight:600; }
-.recc, .eqc { border:1px solid var(--line); border-radius:4px; }
-.eqSum { background:var(--soft); border:none; border-left:3px solid var(--ac); border-radius:0; color:var(--ink); font-size:17px; font-weight:500; }
-.eqSum b { font-size:26px; font-weight:600; }
-.eqSum span { color:var(--sub); font-size:14px; }
-.eqCnt { color:var(--sub); font-weight:500; font-size:13px; }
-.eqn { font-size:17px; font-weight:600; color:var(--ink); }
-.kpi { background:#fff; border:1px solid var(--line); border-top:3px solid var(--ac); border-radius:4px; }
-.kpi .k { color:var(--sub); font-weight:500; font-size:14px; }
-.kpi .v { color:var(--ink); font-weight:600; font-size:32px; font-variant-numeric:tabular-nums; }
-.kpi .v small { color:var(--sub); font-weight:500; }
-.bar { height:10px; background:#e5e9ee; border-radius:2px; }
-.bar i { background:var(--ac); }
-/* 数字で見る関根商店 */
-.numg { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px !important; margin-top:8px; }
-.numg .kpi { min-width:0; padding:20px 22px 18px; }
-.numg .k { font-size:14px; letter-spacing:.06em; }
-.numg .v { font-size:50px; font-weight:600; margin:6px 0 2px; letter-spacing:-.01em; }
-.numg .v small { font-size:18px; margin-left:6px; }
-.numg .note { margin:0; }
-/* 表紙・目次 */
-.cover { padding:36px 0 10px; }
-.cover .co { font-size:20px; font-weight:500; color:var(--sub); letter-spacing:.12em; }
-.cover h1 { font-size:40px; font-weight:700; color:var(--ink); letter-spacing:.06em; margin:12px 0 14px; }
-.cover .iso { background:transparent; color:var(--ac); border:1px solid var(--ac); border-radius:3px; font-size:16px; font-weight:600; padding:5px 18px; letter-spacing:.08em; }
-.cover .dt { font-size:14px; color:var(--sub); }
-.chHead { background:transparent; color:var(--ink); border-radius:0; border-bottom:2px solid var(--ink); padding:6px 2px; font-size:16px; font-weight:700; letter-spacing:.04em; }
-.chHead small { color:var(--sub); opacity:1; font-weight:500; font-size:12px; }
-.tiles { grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
-.tile { border:1px solid var(--line); background:#fff; border-radius:4px; padding:14px 16px; text-align:left; display:flex; align-items:baseline; gap:12px; }
-.tile:hover { border-color:var(--ac); background:var(--acs); transform:none; }
-.tile .ic { font-size:13px; font-weight:600; color:var(--ac); font-variant-numeric:tabular-nums; min-width:22px; }
-.tile .nm { font-size:15px; font-weight:600; margin-top:0; color:var(--ink); }
-/* 沿革・組織図など */
-.hsSum b { color:var(--ac); font-weight:600; }
-.hsEra { background:var(--ink); border-radius:2px; font-weight:600; font-size:18px; }
-.hsRow { border-bottom:1px solid var(--line); }
-.hsD b { font-weight:600; color:var(--ink); } .hsD small { color:var(--ac); font-weight:500; }
-.hsX { font-weight:500; }
-.hsSum i, .hsX i { border-radius:3px; font-weight:600; }
-.tl::before { background:var(--line); width:2px; }
-.tl .d { color:var(--ac); font-weight:600; }
-.tl .row::before { border:3px solid var(--ac); width:12px; height:12px; }
-.tl .x { font-weight:500; }
-.org .box { border-radius:4px; font-weight:600; box-shadow:none; border:1px solid var(--line); }
-.org .dept .box { background:var(--ac); border-color:var(--ac); }
-.org .items div { font-weight:500; }
-.course button { border:1px solid var(--line); border-radius:4px; color:var(--ink); font-weight:600; font-size:16px; }
-.course button.on { background:var(--ink); border-color:var(--ink); }
-/* ひと目で分かるまとめ */
-.dc { background:#fff; border:1px solid var(--line); border-left:4px solid #9aa4b1; border-radius:4px; }
-.dc:hover { border-color:var(--ac); }
-.dc .k { font-weight:600; color:var(--sub); font-size:14px; }
-.dc .v { font-weight:600; font-size:32px; }
-.dc .s { color:var(--sub); font-size:13px; }
-.dc.g { background:#fff; border-color:var(--line); border-left-color:#1d6b4f; } .dc.g .v { color:#1d6b4f; }
-.dc.y { background:#fff; border-color:var(--line); border-left-color:#c27a0e; } .dc.y .v { color:#a15c07; }
-.dc.r { background:#fff; border-color:var(--line); border-left-color:#b42318; } .dc.r .v { color:#b42318; }
-.dc.n .v { color:var(--ink); }
-/* 環境方針・会社概要 */
-.policy { font-weight:500; color:var(--ink); font-size:21px; }
-.pol { color:var(--ink); }
-.pol .ph { color:var(--ink); font-weight:700; border-bottom:1px solid var(--line); font-size:24px; }
-.pol .pc { background:var(--soft); border:none; border-left:3px solid var(--ac); border-radius:0; }
-.pol .pc b { color:var(--ink); font-weight:600; font-size:18px; }
-.pol .pt { font-size:18px; }
-.pol .pe { font-weight:600; font-size:18px; }
-.policySign { font-weight:500; color:var(--ink); font-size:17px; }
-.kv { font-size:17px; }
-.kv th { background:var(--soft); color:var(--ink); font-weight:600; border:1px solid var(--line); }
-.kv td { font-weight:500; border:1px solid var(--line); }
-#toast { background:var(--ink); border-radius:4px; }
-#setBg .box { border-radius:6px; }
-#setBg h3 { color:var(--ink); } #setBg .grp { color:var(--ac); border-top-color:var(--line); }
-#setBg input, #setBg textarea { border-radius:4px; }
-#setBg .btns button { border-radius:4px; }
-
 
 @media (max-width:760px){
   #bar { height:auto; flex-wrap:wrap; padding:6px 8px; gap:5px; }
@@ -311,7 +199,6 @@ table.t tr:nth-child(even) td { background:#fafbfc; }
   .slide { box-shadow:none; border-radius:0; padding:0; min-height:0; max-width:none; }
   .per button, .openBtn, .tile, .course { display:none !important; }
   .dash { grid-template-columns:repeat(3,1fr); } .dc .v { font-size:22pt; }
-  .numg { grid-template-columns:repeat(4,1fr); } .numg .v { font-size:30pt; } .tile { display:none !important; }
   .eqg { grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px; } .eqn { font-size:12pt; } .eqs { font-size:9pt; } .eqSum { font-size:13pt; }
   .policy { font-size:15pt; } .policySign { font-size:13pt; } .kv { font-size:12pt; }
   .pol .ph { font-size:16pt; margin:10px 0 6px; } .pol .pt, .pol .pe { font-size:11pt; } .pol .pc b { font-size:11.5pt; } .pol .pc span { font-size:10pt; } .pol .pc { padding:6px 10px; }
@@ -330,10 +217,11 @@ table.t tr:nth-child(even) td { background:#fafbfc; }
 <div id="bar">
   <button class="bt" onclick="location.href='index.html'">← ISO管理</button>
   <button class="bt" onclick="go(0)">目次</button>
-  <button class="bt nav" onclick="step(-1)" aria-label="前のページ">◀</button>
+  <button class="bt" id="backBt" onclick="goBackPage()" style="display:none;">元のページへ戻る</button>
+  <button class="bt nav" onclick="step(-1)">◀</button>
   <div class="ttl" id="barTtl">見せるモード</div>
   <span class="pg" id="barPg"></span>
-  <button class="bt nav" onclick="step(1)" aria-label="次のページ">▶</button>
+  <button class="bt nav" onclick="step(1)">▶</button>
   <button class="bt" onclick="toggleFull()">全画面</button>
   <button class="bt" onclick="printCurrent()">このページを印刷</button>
   <button class="bt" onclick="printAll()">全ページPDF</button>
@@ -342,7 +230,7 @@ table.t tr:nth-child(even) td { background:#fafbfc; }
 <!-- 表紙・環境方針・認証の情報の入力 -->
 <div id="setBg" onclick="if(event.target===this)closeSet()">
   <div class="box">
-    <h3>会社概要・環境方針・認証の情報</h3>
+    <h3>⚙️ 会社概要・環境方針・認証の情報</h3>
     <div class="note">ここに入れた内容が「見せるモード」の表紙・環境方針・認証の情報のページに出ます。</div>
     <div class="grp">🏢 会社概要</div>
     <div class="row2"><div><label>会社名</label><input id="s_company" placeholder="株式会社関根商店"></div><div><label>代表者</label><input id="s_rep" placeholder="代表取締役社長 ◯◯ ◯◯"></div></div>
@@ -357,7 +245,7 @@ table.t tr:nth-child(even) td { background:#fafbfc; }
     <div class="row2"><div><label>認証機関</label><input id="s_certBody" placeholder="◯◯審査登録機関"></div><div><label>初回登録日</label><input id="s_certFirst" placeholder="平成16年10月"></div></div>
     <div class="row2"><div><label>有効期限</label><input id="s_certExpiry" type="date"></div><div><label>次回の審査(予定)</label><input id="s_nextAudit" placeholder="令和◯年◯月 更新審査"></div></div>
     <label>適用範囲(登録の範囲)</label><textarea id="s_scope" rows="2" placeholder="産業廃棄物の収集運搬及び中間処理"></textarea>
-    <div class="btns"><button style="background:#e2e8f0;" onclick="closeSet()">閉じる</button><button style="background:#4338ca;color:#fff;" id="s_save" onclick="saveSet()">保存</button></div>
+    <div class="btns"><button style="background:#e2e8f0;" onclick="closeSet()">閉じる</button><button style="background:#1e3a5f;color:#fff;" id="s_save" onclick="saveSet()">保存</button></div>
   </div>
 </div>
 
@@ -367,6 +255,8 @@ table.t tr:nth-child(even) td { background:#fafbfc; }
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="registers.js"></script>
+<script src="survey-items.js"></script>
 <script>
 /* =====================================================================
    ISO 見せるモード(監査・視察・プロジェクター用)
@@ -490,21 +380,32 @@ const PAGES = [
   { key:"cover", ch:0, icon:"🏠", name:"目次", render: renderCover },
   { key:"dash", ch:0, icon:"📋", name:"ひと目で分かるまとめ", render: renderDash },
   { key:"check", ch:0, icon:"✅", name:"審査前チェック", render: renderCheck },
+  { key:"survey", ch:0, icon:"🧾", name:"委託先調査への対応", render: renderSurvey },
   { key:"numbers", ch:0, icon:"✨", name:"数字で見る関根商店", render: renderNumbers },
   { key:"policy", ch:1, icon:"🌿", name:"環境方針", render: renderPolicy },
   { key:"history", ch:1, icon:"📜", name:"沿革", purpose:"company", render: renderHistory },
   { key:"org", ch:1, icon:"🏢", name:"組織図", purpose:"company", render: renderOrg },
+  { key:"issues", ch:1, icon:"🌏", name:"組織の課題", reg:"issues", render: renderReg },
+  { key:"parties", ch:1, icon:"🤝", name:"利害関係者の要求", reg:"parties", render: renderReg },
+  { key:"roles", ch:1, icon:"👥", name:"役割・責任と権限", reg:"roles", render: renderReg },
   { key:"equip", ch:1, icon:"🚛", name:"主な設備・車両", render: renderEquip },
+  { key:"aspects", ch:2, icon:"🌱", name:"環境側面", reg:"aspects", render: renderReg },
   { key:"horei", ch:2, icon:"⚖️", name:"法規制一覧", render: renderHorei },
   { key:"kyoka", ch:2, icon:"📜", name:"許可一覧", render: renderKyoka },
+  { key:"risks", ch:2, icon:"⚠️", name:"リスクと機会", reg:"risks", render: renderReg },
   { key:"sdgs", ch:2, icon:"🎯", name:"環境目標・SDGs", purpose:"sdgs", render: renderSdgs },
+  { key:"objectives", ch:2, icon:"🗓️", name:"環境目標の実施計画", reg:"objectives", render: renderReg },
   { key:"manual", ch:3, icon:"📖", name:"環境手順書", purpose:"manual", render: renderManual },
   { key:"tenken", ch:3, icon:"🚚", name:"車両点検アプリ(点検ラクラク)", render: renderTenken },
   { key:"records", ch:3, icon:"📁", name:"保管・掲示の状況", render: renderRecords },
+  { key:"vendors", ch:3, icon:"", name:"外部委託先の管理", reg:"vendors", render: renderReg },
   { key:"skills", ch:3, icon:"🪪", name:"力量(資格の一覧)", render: renderSkills },
   { key:"training", ch:3, icon:"🎓", name:"教育訓練", purpose:"safety", render: renderTraining },
+  { key:"comms", ch:3, icon:"📞", name:"コミュニケーション・苦情", reg:"comms", render: renderReg },
   { key:"shokaki", ch:3, icon:"🧯", name:"消火器・防火管理", render: renderShokaki },
+  { key:"emergency", ch:3, icon:"", name:"緊急事態の訓練・テスト", reg:"emergency", render: renderReg },
   { key:"calendar", ch:3, icon:"📅", name:"年間の活動(カレンダー)", purpose:"calendar", render: renderCalendar },
+  { key:"monitoring", ch:4, icon:"", name:"監視・測定の計画", reg:"monitoring", render: renderReg },
   { key:"water", ch:4, icon:"🧪", name:"水質検査", purpose:"waterTest", render: renderWater },
   { key:"noise", ch:4, icon:"🔊", name:"騒音チェック", purpose:"noiseCheck", render: renderNoise },
   { key:"comp", ch:4, icon:"🛠️", name:"圧縮機定期点検", purpose:"noiseCheck", render: renderComp },
@@ -514,6 +415,7 @@ const PAGES = [
   { key:"safety", ch:4, icon:"🦺", name:"安全衛生パトロール", purpose:"safety", render: renderSafety },
   { key:"clean", ch:4, icon:"🧹", name:"クリーン度チェック", purpose:"clean", render: renderClean },
   { key:"metal", ch:4, icon:"🔩", name:"金属拾い上げ", purpose:"metal", render: renderMetal },
+  { key:"calib", ch:4, icon:"📏", name:"測定機器の点検・校正", reg:"calib", render: renderReg },
   { key:"audit", ch:4, icon:"🔍", name:"内部監査", render: renderAudit },
   { key:"review", ch:4, icon:"📊", name:"マネジメントレビュー", render: renderReview },
   { key:"corrective", ch:5, icon:"🛠", name:"是正処置", render: renderCorrective },
@@ -538,7 +440,7 @@ async function renderCover(p){
   let tiles = "", lastCh = -1;
   cp.forEach(x => { if (x.key === "cover") return;
     if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); tiles += '<div class="chHead">'+esc(c.name)+(c.clause ? '<small>ISO14001 '+esc(c.clause)+'</small>' : '')+'</div>'; lastCh = x.ch; }
-    tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+String(cp.indexOf(x)).padStart(2,"0")+'</div><div class="nm">'+esc(x.name)+'</div></div>'; });
+    tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+cp.indexOf(x)+'.</div><div class="nm">'+esc(x.name)+'</div></div>'; });
   return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+(pf.certBody ? '　'+esc(pf.certBody) : '')+'</div>' : '')+
     '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ</div></div>'+
@@ -595,14 +497,14 @@ async function renderDash(p){
   card("n", "📅 これから30日の予定", up.length+"件", up.slice(0,3).map(x => fd(x.date)+" "+esc(x.title)).join("<br>") || "予定はありません", "calendar");
   return await head(p, fyLabel(fy)+"("+fySub(fy)+")・押すとそのページへ") + '<div class="dash">'+cards.join("")+'</div>';
 }
-function goKey(k){ const c = courseFor(k); if (!c) return; course = c; go(coursePages().findIndex(x => x.key === k)); }
+function goKey(k){ const c = courseFor(k); if (!c) return; const from = coursePages()[cur]; if (from && from.key !== k){ backStack.push(from.key); if (backStack.length > 20) backStack.shift(); } course = c; go(coursePages().findIndex(x => x.key === k)); }
 
 
 /* ---------- 審査前チェック(準備漏れを自動で見つける) ---------- */
 async function renderCheck(p){
   const fy = curFy(), y = todayYmd().slice(0,4), el = elapsedFyMonths(fy), t = todayYmd();
   const [pf, pur, kd, hv, au, mr, co, sp, fr, fe, wt, nc, tr, dr, lr, mn, sg, cc] = await Promise.all([profile(), loadPurposes(), col("isoKyokaDocs"), col("isoHoreiEval"), col("isoAudits"),
-    col("isoMgmtReviews"), col("isoCorrectives"), col("safetyPatrols"), col("freonRecords"), col("freonEquipments"), col("waterTests"), col("noiseChecks"), col("trainingRecords"),
+    mgmtReviews(), col("isoCorrectives"), col("safetyPatrols"), col("freonRecords"), col("freonEquipments"), col("waterTests"), col("noiseChecks"), col("trainingRecords"),
     col("dieselRecords"), col("lifelineRecords"), col("envManuals"), col("sdgsGoals"), col("compressorInspections")]);
   const rows = [];   // [レベル(0=OK 1=注意 2=要対応), 項目, 内容, ページ]
   const add = (lv, item, msg, key) => rows.push([lv, item, msg, key]);
@@ -648,10 +550,31 @@ async function renderCheck(p){
   const purKeys = { waterTest:"水質検査", noiseCheck:"騒音チェック", metal:"金属拾い上げ", clean:"クリーン度", donation:"地域貢献", diesel:"軽油", lifeline:"ライフライン", freon:"フロン", safety:"安全災害対策", sdgs:"SDGs", manual:"環境手順書", company:"会社情報" };
   const noPur = Object.keys(purKeys).filter(k => !pur[k] || !(pur[k].text || pur[k].management));
   add(noPur.length ? 1 : 0, "各項目の「目的・管理」", noPur.length ? "未記入："+noPur.map(k => purKeys[k]).join("、") : "すべて記入済み", "cover");
+  // ISOの計画・リスク(📋)と委託先調査票(🧾)
+  const [rg, sv] = await Promise.all([col(ISO_REG_COL), docGet("isoSurvey", "answers")]);
+  const fixed = k => rg.filter(r => r.reg === k && !r.draft), drafts = k => rg.filter(r => r.reg === k && r.draft).length;
+  ["issues", "parties", "roles", "aspects", "risks", "objectives"].forEach(k => {
+    const R = ISO_REGS.find(r => r.key === k), n = fixed(k).length, d = drafts(k);
+    add(n ? (d ? 1 : 0) : 2, R.name+"("+R.clause+")", n ? n+"件"+(d ? "・下書き"+d+"件(確定するか消す)" : "") : "まだ登録がありません(ISO管理の「ISOの計画・リスク」から)", k);
+  });
+  const asp = fixed("aspects"), unrated = asp.filter(r => aspectScore(r).sig === null).length;
+  if (asp.length) add(unrated ? 1 : 0, "環境側面の評価", unrated ? "未評価 "+unrated+"件" : "著しい環境側面 "+asp.filter(r => aspectScore(r).sig).length+"件", "aspects");
+  const cal = fixed("calib"), over = cal.filter(r => r.next && r.next < t);
+  add(!cal.length ? 1 : over.length ? 2 : 0, "測定機器の点検・校正(9.1)", !cal.length ? "まだ登録がありません" : over.length ? "期限切れ："+over.map(r => r.name).join("、") : cal.length+"件 すべて期限内", "calib");
+  const vd = fixed("vendors"), vdEx = vd.filter(r => ["permitExp","contractExp"].some(k => r[k] && daysLeft(r[k]) < 0));
+  add(!vd.length ? 2 : vdEx.length ? 2 : 0, "外部委託先の管理(8.1)", !vd.length ? "まだ登録がありません(処分・運搬の委託先の許可・契約・評価)" : vdEx.length ? "期限切れ："+vdEx.map(r => r.name).join("、") : vd.length+"社 すべて期限内", "vendors");
+  const em = fixed("emergency").map(r => r.date).filter(Boolean).sort().pop() || "";
+  add(!em ? 2 : monthsAgo(em) > 12 ? 2 : monthsAgo(em) > 10 ? 1 : 0, "緊急事態の訓練・テスト(8.2・年1回)", em ? "最新 "+fd(em)+(monthsAgo(em) > 12 ? " — 1年以上たっています" : "") : "まだ記録がありません(ISO管理の「ISOの計画・リスク」から)", "emergency");
+  const mo = fixed("monitoring");
+  add(mo.length ? 0 : 2, "監視・測定の計画(9.1.1)", mo.length ? mo.length+"項目" : "まだ登録がありません(何を・どう・いつ測るか)", "monitoring");
+  const cm = fixed("comms"), openC = cm.filter(r => r.status === "対応中").length;
+  add(openC ? 1 : 0, "コミュニケーション・苦情(7.4)", cm.length ? "今年 "+cm.filter(r => String(r.date).startsWith(y)).length+"件"+(openC ? "・対応中 "+openC+"件" : "") : "記録はまだありません(苦情がなければOK)", "comms");
+  const sva = sv && sv.items ? SURVEY_ITEMS.filter(it => sv.items[it.id] && (sv.items[it.id].ans || sv.items[it.id].num)).length : 0;
+  add(!sv ? 1 : sva < SURVEY_ITEMS.length ? 1 : 0, "委託先調査票の回答", sv ? "回答済み "+sva+" / "+SURVEY_ITEMS.length : "まだ保存されていません(ISO管理の「委託先調査票の回答」から)", "survey");
   rows.sort((a,b) => b[0] - a[0]);
   const n2 = rows.filter(r => r[0] === 2).length, n1 = rows.filter(r => r[0] === 1).length;
   const icon = lv => lv === 2 ? '<span class="badge b-ng">要対応</span>' : lv === 1 ? '<span class="badge b-wn">注意</span>' : '<span class="badge b-ok">OK</span>';
-  return await head(p, "審査の前に、ここが全部OKになっているか確認しましょう") +
+  return await head(p, "審査前の準備状況(登録データから自動判定)") +
     '<div class="kpis"><div class="kpi"><div class="k">要対応</div><div class="v" style="color:#b91c1c">'+n2+'<small>件</small></div></div><div class="kpi"><div class="k">注意</div><div class="v" style="color:#b45309">'+n1+'<small>件</small></div></div><div class="kpi"><div class="k">OK</div><div class="v" style="color:#15803d">'+(rows.length-n1-n2)+'<small>件</small></div></div></div>'+
     '<div class="tw"><table class="t"><tr><th style="width:110px">状態</th><th style="width:260px">項目</th><th>内容</th><th style="width:100px">ページ</th></tr>'+rows.map(r =>
       '<tr><td class="c">'+icon(r[0])+'</td><td><b>'+esc(r[1])+'</b></td><td>'+esc(r[2])+'</td><td class="c"><button class="openBtn" onclick="goKey(\''+r[3]+'\')">開く</button></td></tr>').join("")+'</table></div>'+
@@ -737,6 +660,70 @@ async function renderRecords(p){
     '<div class="note" style="margin-top:6px;">写真を押すと大きく表示されます。</div>';
 }
 
+/* ---------- ISOの計画・リスクの台帳(registers.js の定義で表示。下書きは出さない) ---------- */
+async function renderReg(p){
+  const R = ISO_REGS.find(r => r.key === p.reg);
+  let list = (await col(ISO_REG_COL)).filter(r => r.reg === R.key && !r.draft);
+  const sub = "ISO14001 "+R.clause;
+  if (!list.length) return await head(p, sub) + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「"+R.name+"」から入力します)");
+  if (R.dated) list.sort((a,b) => String(b[R.dated]||"").localeCompare(String(a[R.dated]||"")));
+  else if (R.key === "aspects") list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
+  else list.sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
+  const cols = R.fields.filter(f => f.list && !f.score);
+  const t = todayYmd();
+  let top = "";
+  if (R.key === "aspects"){
+    const sig = list.filter(r => aspectScore(r).sig);
+    top = '<div class="kpis"><div class="kpi"><div class="k">環境側面</div><div class="v">'+list.length+'<small>件</small></div></div><div class="kpi"><div class="k">著しい環境側面</div><div class="v" style="color:#b91c1c">'+sig.length+'<small>件</small></div></div></div>'+
+      '<div class="note" style="margin-bottom:8px;">評価：規模・頻度・法規制を1〜3で評価し、合計'+ASPECT_SIGNIFICANT_TOTAL+'点以上、または法規制が3のものを「著しい環境側面」として重点的に管理しています。</div>';
+  }
+  if (R.key === "comms"){
+    const yr = t.slice(0,4), ty = list.filter(r => String(r.date).startsWith(yr));
+    top = '<div class="kpis"><div class="kpi"><div class="k">今年の記録</div><div class="v">'+ty.length+'<small>件</small></div></div><div class="kpi"><div class="k">今年の苦情</div><div class="v">'+ty.filter(r => r.kind === "苦情").length+'<small>件</small></div></div><div class="kpi"><div class="k">対応中</div><div class="v">'+list.filter(r => r.status === "対応中").length+'<small>件</small></div></div></div>';
+  }
+  if (R.key === "vendors"){
+    const ex = list.filter(r => ["permitExp","contractExp"].some(k => r[k] && daysLeft(r[k]) < 0));
+    top = '<div class="kpis"><div class="kpi"><div class="k">委託先</div><div class="v">'+list.length+'<small>社</small></div></div><div class="kpi"><div class="k">評価 適正</div><div class="v">'+list.filter(r => r.evalResult === "適正").length+'<small>社</small></div></div><div class="kpi"><div class="k">許可・契約の期限切れ</div><div class="v" style="color:'+(ex.length ? '#b91c1c' : '#15803d')+'">'+ex.length+'<small>件</small></div></div></div>';
+  }
+  if (R.key === "issues" || R.key === "risks"){
+    const g = R.key === "issues" ? ["外部の課題","内部の課題"] : ["リスク","機会"];
+    top = '<div class="kpis">'+g.map(k => '<div class="kpi"><div class="k">'+k+'</div><div class="v">'+list.filter(r => r.kind === k).length+'<small>件</small></div></div>').join("")+'</div>';
+  }
+  const cell = (r, f) => {
+    let v = esc(regLabel(f, r[f.k]));
+    if (f.k === "status") v = v ? '<span class="badge '+(/完了|達成/.test(v) ? 'b-ok' : /未達/.test(v) ? 'b-ng' : 'b-wn')+'">'+v+'</span>' : "";
+    if (R.key === "calib" && f.k === "next" && r.next && r.next < t) v += ' <span class="badge b-ng">期限切れ</span>';
+    if (R.key === "vendors" && (f.k === "permitExp" || f.k === "contractExp") && r[f.k]){ const dl = daysLeft(r[f.k]); if (dl < 0) v += ' <span class="badge b-ng">期限切れ</span>'; else if (dl <= 90) v += ' <span class="badge b-wn">あと'+dl+'日</span>'; }
+    if (f.k === "evalResult" && v) v = '<span class="badge '+(v === "適正" ? 'b-ok' : v === "不適" ? 'b-ng' : 'b-wn')+'">'+v+'</span>';
+    if (f.k === "obligation" && r.obligation === "する") v = '<span class="badge b-ng">順守義務</span>';
+    return '<td'+(f.type === "date" || f.type === "select" ? ' class="c nw"' : '')+' style="white-space:pre-wrap;">'+v+'</td>';
+  };
+  const extraH = R.key === "aspects" ? '<th style="width:150px">評価</th>' : "";
+  const extra = r => { if (R.key !== "aspects") return ""; const s = aspectScore(r);
+    return '<td class="c">'+(s.sig === null ? '<span class="note">未評価</span>' : (s.sig ? '<span class="badge b-ng">著しい</span><br>' : '')+'<span class="note">規模'+r.scale+'・頻度'+r.freq+'・法'+r.law+' = <b>'+s.total+'</b></span>')+'</td>'; };
+  return await head(p, sub) + top + '<div class="tw"><table class="t"><tr>'+cols.map(f => '<th>'+esc(f.label)+'</th>').join("")+extraH+'</tr>'+
+    list.map(r => '<tr'+(R.key === "aspects" && aspectScore(r).sig ? ' class="sigRow"' : '')+'>'+cols.map(f => cell(r, f)).join("")+extra(r)+'</tr>').join("")+'</table></div>';
+}
+
+/* ---------- 委託先調査への対応(ISO管理の「委託先調査票の回答」) ---------- */
+async function renderSurvey(p){
+  const sv = await docGet("isoSurvey", "answers");
+  if (!sv || !sv.items) return await head(p, "廃棄物処理委託先調査票(共通事項・収集運搬)") + empty("まだ回答が保存されていません(ISO管理の「委託先調査票の回答」から入力します)");
+  const its = SURVEY_ITEMS.filter(it => sv.items[it.id] && sv.items[it.id].on !== false);
+  const done = its.filter(it => sv.items[it.id].ans || sv.items[it.id].num);
+  const pages = Object.fromEntries(PAGES.map(x => [x.key, x]));
+  let h = '<div class="kpis"><div class="kpi"><div class="k">回答した項目</div><div class="v">'+done.length+'<small> / '+its.length+'</small></div></div><div class="kpi"><div class="k">重点確認項目(●)</div><div class="v">'+done.filter(it => it.imp).length+'<small>件 回答</small></div></div></div>';
+  ["D1", "D2"].forEach(f => {
+    const list = its.filter(it => it.f === f); if (!list.length) return;
+    h += '<h3 class="sec">'+(f === "D1" ? "D1 共通事項" : "D2 収集運搬")+'</h3><div class="tw"><table class="t"><tr><th style="width:60px">No</th>'+(f === "D2" ? '<th style="width:120px">区分</th>' : '')+'<th>確認項目</th><th style="width:150px">当社の回答</th><th>補足・根拠</th><th style="width:90px">根拠のページ</th></tr>'+
+      list.map(it => { const a = sv.items[it.id], pg = it.page && pages[it.page];
+        return '<tr><td class="c">'+it.no+(it.imp ? '<br><span style="color:#dc2626;font-size:11px;">●重点</span>' : '')+'</td>'+(f === "D2" ? '<td class="c" style="font-size:13px;">'+esc(it.sec)+'</td>' : '')+
+          '<td>'+esc(it.q)+'</td><td class="c"><b>'+esc(a.ans || "")+(it.unit && a.ans ? ' '+esc(it.unit) : '')+'</b>'+(!a.ans && !a.num ? '<span class="note">未回答</span>' : '')+'</td><td style="font-size:14px;">'+esc(a.num || "")+'</td>'+
+          '<td class="c">'+(pg ? '<button class="openBtn" onclick="goKey(\''+pg.key+'\')">開く</button>' : '')+'</td></tr>'; }).join("")+'</table></div>';
+  });
+  return await head(p, "廃棄物処理委託先調査票(共通事項・収集運搬)への当社の回答") + h + '<div class="note" style="margin-top:8px;">「根拠のページ」のボタンで、その回答の根拠になるページを開けます。</div>';
+}
+
 async function renderEquip(p){
   const [vs, cm, fe, ph] = await Promise.all([col("master_vehicles"), col("compressorMachines"), col("freonEquipments"), col("isoPhotos")]);
   eqPhotos = ph;
@@ -762,7 +749,7 @@ async function renderEquip(p){
   // 設備: 圧縮機・フロン機器のマスター＋写真だけ入っている設備(トラックスケールなど)
   const eqItems = [];
   cm.forEach(c => eqItems.push({ name:c.name, sub:[c.type || "圧縮機", c.maker].filter(Boolean).join("・") }));
-  // フロン類使用機器(事務所のエアコン等)は「主な設備」には出さない(フロン簡易点検のページで扱う) 2026-10
+  // フロン類使用機器(事務所のエアコン等)は「主な設備」に出さない(フロン簡易点検のページで扱う) 2026-10
   const feNames = new Set(fe.map(f => "e:"+f.name));
   Object.keys(byT).filter(k => byT[k][0].kind === "equip" && !feNames.has(k) && !eqItems.some(e => "e:"+e.name === k)).forEach(k => eqItems.push({ name:byT[k][0].targetName, sub:"" }));
   const eqHtml = eqItems.length ? '<h3 class="sec">⚙️ 主な設備<span class="eqCnt">'+eqItems.length+'</span></h3><div class="eqg">'+eqItems.map(e => card("e:"+e.name, e.name, e.sub, "⚙️")).join("")+'</div>' : '';
@@ -777,7 +764,7 @@ async function renderNumbers(p){
   const [h, emps, vs, ev, marks, types, dr, sg, sp2, pf] = await Promise.all([docGet("companyInfo","history"), col("employees"), col("master_vehicles"), col("isoEvents"), col("eventMarks"),
     col("activityTypes"), col("dieselRecords"), col("sdgsGoals"), col("sdgsProgress"), profile()]);
   const cards = [];
-  const big = (ic, k, v, u, s) => cards.push('<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+'<small>'+u+'</small></div>'+(s ? '<div class="note">'+s+'</div>' : '')+'</div>');
+  const big = (ic, k, v, u, s) => cards.push('<div class="kpi" style="min-width:260px;text-align:center;padding:22px;"><div style="font-size:40px">'+ic+'</div><div class="k" style="font-size:18px;">'+k+'</div><div class="v" style="font-size:52px;">'+v+'<small style="font-size:20px;">'+u+'</small></div>'+(s ? '<div class="note">'+s+'</div>' : '')+'</div>');
   // 創業から
   const first = ((h && h.items) || [])[0];
   if (first){ const m = String(first.date).match(/(昭和|平成|令和)(\d+|元)年/); if (m){ const base = { 昭和:1925, 平成:1988, 令和:2018 }[m[1]] + (m[2] === "元" ? 1 : Number(m[2])); big("🏢", "創業から", new Date().getFullYear() - base, "年", esc(first.date)+" 設立"); } }
@@ -801,7 +788,7 @@ async function renderNumbers(p){
   const curRecs = dr.filter(x => x.yearMonth && fyOf(x.yearMonth) === fy), ms = curRecs.map(x => x.yearMonth.slice(5,7));
   const c1 = curRecs.reduce((a,x) => a + lit(x), 0), c0 = dr.filter(x => x.yearMonth && fyOf(x.yearMonth) === prevFy && ms.includes(x.yearMonth.slice(5,7))).reduce((a,x) => a + lit(x), 0);
   if (c1 && c0){ const r = (1 - c1 / c0) * 100; if (r > 0) big("⛽", "軽油の使用量を削減", num(r), "%減", "前年度の同じ時期と比べて"); }
-  return await head(p, esc(pf.company || COMPANY)) + (cards.length ? '<div class="kpis numg">'+cards.join("")+'</div>' : empty("表示できる数字がまだありません"));
+  return await head(p, esc(pf.company || COMPANY)) + (cards.length ? '<div class="kpis" style="gap:18px;">'+cards.join("")+'</div>' : empty("表示できる数字がまだありません"));
 }
 
 /* ---------- 環境方針 ---------- */
@@ -839,7 +826,8 @@ async function renderPolicy(p){
   const date = pf.policy ? pf.policyDate : (pf.policyDate || DEFAULT_POLICY.policyDate);
   const signer = pf.policy ? pf.policySigner : (pf.policySigner || DEFAULT_POLICY.policySigner);
   return await head(p, esc(pf.company || COMPANY)) + policyHtml(pol)+
-    '<div class="policySign">'+(date ? esc(date)+'<br>' : '')+esc(pf.company || COMPANY)+'<br>'+esc(signer || "")+'</div>';
+    '<div class="policySign">'+(date ? esc(date)+'<br>' : '')+esc(pf.company || COMPANY)+'<br>'+esc(signer || "")+'</div>'+
+    (pf.scope ? '<div class="pol"><div class="ph">適用範囲(ISO14001 4.3)</div><div class="pt" style="white-space:pre-wrap;">'+esc(pf.scope)+'</div></div>' : '');
 }
 
 /* ---------- 会社概要・認証の情報 ---------- */
@@ -1002,12 +990,12 @@ async function renderTenken(p){
       (i ? '<div style="break-before:page;"></div>' : '')+'<div style="text-align:center;">'+tkImg(x[0], x[1], "max-width:100%;max-height:245mm;")+'</div>').join("");
   }
   const x = TENKEN_IMGS[tkIdx];
-  const btn = "border:2px solid #d9dee5;background:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
+  const btn = "border:2px solid #cbd5e1;background:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
   const on = "border:2px solid #1E6B45;background:#1E6B45;color:#fff;border-radius:12px;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;";
   const real = "border:2px dashed #93c5fd;background:#f8fbff;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer;";
   const thumbs = TENKEN_IMGS.map((y, i) => '<button style="'+(i === tkIdx ? on : (y[2] ? real : btn))+'" onclick="tkGo('+i+')">'+(y[2] ? '📱 ' : y[0]+' ')+esc(y[1])+'</button>').join("");
   const link = '<a class="openBtn" href="'+TK_URL+x[3]+'" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;font-size:17px;padding:10px 20px;background:#1E6B45;">🚚 '+esc(x[4])+' ↗</a>';
-  const arrow = "flex:0 0 auto;width:56px;height:56px;border-radius:50%;border:2px solid #d9dee5;background:#fff;font-size:22px;cursor:pointer;";
+  const arrow = "flex:0 0 auto;width:56px;height:56px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;font-size:22px;cursor:pointer;";
   return await head(p, "現場はQRだけ。記録と情報は、ひとつのアプリに。") +
     '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">'+thumbs+'</div>'+
     '<div style="display:flex;align-items:center;justify-content:center;gap:16px;">'+
@@ -1051,17 +1039,25 @@ async function renderCorrective(p){
 }
 
 /* ---------- マネジメントレビュー ---------- */
+// マネジメントレビュー: ISO管理「ISOの計画・リスク」→「マネジメントレビュー」で入力した記録(＋以前の isoMgmtReviews があれば一緒に)
+async function mgmtReviews(){
+  const [old, rg] = await Promise.all([col("isoMgmtReviews"), col(ISO_REG_COL)]);
+  return old.map(x => ({ date:x.date, members:x.members, prev:"", report:x.report, evaluation:"", decision:x.decision }))
+    .concat(rg.filter(x => x.reg === "review" && !x.draft));
+}
 async function renderReview(p){
-  const r = (await col("isoMgmtReviews")).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
-  if (!r.length) return await head(p) + empty("マネジメントレビューの記録はまだありません");
-  return await head(p, "全"+r.length+"回") + '<div class="tw"><table class="t"><tr><th>開催日</th><th>出席者</th><th>報告した内容</th><th>社長の指示・決定事項</th></tr>'+r.map(x =>
-    '<tr><td class="c nw">'+fd(x.date)+'</td><td>'+esc(x.members)+'</td><td style="white-space:pre-wrap">'+esc(x.report)+'</td><td style="white-space:pre-wrap">'+esc(x.decision)+'</td></tr>').join("")+'</table></div>';
+  const r = (await mgmtReviews()).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
+  if (!r.length) return await head(p, "ISO14001 9.3") + empty("マネジメントレビューの記録はまだありません(ISO管理の「ISOの計画・リスク」→「マネジメントレビュー」から入力)");
+  const R = ISO_REGS.find(x => x.key === "review"), evF = R ? R.fields.find(f => f.k === "evaluation") : null;
+  return await head(p, "ISO14001 9.3　全"+r.length+"回") + '<div class="tw"><table class="t"><tr><th>実施日</th><th>出席者</th><th>報告した内容(インプット)</th><th>評価</th><th>社長の指示・決定事項(アウトプット)</th></tr>'+r.map(x =>
+    '<tr><td class="c nw">'+fd(x.date)+'</td><td>'+esc(x.members)+'</td><td style="white-space:pre-wrap">'+(x.prev ? '<b>前回の指示の実施状況</b>\n'+esc(x.prev)+'\n\n' : '')+esc(x.report)+'</td>'+
+    '<td>'+esc(evF && x.evaluation ? regLabel(evF, x.evaluation) : "")+'</td><td style="white-space:pre-wrap">'+esc(x.decision)+'</td></tr>').join("")+'</table></div>';
 }
 
 /* ---------- 年間の活動(カレンダー) ---------- */
 async function renderCalendar(p){
   const [ev, marks] = await Promise.all([col("isoEvents"), col("eventMarks")]);
-  const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#1d5446");
+  const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#1e3a5f");
   const P = regPer(p.key, pickPeriods(ev.map(x => fyOf(x.date)), p.key));
   const l = ev.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(a.date).localeCompare(String(b.date)));
   const cnt = {}; l.forEach(x => { const k = x.mark || "未分類"; cnt[k] = (cnt[k]||0) + 1; });
@@ -1191,7 +1187,7 @@ async function renderDiesel(p){
     (prevTot ? '<div class="kpi"><div class="k">前年度の同じ時期と比べて</div><div class="v">'+num(tot / prevTot * 100)+'<small>%</small></div></div>' : '')+
     (t ? '<div class="kpi"><div class="k">目標</div><div class="v">'+num(t.targetLiters)+'<small>L</small></div></div>' : '')+'</div>'+
     '<div class="tw"><table class="t"><tr><th style="width:80px">月</th><th style="width:160px">使用量(L)</th><th>グラフ</th></tr>'+byM.map(x =>
-      '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.has ? num(x.v) : "-")+'</td><td><div class="bar" style="height:18px;"><i style="width:'+(x.v / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#1d5446)"></i></div></td></tr>').join("")+'</table></div>'+
+      '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.has ? num(x.v) : "-")+'</td><td><div class="bar" style="height:18px;"><i style="width:'+(x.v / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#1e3a5f)"></i></div></td></tr>').join("")+'</table></div>'+
     '<div class="note">CO₂換算係数 2.58kg-CO₂/L</div>' : empty());
 }
 
@@ -1286,7 +1282,7 @@ async function renderSdgs(p){
       else if (ys.length){ const y = ys[ys.length-1]; val = by[y]; detail = y+"年の値"; }
       if (ys.length) detail += (detail ? "　" : "") + ys.map(y => y+"年 "+num(by[y])).join(" / ");
     }
-    return '<div class="kpi" style="min-width:320px;"><div class="k" style="font-size:18px;color:#1c2733;">🌱 '+esc(x.name)+'</div>'+
+    return '<div class="kpi" style="min-width:320px;"><div class="k" style="font-size:18px;color:#1e3a5f;">🌱 '+esc(x.name)+'</div>'+
       (x.indicator ? '<div class="note">指標：'+esc(x.indicator)+'</div>' : '')+
       '<div class="v">'+(val == null ? '-' : num(val))+'<small>'+esc(x.unit||"")+(x.targetValue ? ' / 目標 '+num(x.targetValue)+' '+esc(x.unit||"") : '')+'</small></div>'+
       (pct != null ? '<div class="bar" style="margin-top:6px;"><i style="width:'+Math.min(100, pct)+'%"></i></div><div class="note">達成率 '+num(pct)+'%</div>' : '')+
@@ -1299,22 +1295,24 @@ async function renderSdgs(p){
    画面の切り替え・印刷
    ===================================================================== */
 let cur = 0;
-/* 絵文字を外す(落ち着いた見た目に)。表の ✅/⬜ は ✓/－ に置き換え。◀ ▶ ©は残す */
-function plain(h){
-  return String(h).replace(/✅/g, "✓").replace(/⬜/g, "－").replace(/⚠️?/g, "※")
-    .replace(/(?![◀▶©®™])\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?[ \u3000]?/gu, "");
-}
+/* 業務用の落ち着いた表示にするため、絵文字は画面に出さない(◀ ▶ ✓ などの記号は残す) */
+const EMOJI_RE = /(?![\u25C0\u25B6\u2713\u2714\u2715\u2716\u2192\u2190\u2191\u2193\u25CB\u00D7\u25B3])\p{Extended_Pictographic}\uFE0F?\s?/gu;
+function noEmoji(h){ return String(h).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(EMOJI_RE, "")); }
+/* 「開く」で別のページへ飛んだとき、元のページに戻れるようにする */
+let backStack = [];
+function goBackPage(){ const k = backStack.pop(); if (!k) return; const i = coursePages().findIndex(x => x.key === k); go(i >= 0 ? i : 0); }
 async function show(i){
   const cp = coursePages();
   cur = Math.max(0, Math.min(cp.length-1, i));
   const p = cp[cur];
   document.getElementById("barTtl").textContent = p.name;
+  document.getElementById("backBt").style.display = backStack.length ? "" : "none";
   document.getElementById("barPg").textContent = COURSES[course].name+"　"+(cur+1)+" / "+cp.length;
   try { history.replaceState(null, "", "#"+p.key); } catch(e){}
   touched = new Set();
   const html = await p.render(p);
   if (coursePages()[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
-  document.getElementById("stage").innerHTML = '<div class="slide">'+plain(html)+'</div>';
+  document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>';
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
 function step(d){ go(cur + d); }
@@ -1336,24 +1334,24 @@ function toggleFull(){
   else document.exitFullscreen && document.exitFullscreen();
 }
 function doPrint(html){
-  document.getElementById("printArea").innerHTML = plain(html);
+  document.getElementById("printArea").innerHTML = html;
   setTimeout(() => window.print(), 300);
 }
 async function printCurrent(){
   const p = coursePages()[cur]; touched = new Set();
-  doPrint('<div class="pslide"><div class="slide">'+await p.render(p)+'</div></div>');
+  doPrint('<div class="pslide"><div class="slide">'+noEmoji(await p.render(p))+'</div></div>');
 }
 async function printAll(){
-  toast("全部のページを準備しています…");
+  toast("全ページを準備しています…");
   const cp = coursePages(), parts = [], pf = await profile();
   tkPrinting = true;
   try {
-    for (const p of cp){ if (p.key === "cover") continue; touched = new Set(); parts.push('<div class="pslide"><div class="slide">'+await p.render(p)+'</div></div>'); }
+    for (const p of cp){ if (p.key === "cover") continue; touched = new Set(); parts.push('<div class="pslide"><div class="slide">'+noEmoji(await p.render(p))+'</div></div>'); }
   } finally { tkPrinting = false; }
   const t = new Date();
   let toc = "", lastCh = -1, n = 0;
   cp.forEach(x => { if (x.key === "cover") return; n++;
-    if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); toc += '<div style="font-weight:700;color:#1d5446;margin-top:6px;break-inside:avoid;">'+esc(c.name)+(c.clause ? '(ISO14001 '+esc(c.clause)+')' : '')+'</div>'; lastCh = x.ch; }
+    if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); toc += '<div style="font-weight:900;color:#1e3a5f;margin-top:6px;break-inside:avoid;">'+esc(c.name)+(c.clause ? '(ISO14001 '+esc(c.clause)+')' : '')+'</div>'; lastCh = x.ch; }
     toc += '<div>'+n+'.　'+esc(x.name)+'</div>'; });
   const cover = '<div class="pslide"><div class="slide"><div class="cover" style="padding-top:40px;"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+'</div>' : '')+'<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在</div></div>'+
@@ -1377,7 +1375,7 @@ async function saveSet(){
   const b = document.getElementById("s_save"); b.disabled = true;
   try {
     await db.collection("companyInfo").doc("profile").set(data, { merge:true });
-    delete cache["companyInfo/profile"]; closeSet(); toast("保存しました"); show(cur);
+    delete cache["companyInfo/profile"]; closeSet(); toast("✅ 保存しました"); show(cur);
   } catch(e){ console.error(e); alert("保存できませんでした: "+e.message); }
   finally { b.disabled = false; }
 }
