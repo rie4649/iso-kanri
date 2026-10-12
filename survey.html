@@ -49,8 +49,8 @@
   <div id="list"><div class="empty">読み込み中…</div></div>
 </div>
 <div class="bg" id="subBg" onclick="if(event.target===this)closeSubmit()"><div class="modal" style="max-width:460px;">
-  <h2>提出したことを記録</h2>
-  <div class="note" style="margin-top:0;">いま保存されている回答が、この日付の控えとして残ります。</div>
+  <h2 id="subTtl">提出したことを記録</h2>
+  <div class="note" style="margin-top:0;" id="subNote">いま保存されている回答が、この日付の控えとして残ります。</div>
   <label for="sDate">提出日</label><input id="sDate" type="date">
   <label for="sTo">提出先(会社名など)</label><input id="sTo" placeholder="例: ○○株式会社">
   <label for="sBy">回答者</label><input id="sBy" placeholder="例: 環境管理責任者 川村">
@@ -169,10 +169,23 @@ function renderSubs(){
   const el = document.getElementById("subList"); if (!el) return;
   el.innerHTML = subs.length ? subs.map(x => { const n = Object.values(x.items||{}).filter(a => a.ans || a.num).length;
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line2);"><span style="flex:1;min-width:220px;"><b>'+esc(fdj(x.date))+'</b>　'+esc(x.to||"(提出先なし)")+'<span class="tag gray" style="margin-left:6px;">回答者 '+esc(x.by||"-")+'</span><span class="tag gray">回答 '+n+'項目</span>'+(x.memo ? '<span class="note" style="margin:0 0 0 4px;">'+esc(x.memo)+'</span>' : '')+'</span>'+
-      '<button class="btn sm" onclick="viewSub(\''+x.id+'\')">控えを見る・印刷</button><button class="btn sm del" onclick="delSub(\''+x.id+'\')">削除</button></div>'; }).join("")
+      '<button class="btn sm" onclick="viewSub(\''+x.id+'\')">控えを見る・印刷</button><button class="btn sm" onclick="editSub(\''+x.id+'\')">修正</button><button class="btn sm del" onclick="delSub(\''+x.id+'\')">削除</button></div>'; }).join("")
     : '<div class="note">まだ提出の記録はありません。調査票を提出したら、上のボタンで記録してください。</div>';
 }
+let subEdit = null;
+/* 提出の記録の修正(提出日・提出先・回答者・メモ)。控えの回答の中身はそのまま */
+function editSub(id){
+  subEdit = subs.find(x => x.id === id); if (!subEdit) return;
+  document.getElementById("subTtl").textContent = "提出の記録を修正";
+  document.getElementById("subNote").textContent = "提出日・提出先・回答者・メモを直せます。控えの回答の中身は、提出した時のまま変わりません。";
+  document.getElementById("sDate").value = subEdit.date || ""; document.getElementById("sTo").value = subEdit.to || "";
+  document.getElementById("sBy").value = subEdit.by || ""; document.getElementById("sMemo").value = subEdit.memo || "";
+  document.getElementById("subBg").classList.add("show");
+}
 function openSubmit(){
+  subEdit = null;
+  document.getElementById("subTtl").textContent = "提出したことを記録";
+  document.getElementById("subNote").textContent = "いま保存されている回答が、この日付の控えとして残ります。";
   if (dirty || !saved){ toast("先に「保存」を押してから記録してください"); return; }
   const d = new Date(); document.getElementById("sDate").value = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   document.getElementById("sTo").value = ""; document.getElementById("sMemo").value = "";
@@ -183,6 +196,11 @@ function closeSubmit(){ document.getElementById("subBg").classList.remove("show"
 async function saveSubmit(){
   const date = document.getElementById("sDate").value, to = document.getElementById("sTo").value.trim();
   if (!date || !to){ toast("提出日と提出先を入れてください"); return; }
+  if (subEdit){
+    try { await db.collection(SUB_COL).doc(subEdit.id).update({ date, to, by:document.getElementById("sBy").value.trim(), memo:document.getElementById("sMemo").value.trim() }); closeSubmit(); toast("修正しました"); }
+    catch(e){ toast("修正できませんでした: "+e.message); }
+    return;
+  }
   try {
     await db.collection(SUB_COL).add({ date, to, by:document.getElementById("sBy").value.trim(), memo:document.getElementById("sMemo").value.trim(), items: saved, createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     closeSubmit(); toast("提出の記録を残しました");
