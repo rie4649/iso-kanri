@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ISO 見せるモード | 関根商店</title>
+<title>環境への取り組み | 株式会社関根商店</title>
 <link rel="icon" href="icon-192.png">
 <style id="pageStyle">@page { size: A4 landscape; margin: 10mm; }</style>
 <style>
@@ -219,7 +219,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
   <button class="bt" onclick="go(0)">目次</button>
   <button class="bt" id="backBt" onclick="goBackPage()" style="display:none;">元のページへ戻る</button>
   <button class="bt nav" onclick="step(-1)">◀</button>
-  <div class="ttl" id="barTtl">見せるモード</div>
+  <div class="ttl" id="barTtl">環境への取り組み</div>
   <span class="pg" id="barPg"></span>
   <button class="bt nav" onclick="step(1)">▶</button>
   <button class="bt" onclick="toggleFull()">全画面</button>
@@ -231,7 +231,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <div id="setBg" onclick="if(event.target===this)closeSet()">
   <div class="box">
     <h3>⚙️ 会社概要・環境方針・認証の情報</h3>
-    <div class="note">ここに入れた内容が「見せるモード」の表紙・環境方針・認証の情報のページに出ます。</div>
+    <div class="note">ここに入れた内容が「環境への取り組み」の表紙・環境方針・認証の情報のページに出ます。</div>
     <div class="grp">🏢 会社概要</div>
     <div class="row2"><div><label>会社名</label><input id="s_company" placeholder="株式会社関根商店"></div><div><label>代表者</label><input id="s_rep" placeholder="代表取締役社長 ◯◯ ◯◯"></div></div>
     <label>所在地</label><input id="s_address" placeholder="長野県上田市住吉316-2">
@@ -259,7 +259,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <script src="survey-items.js"></script>
 <script>
 /* =====================================================================
-   ISO 見せるモード(監査・視察・プロジェクター用)
+   環境への取り組み(旧 見せるモード。監査・視察・プロジェクター用)
    ・ISO管理と同じデータを「見るだけ」。ここから書き込むことはありません。
    ・開いたページのデータだけ読み込みます(読み取り回数の節約)。
    ===================================================================== */
@@ -368,23 +368,20 @@ const empty = m => '<div class="empty">'+(m || "この期間の記録はあり�
    ページの一覧(この順番で ◀ ▶ で進みます)
    ===================================================================== */
 const CHAPTERS = [
-  { id:0, name:"はじめに", clause:"" },
   { id:1, name:"会社と体制", clause:"4・5章" },
   { id:2, name:"計画(法令・許可・目標)", clause:"6章" },
   { id:3, name:"支援・運用", clause:"7・8章" },
   { id:4, name:"測定・評価", clause:"9章" },
   { id:5, name:"改善", clause:"10章" },
-  { id:6, name:"社会との関わり", clause:"" }
+  { id:6, name:"社会との関わり", clause:"" },
+  { id:7, name:"まとめ", clause:"" }
 ];
 const PAGES = [
   { key:"cover", ch:0, icon:"🏠", name:"目次", render: renderCover },
-  { key:"dash", ch:0, icon:"📋", name:"ひと目で分かるまとめ", render: renderDash },
-  { key:"check", ch:0, icon:"✅", name:"審査前チェック", render: renderCheck },
-  { key:"survey", ch:0, icon:"🧾", name:"委託先調査への対応", render: renderSurvey },
-  { key:"numbers", ch:0, icon:"✨", name:"数字で見る関根商店", render: renderNumbers },
   { key:"policy", ch:1, icon:"🌿", name:"環境方針", render: renderPolicy },
   { key:"history", ch:1, icon:"📜", name:"沿革", purpose:"company", render: renderHistory },
   { key:"org", ch:1, icon:"🏢", name:"組織図", purpose:"company", render: renderOrg },
+  { key:"numbers", ch:1, icon:"✨", name:"数字で見る関根商店", render: renderNumbers },
   { key:"issues", ch:1, icon:"🌏", name:"組織の課題", reg:"issues", render: renderReg },
   { key:"parties", ch:1, icon:"🤝", name:"利害関係者の要求", reg:"parties", render: renderReg },
   { key:"roles", ch:1, icon:"👥", name:"役割・責任と権限", reg:"roles", render: renderReg },
@@ -392,6 +389,7 @@ const PAGES = [
   { key:"aspects", ch:2, icon:"🌱", name:"環境側面", reg:"aspects", render: renderReg },
   { key:"horei", ch:2, icon:"⚖️", name:"法規制一覧", render: renderHorei },
   { key:"kyoka", ch:2, icon:"📜", name:"許可一覧", render: renderKyoka },
+  { key:"permit", ch:2, icon:"", name:"許可の内容(事業の範囲・施設)", render: renderPermit },
   { key:"risks", ch:2, icon:"⚠️", name:"リスクと機会", reg:"risks", render: renderReg },
   { key:"sdgs", ch:2, icon:"🎯", name:"環境目標・SDGs", purpose:"sdgs", render: renderSdgs },
   { key:"objectives", ch:2, icon:"🗓️", name:"環境目標の実施計画", reg:"objectives", render: renderReg },
@@ -419,12 +417,13 @@ const PAGES = [
   { key:"audit", ch:4, icon:"🔍", name:"内部監査", render: renderAudit },
   { key:"review", ch:4, icon:"📊", name:"マネジメントレビュー", render: renderReview },
   { key:"corrective", ch:5, icon:"🛠", name:"是正処置", render: renderCorrective },
-  { key:"donation", ch:6, icon:"🤝", name:"地域貢献", purpose:"donation", render: renderDonation }
+  { key:"donation", ch:6, icon:"🤝", name:"地域貢献", purpose:"donation", render: renderDonation },
+  { key:"dash", ch:7, icon:"📋", name:"ひと目で分かるまとめ", render: renderDash }
 ];
 /* 見せる相手ごとのコース(表紙で選ぶ) */
 /* 監査・視察・行政で中身は同じ(コース分けはしない)。いつも全ページを同じ順番で見せる */
 const COURSES = {
-  all:   { name:"見せるモード", sub:"全ページ", keys:null }
+  all:   { name:"環境への取り組み", sub:"全ページ", keys:null }
 };
 let course = "all";
 function coursePages(){ const c = COURSES[course]; return c.keys ? PAGES.filter(p => c.keys.includes(p.key)) : PAGES.filter(p => !(c.skip||[]).includes(p.key)); }
@@ -441,7 +440,7 @@ async function renderCover(p){
   cp.forEach(x => { if (x.key === "cover") return;
     if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); tiles += '<div class="chHead">'+esc(c.name)+(c.clause ? '<small>ISO14001 '+esc(c.clause)+'</small>' : '')+'</div>'; lastCh = x.ch; }
     tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+cp.indexOf(x)+'.</div><div class="nm">'+esc(x.name)+'</div></div>'; });
-  return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
+  return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境への取り組み</h1><span class="iso">環境マネジメントシステム '+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+(pf.certBody ? '　'+esc(pf.certBody) : '')+'</div>' : '')+
     '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ</div></div>'+
     '<div class="tiles">'+tiles+'</div>'+
@@ -596,12 +595,88 @@ async function renderSkills(p){
     return dl == null ? '<span class="ok">●</span>' : dl < 0 ? '<span class="ng" title="期限切れ '+esc(fd(ex))+'">●<div class="note ng">期限切れ</div></span>' : dl <= 90 ? '<span class="wn">●<div class="note wn">'+esc(fd(ex))+'</div></span>' : '<span class="ok">●</span>';
   };
   const holders = es.filter(e => (e.qualifications||[]).length);
-  return await head(p, "業務管理アプリの「資格管理」から自動で表示・"+holders.length+"名") +
+  // 資格がまだない人(新しく入った人など)も、登録されていれば全員表に出す 2026-10
+  return await head(p, "業務管理アプリ・マスター管理の登録から自動で表示・在籍 "+es.length+"名(うち資格あり "+holders.length+"名)") +
     '<div class="kpis">'+used.slice().sort((a,b) => cnt(b) - cnt(a)).slice(0,6).map(q => '<div class="kpi" style="min-width:170px;"><div class="k">'+esc(q)+'</div><div class="v">'+cnt(q)+'<small>名</small></div></div>').join("")+'</div>'+
     '<div class="tw"><table class="t" style="font-size:15px;"><tr><th style="position:sticky;left:0;">氏名</th>'+used.map(q => '<th style="white-space:normal;min-width:70px;">'+esc(q)+'</th>').join("")+'</tr>'+
-      holders.map(e => '<tr><td class="nw" style="position:sticky;left:0;background:#fff;"><b>'+esc(e.name)+'</b></td>'+used.map(q => '<td class="c">'+mark(e, q)+'</td>').join("")+'</tr>').join("")+
+      es.map(e => '<tr><td class="nw" style="position:sticky;left:0;background:#fff;"><b>'+esc(e.name)+'</b></td>'+used.map(q => '<td class="c">'+mark(e, q)+'</td>').join("")+'</tr>').join("")+
       '<tr><td><b>人数</b></td>'+used.map(q => '<td class="c"><b>'+cnt(q)+'</b></td>').join("")+'</tr></table></div>'+
     '<div class="note">● 保有　黄色＝有効期限が90日以内　赤＝期限切れ(有効期限が登録されている資格のみ判定)</div>';
+}
+
+/* ---------- 写真をページどうしでつなぐ(ISO管理「写真の記録」isoPhotos と連動) ---------- */
+function recCatsGet(){ return docGet("isoPhotoSettings", "recordCats").then(st => (st && Array.isArray(st.items)) ? st.items : DEFAULT_REC_CATS); }
+const sortPh = l => l.slice().sort((a,b) => (b.isMain?1:0) - (a.isMain?1:0) || (a.createdMs||0) - (b.createdMs||0));
+function phOpen(tid, id){ eqLb.list = sortPh(eqPhotos.filter(y => y.targetId === tid)); eqLb.i = Math.max(0, eqLb.list.findIndex(y => y.id === id)); eqShow(); }
+/* 代表の写真を小さく(押すと拡大) */
+function phThumb(ph, tid, w){
+  const l = sortPh(ph.filter(x => x.targetId === tid)); if (!l.length) return "";
+  return '<img src="'+l[0].thumb+'" alt="" onclick="phOpen(\''+esc(tid)+'\',\''+l[0].id+'\')" style="width:'+(w||80)+'px;aspect-ratio:4/3;object-fit:cover;border-radius:6px;cursor:zoom-in;vertical-align:middle;flex:0 0 auto;">'+
+    (l.length > 1 ? '<span class="note" style="margin-left:4px;">'+l.length+'枚</span>' : '');
+}
+function phGrid(list){
+  return '<div class="recg">'+list.map(x => '<div class="recc" onclick="phOpen(\''+esc(x.targetId)+'\',\''+x.id+'\')"><img src="'+x.thumb+'" alt="">'+
+    '<div class="recm">'+esc(x.targetName)+(x.memo ? '　'+esc(x.memo) : '')+'</div></div>').join("")+'</div>';
+}
+/* 機械・設備のカード(写真＋関係するページへのボタン) */
+function machineCards(ph, items, link){
+  if (!items.length) return "";
+  return '<h3 class="sec">対象の機械</h3><div class="recg">'+items.map(m => { const l = sortPh(ph.filter(x => x.targetId === "e:"+m.name));
+    return '<div class="recc" style="cursor:default;">'+(l.length ? '<img src="'+l[0].thumb+'" alt="" style="cursor:zoom-in;" onclick="phOpen(\'e:'+esc(m.name)+'\',\''+l[0].id+'\')">' : '')+
+      '<div class="recm"><b>'+esc(m.name)+'</b>'+(m.sub ? '　'+esc(m.sub) : '')+(l.length > 1 ? '　'+l.length+'枚' : '')+
+      (link ? '<div><button class="openBtn" style="margin-top:6px;" onclick="goKey(\''+link[0]+'\')">'+esc(link[1])+' ›</button></div>' : '')+'</div></div>'; }).join("")+'</div>';
+}
+/* 写真の記録の「保管・掲示・現場の様子」の項目のうち、出すページにこのページを選んだもの */
+async function pagePhotos(key){
+  if (key === "records" || key === "cover") return "";
+  const [ph, cats] = await Promise.all([col("isoPhotos"), recCatsGet()]);
+  const names = cats.filter(c => c.page === key).map(c => c.name); if (!names.length) return "";
+  const l = sortPh(ph.filter(x => x.kind === "record" && names.includes(x.targetName))); if (!l.length) return "";
+  eqPhotos = ph;
+  return '<h3 class="sec">写真</h3>' + phGrid(l) + '<div class="note">写真を押すと大きく表示されます。</div>';
+}
+async function renderFull(p){ const h = await p.render(p); return h + await pagePhotos(p.key); }
+
+/* ---------- 許可の内容(事業の範囲・積替え保管場所・処理施設) ----------
+   ISO管理の「許可の内容」(permit.html)で入力。Firestore: isoPermitScopes(1件=1つの版。場所が変わったら新しい版を足す) */
+function permitSort(a, b){ return String(b.startDate||"").localeCompare(String(a.startDate||"")) || (b.createdMs||0) - (a.createdMs||0); }
+const dash = v => (v == null || String(v).trim() === "") ? "—" : esc(v);
+async function renderPermit(p){
+  const [vers, ph, cm] = await Promise.all([col("isoPermitScopes"), col("isoPhotos"), col("compressorMachines")]);
+  eqPhotos = ph;
+  if (!vers.length) return await head(p, "許可証の記載内容") + empty("ISO管理の「許可の内容」から入力すると、ここに出ます");
+  const t = todayYmd(), all = vers.slice().sort(permitSort);
+  const curV = all.find(v => !v.startDate || v.startDate <= t) || all[all.length-1];
+  const future = all.filter(v => v.startDate && v.startDate > t);
+  const past = all.filter(v => v !== curV && !future.includes(v));
+  const cs = curV.collectScope || [], st = curV.sites || [], ms = curV.midScope || [], fc = curV.facilities || [];
+  const sum = k => st.reduce((a, x) => a + (Number(String(x[k]||"").replace(/[^\d.]/g, "")) || 0), 0);
+  let h = await head(p, "許可証の記載内容"+(curV.startDate ? "・"+fd(curV.startDate)+"から" : ""));
+  if (future.length) h += '<div class="note" style="color:#b45309;font-weight:bold;margin-bottom:8px;">変更の予定：'+future.map(v => fd(v.startDate)+"から"+(v.memo ? "("+esc(v.memo)+")" : "")).join("、")+'</div>';
+  // 収集運搬
+  if (cs.length || st.length){
+    h += '<h3 class="sec">産業廃棄物 収集運搬業</h3>';
+    if (cs.length) h += '<div class="note" style="margin-bottom:6px;">事業の範囲　○：取り扱うもの　◎：積替え又は保管行為を含むもの</div><div class="tw"><table class="t"><tr><th>取り扱う産業廃棄物の種類</th><th>積替保管</th><th>石綿含有<br>産業廃棄物</th><th>水銀使用製品<br>産業廃棄物</th><th>水銀含有<br>ばいじん等</th><th>自動車等<br>破砕物</th></tr>'+
+      cs.map(x => '<tr><td><b>'+esc(x.kind)+'</b></td>'+["store","asb","hg","hgd","car"].map(k => '<td class="c">'+dash(x[k])+'</td>').join("")+'</tr>').join("")+'</table></div>';
+    if (st.length) h += '<h3 class="sec">積替え・保管の場所</h3><div class="kpis"><div class="kpi"><div class="k">保管場所</div><div class="v">'+st.length+'<small>か所</small></div></div>'+
+      '<div class="kpi"><div class="k">面積の合計</div><div class="v">'+num(sum("area"), 2)+'<small>㎡</small></div></div><div class="kpi"><div class="k">保管上限の合計</div><div class="v">'+num(sum("cap"), 2)+'<small>㎥</small></div></div></div>'+
+      '<div class="tw"><table class="t"><tr><th>種類</th><th>所在地</th><th>面積(㎡)</th><th>保管上限(㎥)</th><th>高さ上限(m)</th></tr>'+
+      st.map(x => '<tr><td><b>'+esc(x.kind)+'</b></td><td>'+esc(x.place)+'</td><td class="r">'+dash(x.area)+'</td><td class="r">'+dash(x.cap)+'</td><td class="r">'+dash(x.height)+'</td></tr>').join("")+'</table></div>';
+  }
+  // 中間処理
+  if (ms.length || fc.length){
+    h += '<h3 class="sec">産業廃棄物 処分業(中間処理)</h3>';
+    if (ms.length) h += '<div class="tw"><table class="t"><tr><th>事業の区分</th><th>処理方式</th><th>取り扱う産業廃棄物の種類</th></tr>'+ms.map(x => '<tr><td class="c">'+esc(x.kubun)+'</td><td class="c">'+esc(x.method)+'</td><td>'+esc(x.kinds)+'</td></tr>').join("")+'</table></div>';
+    if (fc.length) h += '<div class="tw" style="margin-top:10px;"><table class="t"><tr><th>写真</th><th>施設の種類</th><th>設置場所</th><th>設置年月日・許可番号</th><th>処理能力</th></tr>'+fc.map(x => {
+      const eq = x.equip || ((cm.find(m => /圧縮|梱包/.test(m.name||"")) || cm[0] || {}).name) || "";
+      return '<tr><td class="c">'+(eq ? phThumb(ph, "e:"+eq, 110) : '')+'</td><td><b>'+esc(x.type)+'</b>'+(eq && cm.some(m => m.name === eq) ? '<div><button class="openBtn" style="margin-top:6px;" onclick="goKey(\'comp\')">点検記録 ›</button></div>' : '')+'</td>'+
+        '<td>'+esc(x.place)+'</td><td class="c">'+[x.setDate, x.permitNo].filter(Boolean).map(esc).join("<br>")+'</td><td>'+esc(x.capacity)+'</td></tr>'; }).join("")+'</table></div>';
+  }
+  // 変更の履歴
+  h += '<h3 class="sec">変更の履歴</h3><div class="tw"><table class="t"><tr><th>適用開始</th><th>内容</th><th>保管場所</th></tr>'+
+    future.concat([curV]).concat(past).map(v => '<tr'+(v === curV ? ' style="background:#eff6ff;"' : '')+'><td class="c nw">'+(v.startDate ? fd(v.startDate) : "—")+(v === curV ? '<div class="note">現在</div>' : future.includes(v) ? '<div class="note">予定</div>' : '')+'</td>'+
+      '<td>'+esc(v.memo || "")+'</td><td class="c">'+(v.sites||[]).length+'か所</td></tr>').join("")+'</table></div>';
+  return h;
 }
 
 /* ---------- 主な設備・車両 ---------- */
@@ -645,8 +720,10 @@ const DEFAULT_REC_CATS = [
 async function renderRecords(p){
   const [ph, st] = await Promise.all([col("isoPhotos"), docGet("isoPhotoSettings", "recordCats")]);
   eqPhotos = ph;   // 拡大表示(eqOpen)で使う
-  const cats = (st && Array.isArray(st.items)) ? st.items : DEFAULT_REC_CATS;
-  const recs = ph.filter(x => x.kind === "record").sort((a,b) => (b.isMain?1:0) - (a.isMain?1:0) || (a.createdMs||0) - (b.createdMs||0));
+  const allCats = (st && Array.isArray(st.items)) ? st.items : DEFAULT_REC_CATS;
+  const cats = allCats.filter(c => (c.page || "records") === "records");   // 他のページに出す項目(水質検査の様子など)はそちらへ
+  const other = new Set(allCats.filter(c => (c.page || "records") !== "records").map(c => c.name));
+  const recs = ph.filter(x => x.kind === "record" && !other.has(x.targetName)).sort((a,b) => (b.isMain?1:0) - (a.isMain?1:0) || (a.createdMs||0) - (b.createdMs||0));
   const byN = {}; recs.forEach(x => (byN[x.targetName] = byN[x.targetName] || []).push(x));
   const names = cats.map(c => c.name).filter(n => byN[n]).concat(Object.keys(byN).filter(n => !cats.some(c => c.name === n)));
   if (!names.length) return await head(p, "書類の保管や掲示の様子を写真で") + empty("ISO管理の「📷 写真の記録」→「保管・掲示の状況」から写真を入れると、ここに並びます");
@@ -734,12 +811,13 @@ async function renderEquip(p){
   const vsort = (a, b) => { const na = vn(a), nb = vn(b), ia = /^\d/.test(na), ib = /^\d/.test(nb); return ia !== ib ? (ia ? -1 : 1) : na.localeCompare(nb, "ja", { numeric:true }); };
   const load = s => { const n = Number(String(s||"").replace(/[^\d.]/g, "")); return n > 0 ? "最大積載量 "+n.toLocaleString()+"kg" : ""; };
   // カード1枚(写真があれば写真、なければ写真の場所に薄いアイコン。写真が1枚もないうちは文字だけのカード)
-  const card = (key, name, sub, icon) => {
+  const card = (key, name, sub, icon, link) => {
     const m = key ? mainOf(key) : null, n = key && byT[key] ? byT[key].length : 0;
     const pic = anyPhoto ? (m ? '<img src="'+m.thumb+'" alt="'+esc(name)+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;">'
       : '<div style="width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:#f1f5f9;font-size:34px;opacity:.5;">'+icon+'</div>') : '';
     return '<div class="eqc"'+(m ? ' style="cursor:zoom-in;" onclick="eqOpen(\''+esc(key)+'\')"' : '')+'>'+pic+
-      '<div class="eqb"><div class="eqn">'+esc(name)+'</div>'+(sub ? '<div class="eqs">'+esc(sub)+'</div>' : '')+(n > 1 ? '<div class="eqs">📷 '+n+'枚</div>' : '')+'</div></div>';
+      '<div class="eqb"><div class="eqn">'+esc(name)+'</div>'+(sub ? '<div class="eqs">'+esc(sub)+'</div>' : '')+(n > 1 ? '<div class="eqs">📷 '+n+'枚</div>' : '')+
+      (link ? '<button class="openBtn" style="margin-top:6px;" onclick="event.stopPropagation();goKey(\''+link[0]+'\')">'+esc(link[1])+' ›</button>' : '')+'</div></div>';
   };
   const byModel = {}; vs.forEach(v => { const k = (v.model || "その他").trim() || "その他"; (byModel[k] = byModel[k] || []).push(v); });
   const models = Object.keys(byModel).sort((a,b) => byModel[b].length - byModel[a].length);
@@ -748,11 +826,11 @@ async function renderEquip(p){
     byModel[m].slice().sort(vsort).map(v => card(v.id, vn(v), load(v.maxLoad), "🚛")).join("")+'</div>').join("");
   // 設備: 圧縮機・フロン機器のマスター＋写真だけ入っている設備(トラックスケールなど)
   const eqItems = [];
-  cm.forEach(c => eqItems.push({ name:c.name, sub:[c.type || "圧縮機", c.maker].filter(Boolean).join("・") }));
+  cm.forEach(c => eqItems.push({ name:c.name, sub:[c.type || "圧縮機", c.maker].filter(Boolean).join("・"), link:["comp","点検記録"] }));
   // フロン類使用機器(事務所のエアコン等)は「主な設備」に出さない(フロン簡易点検のページで扱う) 2026-10
   const feNames = new Set(fe.map(f => "e:"+f.name));
   Object.keys(byT).filter(k => byT[k][0].kind === "equip" && !feNames.has(k) && !eqItems.some(e => "e:"+e.name === k)).forEach(k => eqItems.push({ name:byT[k][0].targetName, sub:"" }));
-  const eqHtml = eqItems.length ? '<h3 class="sec">⚙️ 主な設備<span class="eqCnt">'+eqItems.length+'</span></h3><div class="eqg">'+eqItems.map(e => card("e:"+e.name, e.name, e.sub, "⚙️")).join("")+'</div>' : '';
+  const eqHtml = eqItems.length ? '<h3 class="sec">⚙️ 主な設備<span class="eqCnt">'+eqItems.length+'</span></h3><div class="eqg">'+eqItems.map(e => card("e:"+e.name, e.name, e.sub, "⚙️", e.link)).join("")+'</div>' : '';
   return await head(p, "車両は共通マスタ管理の車両から自動で表示") + sum + vehHtml + eqHtml +
     (anyPhoto ? '<div class="note" style="margin-top:10px;">写真を押すと大きく表示されます。写真はISO管理の「📷 写真の記録」から入れられます。</div>'
               : '<div class="note" style="margin-top:10px;">📷 ISO管理の「写真の記録」から写真を入れると、カードに写真が出ます。天井クレーン・トラックスケールなどの設備も写真を入れるとここに並びます。</div>');
@@ -1101,7 +1179,9 @@ async function renderNoise(p){
 
 /* ---------- 圧縮機定期点検 ---------- */
 async function renderComp(p){
-  const c = await col("compressorInspections");
+  const [c, cm, ph] = await Promise.all([col("compressorInspections"), col("compressorMachines"), col("isoPhotos")]);
+  eqPhotos = ph;
+  const machines = machineCards(ph, cm.map(m => ({ name:m.name, sub:[m.type, m.maker].filter(Boolean).join("・") })), ["permit","許可の内容(圧縮梱包施設)"]);
   const P = regPer(p.key, pickPeriods(c.map(x => fyOf(x.date)), p.key));
   const l = c.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(b.date).localeCompare(String(a.date)));
   return await head(p, P.cur ? fySub(P.cur)+"・管理コード EMS-C-21" : "", perHtml(p.key, P, fyLabel)) +
@@ -1109,7 +1189,7 @@ async function renderComp(p){
       const ng = (x.items||[]).filter(i => i.ok === false);
       return '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.machine)+'</td><td class="c">'+esc(x.inspector)+'</td><td class="c">'+esc(x.kojocho)+'</td>'+
         '<td class="c">'+(ng.length ? '<span class="badge b-ng">要修理 '+ng.length+'件</span>' : '<span class="badge b-ok">異常なし</span>')+'</td>'+
-        '<td>'+esc(ng.map(i => i.name+(i.memo ? "("+i.memo+")" : "")).concat(x.notes ? [x.notes] : []).join(" / "))+'</td></tr>'; }).join("")+'</table></div>' : empty());
+        '<td>'+esc(ng.map(i => i.name+(i.memo ? "("+i.memo+")" : "")).concat(x.notes ? [x.notes] : []).join(" / "))+'</td></tr>'; }).join("")+'</table></div>' : empty()) + machines;
 }
 
 /* ---------- 金属拾い上げ ---------- */
@@ -1166,7 +1246,8 @@ async function renderDonation(p){
 
 /* ---------- 軽油使用量 ---------- */
 async function renderDiesel(p){
-  const [r, tg] = await Promise.all([col("dieselRecords"), col("dieselTargets")]);
+  const [r, tg, vs, ph] = await Promise.all([col("dieselRecords"), col("dieselTargets"), col("master_vehicles"), col("isoPhotos")]);
+  eqPhotos = ph;
   const recs = r.filter(x => x.yearMonth);
   const P = regPer(p.key, pickPeriods(recs.map(x => fyOf(x.yearMonth)), p.key));
   const l = recs.filter(x => fyOf(x.yearMonth) === P.cur);
@@ -1188,7 +1269,20 @@ async function renderDiesel(p){
     (t ? '<div class="kpi"><div class="k">目標</div><div class="v">'+num(t.targetLiters)+'<small>L</small></div></div>' : '')+'</div>'+
     '<div class="tw"><table class="t"><tr><th style="width:80px">月</th><th style="width:160px">使用量(L)</th><th>グラフ</th></tr>'+byM.map(x =>
       '<tr><td class="c">'+x.m+'月</td><td class="r">'+(x.has ? num(x.v) : "-")+'</td><td><div class="bar" style="height:18px;"><i style="width:'+(x.v / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#1e3a5f)"></i></div></td></tr>').join("")+'</table></div>'+
-    '<div class="note">CO₂換算係数 2.58kg-CO₂/L</div>' : empty());
+    '<div class="note">CO₂換算係数 2.58kg-CO₂/L</div>' + dieselByVehicle(l, vs, ph) : empty());
+}
+/* 車両別の使用量(写真の記録の車両写真と連動。車両の呼び名・車番の数字で照合) */
+function dieselByVehicle(l, vs, ph){
+  const by = {}; l.forEach(x => (x.vehicles||[]).forEach(v => { const n = String(v.name||"").trim(); if (!n) return; by[n] = (by[n]||0) + (Number(v.liters)||0); }));
+  const names = Object.keys(by).sort((a,b) => by[b] - by[a]);
+  if (!names.length) return "";
+  const dig = s => String(s||"").replace(/[^\d]/g, "");
+  const find = n => vs.find(v => String(v.nickname||"").trim() === n || String(v.number||"").trim() === n) ||
+    (/^\d+$/.test(n) ? vs.find(v => dig(v.number).endsWith(n) && dig(v.number).length - n.length <= 3 && /\d/.test(String(v.number||"").slice(-1))) : null);
+  const mx = by[names[0]] || 1;
+  return '<h3 class="sec">車両別の使用量</h3><div class="tw"><table class="t"><tr><th style="width:110px">写真</th><th>車両</th><th style="width:160px">使用量(L)</th><th>グラフ</th></tr>'+names.map(n => { const v = find(n);
+    return '<tr><td class="c">'+(v ? phThumb(ph, v.id, 88) : '')+'</td><td><b>'+esc(n)+'</b>'+(v && v.model ? '<div class="note">'+esc(v.model)+'</div>' : '')+'</td><td class="r">'+num(by[n])+'</td>'+
+      '<td><div class="bar" style="height:14px;"><i style="width:'+(by[n] / mx * 100)+'%;background:linear-gradient(90deg,#818cf8,#1e3a5f)"></i></div></td></tr>'; }).join("")+'</table></div>';
 }
 
 /* ---------- ライフライン ---------- */
@@ -1214,7 +1308,8 @@ async function renderLifeline(p){
 
 /* ---------- フロン簡易点検 ---------- */
 async function renderFreon(p){
-  const [eq, r] = await Promise.all([col("freonEquipments"), col("freonRecords")]);
+  const [eq, r, ph] = await Promise.all([col("freonEquipments"), col("freonRecords"), col("isoPhotos")]);
+  eqPhotos = ph;
   const P = regPer(p.key, pickPeriods(r.map(x => fyOf(x.date)), p.key));
   const l = r.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(b.date).localeCompare(String(a.date)));
   const Q = [["8〜10月",[8,9,10]],["11〜1月",[11,12,1]],["2〜4月",[2,3,4]],["5〜7月",[5,6,7]]];
@@ -1226,7 +1321,7 @@ async function renderFreon(p){
     '<div class="kpi"><div class="k">異常あり</div><div class="v">'+l.filter(x => x.result === "abnormal").length+'<small>回</small></div></div>'+
     '<div class="kpi"><div class="k">漏えいCO₂換算</div><div class="v">'+num(leak/1000, 4)+'<small>トン</small></div></div></div>'+
     '<h3 class="sec">実施状況</h3><div class="tw"><table class="t"><tr><th>機器</th><th>冷媒</th>'+Q.map(q => '<th>'+q[0]+'</th>').join("")+'</tr>'+eq.map(e =>
-      '<tr><td><b>'+esc(e.name)+'</b></td><td class="c">'+esc(e.refrigerant||"")+'</td>'+Q.map(q => { const xs = l.filter(x => x.equipment === e.name && q[1].includes(Number(String(x.date).slice(5,7))));
+      '<tr><td><div style="display:flex;align-items:center;gap:10px;">'+phThumb(ph, "e:"+e.name, 84)+'<b>'+esc(e.name)+'</b></div></td><td class="c">'+esc(e.refrigerant||"")+'</td>'+Q.map(q => { const xs = l.filter(x => x.equipment === e.name && q[1].includes(Number(String(x.date).slice(5,7))));
         return '<td class="c">'+(xs.length ? '<span class="ok">✅</span> '+xs.map(x => fd(x.date).slice(5)).join("、") : '<span class="note">⬜</span>')+'</td>'; }).join("")+'</tr>').join("")+'</table></div>'+
     '<h3 class="sec">点検記録</h3>'+(l.length ? '<div class="tw"><table class="t"><tr><th>点検日</th><th>機器</th><th>点検者</th><th>結果</th><th>回収(g)</th><th>漏えい(g)</th><th>備考</th></tr>'+l.map(x =>
       '<tr><td class="c nw">'+fd(x.date)+'</td><td class="c">'+esc(x.equipment)+'</td><td class="c">'+esc(x.inspector)+'</td><td class="c">'+(x.result === "abnormal" ? '<span class="badge b-ng">異常あり</span>' : '<span class="badge b-ok">異常なし</span>')+'</td><td class="r">'+num(x.recoveredG,0)+'</td><td class="r">'+num(x.leakedG,0)+'</td><td>'+esc(x.notes)+'</td></tr>').join("")+'</table></div>' : empty()) : empty());
@@ -1310,7 +1405,7 @@ async function show(i){
   document.getElementById("barPg").textContent = COURSES[course].name+"　"+(cur+1)+" / "+cp.length;
   try { history.replaceState(null, "", "#"+p.key); } catch(e){}
   touched = new Set();
-  const html = await p.render(p);
+  const html = await renderFull(p);
   if (coursePages()[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
   document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>';
 }
@@ -1346,14 +1441,14 @@ async function printAll(){
   const cp = coursePages(), parts = [], pf = await profile();
   tkPrinting = true;
   try {
-    for (const p of cp){ if (p.key === "cover") continue; touched = new Set(); parts.push('<div class="pslide"><div class="slide">'+noEmoji(await p.render(p))+'</div></div>'); }
+    for (const p of cp){ if (p.key === "cover") continue; touched = new Set(); parts.push('<div class="pslide"><div class="slide">'+noEmoji(await renderFull(p))+'</div></div>'); }
   } finally { tkPrinting = false; }
   const t = new Date();
   let toc = "", lastCh = -1, n = 0;
   cp.forEach(x => { if (x.key === "cover") return; n++;
     if (x.ch !== lastCh){ const c = CHAPTERS.find(c => c.id === x.ch); toc += '<div style="font-weight:900;color:#1e3a5f;margin-top:6px;break-inside:avoid;">'+esc(c.name)+(c.clause ? '(ISO14001 '+esc(c.clause)+')' : '')+'</div>'; lastCh = x.ch; }
     toc += '<div>'+n+'.　'+esc(x.name)+'</div>'; });
-  const cover = '<div class="pslide"><div class="slide"><div class="cover" style="padding-top:40px;"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境マネジメントシステム</h1><span class="iso">'+esc(pf.standard || "ISO 14001")+'</span>'+
+  const cover = '<div class="pslide"><div class="slide"><div class="cover" style="padding-top:40px;"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境への取り組み</h1><span class="iso">環境マネジメントシステム '+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+'</div>' : '')+'<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在</div></div>'+
     '<h3 class="sec" style="margin-top:24px;">目次</h3><div style="column-count:3;column-gap:24px;font-size:12pt;line-height:1.9;">'+toc+'</div></div></div>';
   doPrint(cover + parts.join(""));
