@@ -9,9 +9,10 @@ const ISO_REG_COL = "isoRegisters";
 const ASPECT_SIGNIFICANT_TOTAL = 7;
 function aspectScore(r){
   const s = ["scale", "freq", "law"].map(k => Number(r[k]) || 0);
-  if (s.some(v => !v)) return { total:0, sig:null };          // 未評価
+  const mark = r.sigMark === "◎";   // 評価表(EMS-A-06/07)で「著しい環境側面」に◎を付けたもの
+  if (s.some(v => !v)) return { total:0, sig: mark ? true : (r.srcDoc || r.sigMark === "—" ? false : null), byMark:true };   // 点数なし: ◎の有無で判断(点数も印もなければ未評価)
   const total = s[0] + s[1] + s[2];
-  return { total, sig: total >= ASPECT_SIGNIFICANT_TOTAL || s[2] === 3 };
+  return { total, sig: mark || total >= ASPECT_SIGNIFICANT_TOTAL || s[2] === 3 };
 }
 
 const SCORE3 = [["", "未評価"], ["1", "1 小"], ["2", "2 中"], ["3", "3 大"]];
@@ -82,7 +83,10 @@ const ISO_REGS = [
       { k:"scale", label:"規模", type:"select", options:SCORE3, score:true },
       { k:"freq", label:"頻度", type:"select", options:SCORE3, score:true },
       { k:"law", label:"法規制", type:"select", options:SCORE3, score:true },
-      { k:"control", label:"管理の方法(手順書・記録など)", type:"textarea", list:true }
+      { k:"lawName", label:"法規制名", type:"text", list:true },
+      { k:"emergency", label:"緊急事態の特定", type:"text" },
+      { k:"control", label:"管理の方法(手順書・記録など)", type:"textarea", list:true },
+      { k:"sigMark", label:"著しい環境側面", type:"select", options:[["","(点数で判断)"],["◎","◎ 著しい環境側面"],["—","— 該当しない"]], list:true }
     ],
     examples:[
       { activity:"車両の運行(収集運搬)", aspect:"軽油の使用", impact:"CO₂の排出(気候変動)", cond:"通常", control:"軽油使用量の毎月の記録と削減目標" },
@@ -98,15 +102,16 @@ const ISO_REGS = [
   {
     key:"risks", icon:"⚠️", name:"リスクと機会", clause:"6.1.1 / 6.1.4",
     help:"課題・利害関係者・環境側面から、起こると困ること(リスク)と、良くなるチャンス(機会)を選び、どう取り組むかを決めます。",
-    title:"content",
+    title:"issue", sortNo:true,
     fields:[
-      { k:"kind", label:"種類", type:"select", options:[["リスク","リスク"],["機会","機会"]], list:true },
-      { k:"content", label:"内容", type:"textarea", req:true, list:true },
-      { k:"source", label:"きっかけ(関係する課題・側面など)", type:"text", list:true },
-      { k:"action", label:"取り組み", type:"textarea", list:true },
-      { k:"owner", label:"担当", type:"text", list:true },
-      { k:"due", label:"期限", type:"date", list:true },
-      { k:"status", label:"状況", type:"select", options:[["計画","計画"],["実施中","実施中"],["完了","完了"]], list:true }
+      { k:"no", label:"No.", type:"text", list:true },
+      { k:"issue", label:"課題", type:"text", req:true, list:true },
+      { k:"content", label:"状況", type:"textarea", list:true },
+      { k:"action", label:"活動計画", type:"textarea", list:true },
+      { k:"risk", label:"リスク", type:"textarea", list:true },
+      { k:"chance", label:"チャンス(機会)", type:"textarea", list:true },
+      { k:"freq", label:"チェック頻度", type:"select", options:[["",""],["毎月","毎月(月次レビュー・推進委員会)"],["半期","半期(半期末レビュー・環境管理責任者)"],["年次","年次(年一回・マネジメントレビュー)"],["随時","随時(法改正・災害発生時)"]], list:true },
+      { k:"parties", label:"主な利害関係者", type:"text", list:true }
     ],
     examples:[
       { kind:"リスク", content:"車両・重機からの油漏れによる土壌・水質の汚染", source:"環境側面:油漏れ", action:"日常点検と緊急時対応の訓練", status:"実施中" },
@@ -119,14 +124,18 @@ const ISO_REGS = [
     help:"環境目標ごとに、何を・誰が・いつまでに・どうやって評価するかを決めます(SDGsのページの目標と合わせて見せます)。",
     title:"goal",
     fields:[
-      { k:"goal", label:"環境目標", type:"text", req:true, list:true },
-      { k:"target", label:"目標値", type:"text", list:true },
-      { k:"plan", label:"何をするか(実施事項)", type:"textarea", list:true },
-      { k:"owner", label:"担当", type:"text", list:true },
-      { k:"due", label:"期限", type:"date", list:true },
-      { k:"measure", label:"どう評価するか", type:"text", list:true },
-      { k:"progress", label:"進み具合", type:"textarea", list:true },
-      { k:"status", label:"状況", type:"select", options:[["未着手","未着手"],["実施中","実施中"],["達成","達成"],["未達","未達"]], list:true }
+      { k:"kubun", label:"区分", type:"text", list:true, ph:"例: 社内活動" },
+      { k:"act", label:"活動名", type:"text", list:true, ph:"例: 5S活動" },
+      { k:"goal", label:"環境目的", type:"textarea", req:true, list:true },
+      { k:"plan", label:"実施計画", type:"textarea", list:true },
+      { k:"target", label:"環境目標(令和7年〜令和9年)", type:"text", list:true },
+      { k:"target2", label:"環境目標(令和8年〜令和11年)", type:"text", list:true },
+      { k:"sdgs", label:"関連SDGs", type:"text", list:true },
+      { k:"sdgsPurpose", label:"SDGs目的", type:"textarea", list:true },
+      { k:"method", label:"実施方法", type:"textarea", list:true },
+      { k:"monitor", label:"監視方法", type:"textarea", list:true },
+      { k:"owner", label:"担当者", type:"text", list:true },
+      { k:"status", label:"状況", type:"select", options:[["実施中","実施中"],["達成","達成"],["未達","未達"],["未着手","未着手"]], list:true }
     ],
     examples:[
       { goal:"軽油使用量の削減", target:"前年度比3%減(150,500L以下)", plan:"アイドリングストップ・配車の効率化", measure:"軽油使用量の年度集計", status:"実施中" },
@@ -165,9 +174,9 @@ const ISO_REGS = [
       { item:"敷地境界の騒音", method:"騒音計による測定", freq:"", criteria:"騒音規制法・条例の基準", record:"ISO管理 騒音チェック" },
       { item:"軽油の使用量", method:"給油記録の集計", freq:"毎月", criteria:"年度目標(前年度比3%減)", record:"ISO管理 軽油使用量" },
       { item:"電気・ガス・水道の使用量", method:"検針票の集計", freq:"毎月", criteria:"前年同月との比較", record:"ISO管理 ライフライン" },
-      { item:"フロン使用機器の点検", method:"簡易点検", freq:"3か月ごと", criteria:"フロン排出抑制法の簡易点検", record:"ISO管理 フロン簡易点検" },
+      { item:"フロン使用機器の点検", method:"簡易点検", freq:"3か月ごと", criteria:"フロン排出抑制法の簡易点検", record:"ISO管理 フロン排出抑制法簡易点検" },
       { item:"車両の日常点検", method:"点検ラクラク(32項目)", freq:"毎日", criteria:"全項目「良」", record:"点検ラクラク" },
-      { item:"法令の順守状況", method:"順守評価", freq:"年1回", criteria:"全法令「○」", record:"見せるモード 法規制一覧" }
+      { item:"法令の順守状況", method:"順守評価", freq:"年1回", criteria:"全法令「○」", record:"環境への取り組み 法規制一覧" }
     ]
   },
   {

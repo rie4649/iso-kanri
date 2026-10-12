@@ -170,6 +170,8 @@
 })();
 </script>
 <script src="registers.js"></script>
+<script src="ems-seed.js"></script>
+<script src="ems-docs.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -210,27 +212,41 @@ function expired(reg, r){
 }
 
 function render(){
+  // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
   document.getElementById("tabs").innerHTML = ISO_REGS.map(r => {
     const n = rows.filter(x => x.reg === r.key && !x.draft).length, d = rows.filter(x => x.reg === r.key && x.draft).length;
-    return '<button class="'+(r.key===cur?"on":"")+'" onclick="setTab(\''+r.key+'\')">'+esc(r.name)+'<small>'+esc(r.clause)+'　'+n+'件'+(d ? '(下書き'+d+')' : '')+'</small></button>';
+    const ds = linkedDocs(r.key), withF = ds.filter(x => EMS.filesOf(x.id).length);
+    const docTxt = ds.length ? (withF.length ? "計画書 "+withF.map(x => "EMS-"+x.id).join("・") : "計画書 原本なし") : "";
+    return '<button class="'+(r.key===cur?"on":"")+'" onclick="setTab(\''+r.key+'\')">'+esc(r.name)+'<small>'+esc(r.clause)+(docTxt ? '　'+esc(docTxt) : '')+(n ? '　表 '+n+'行' : '')+(d ? '(下書き'+d+')' : '')+'</small></button>';
   }).join("");
   const reg = regOf(cur), list = sorted(reg);
-  const hasEx = (reg.examples || []).length && !rows.some(x => x.reg === reg.key && x.fromExample);
-  let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>'+
-    '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 追加</button>'+
-    (hasEx ? '<button class="btn" onclick="addExamples()">一般的な例を下書きで入れる('+reg.examples.length+'件)</button>' : '')+'</div>';
-  if (!list.length) h += '<div class="empty">まだ登録がありません。<br>「＋ 追加」から入力してください。'+(hasEx ? '<br>一般的な例を下書きで入れて、会社に合わせて直すこともできます。' : '')+'</div>';
-  else h += '<div class="count">'+list.length+'件(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>';
-  h += list.map(r => cardHtml(reg, r)).join("");
-  const i = h.indexOf('<div class="bar">');   // 説明の下・＋追加の上に計画書の原本
-  document.getElementById("body").innerHTML = i >= 0 ? h.slice(0, i) + docsHtml(reg) + h.slice(i) : docsHtml(reg) + h;
+  let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>';
+  h += emsDocsHtml(reg);
+  // 表(1行ずつの入力)。行があるときは開いたまま、0行のときはたたむ
+  const tbl = '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 行を追加</button></div>'+
+    (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
+    list.map(r => cardHtml(reg, r)).join("");
+  h += '<details class="card" style="padding:10px 14px;"'+(list.length ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">📝 表で入力・修正する（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
+    '<div class="note" style="margin:4px 0 8px;">計画書の中身を1行ずつ入力すると、環境への取り組みで表として見せられ、1行ずつ直せます。'+(list.some(r => r.fromDoc) ? '受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・"))+')から書き写した内容が入っています。' : '')+'</div>'+tbl+'</details>';
+  document.getElementById("body").innerHTML = h;
 }
+/* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
+function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey); }
+function emsDocsHtml(reg){
+  const ds = linkedDocs(reg.key);
+  return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 計画書の原本(PDF)</b>'+
+    (ds.length ? '<button class="btn sm pri" onclick="EMS.openForm({codes:'+esc(JSON.stringify(ds.map(d => d.id)))+'})">＋ 原本を登録</button>' : '')+'<button class="btn sm" onclick="location.href=\'docs.html\'">EMS文書管理へ</button></div>'+
+    (ds.length ? ds.map(d => '<div style="margin-top:8px;"><div style="font-weight:700;">EMS-'+esc(d.id)+'　'+esc(d.name)+'</div>'+EMS.versionsHtml(d.id)+'</div>').join("")
+      : '<div class="note">この台帳に入れる計画書はまだ決まっていません。EMS文書管理で文書の「入力する場所」をこの台帳にすると、ここに出ます。</div>')+'</div>';
+}
+EMS.subscribe(() => render());
+EMS.ensureSeed().then(did => { if (did) toast("受け取った書類の中身を台帳に入れました"); }).catch(e => console.error(e));
 
 /* ===== 計画書の原本(PDF)。台帳ごとに文書番号で版を管理(いちばん新しい日付が現在の版、ほかは改訂履歴)
    Firestore: isoPlanDocs(目次 reg・docNo・title・date・author・memo)/ isoPlanChunks(中身・分割base64) ===== */
 const PDOC = "isoPlanDocs", PCHUNK = "isoPlanChunks", PCHUNK_SIZE = 700 * 1024;
 let pdocs = [];
-db.collection(PDOC).onSnapshot(s => { pdocs = s.docs.map(d => ({ id:d.id, ...d.data() })); if (rows) render(); }, e => console.error(e));
+/* 旧「計画書の原本」(isoPlanDocs)は EMS文書管理(emsDocFiles)へ自動で引っ越すので、ここでは読まない */
 const fdj = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : (s||""); };
 function docGroups(regKey){
   const g = {}; pdocs.filter(d => d.reg === regKey).forEach(d => (g[d.docNo || d.title] = g[d.docNo || d.title] || []).push(d));

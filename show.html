@@ -754,15 +754,14 @@ async function renderRecords(p){
 }
 
 /* ---------- ISOの計画・リスクの台帳(registers.js の定義で表示。下書きは出さない) ---------- */
-/* 計画書の原本(ISO管理の「ISOの計画・リスク」で台帳ごとに登録)。各文書番号の最新の版だけボタンにする */
+/* 計画書の原本(EMS文書管理の文書のうち「入力する場所」がこの台帳のもの)。各文書の最新の版だけボタンにする */
 async function planDocBtns(regKey){
-  const docs = (await col("isoPlanDocs")).filter(d => d.reg === regKey);
-  const latest = {}; docs.forEach(d => { const k = d.docNo || d.title; const c = latest[k];
-    if (!c || String(d.date||"") > String(c.date||"") || (String(d.date||"") === String(c.date||"") && (d.createdMs||0) > (c.createdMs||0))) latest[k] = d; });
-  const l = Object.values(latest).sort((a,b) => String(a.docNo).localeCompare(String(b.docNo)));
-  if (!l.length) return "";
-  return '<div style="margin:-4px 0 12px;">'+l.map(d => { const t = String((d.docNo||"")+" "+(d.title||"")).trim();
-    return '<button class="openBtn" style="margin:0 8px 6px 0;" onclick="openChunked(\'isoPlanChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\',\''+esc(t.replace(/'/g,""))+'\')">計画書を見る：'+esc(t)+'('+esc(fd(d.date))+')</button>'; }).join("")+'</div>';
+  const [docs, files] = await Promise.all([col("emsDocs"), col("emsDocFiles")]);
+  const ds = docs.filter(d => d.link === "plan:"+regKey).sort((a,b) => (a.order||999) - (b.order||999));
+  const btns = ds.map(d => { const f = files.filter(x => x.code === d.id).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || String(b.ver||"").localeCompare(String(a.ver||"")))[0];
+    if (!f) return ""; const t = "EMS-"+d.id+" "+d.name;
+    return '<button class="openBtn" style="margin:0 8px 6px 0;" onclick="openChunked(\''+esc(f.chunkCol||"emsDocChunks")+'\',\''+esc(f.chunkId||f.id)+'\',\''+esc(f.fileType||"application/pdf")+'\',\''+esc(t.replace(/'/g,""))+'\')">計画書を見る：'+esc(t)+'('+esc(fd(f.date))+')</button>'; }).filter(Boolean);
+  return btns.length ? '<div style="margin:-4px 0 12px;">'+btns.join("")+'</div>' : "";
 }
 async function renderReg(p){
   const R = ISO_REGS.find(r => r.key === p.reg);
@@ -776,13 +775,13 @@ async function renderReg(p){
   if (R.dated) list.sort((a,b) => String(b[R.dated]||"").localeCompare(String(a[R.dated]||"")));
   else if (R.key === "aspects") list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
   else list.sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
-  const cols = R.fields.filter(f => f.list && !f.score);
+  const cols = R.fields.filter(f => f.list && !f.score && !(R.key === "aspects" && f.k === "sigMark"));   // 著しいかどうかは「評価」の列に出す
   const t = todayYmd();
   let top = "";
   if (R.key === "aspects"){
     const sig = list.filter(r => aspectScore(r).sig);
     top = '<div class="kpis"><div class="kpi"><div class="k">環境側面</div><div class="v">'+list.length+'<small>件</small></div></div><div class="kpi"><div class="k">著しい環境側面</div><div class="v" style="color:#b91c1c">'+sig.length+'<small>件</small></div></div></div>'+
-      '<div class="note" style="margin-bottom:8px;">評価：規模・頻度・法規制を1〜3で評価し、合計'+ASPECT_SIGNIFICANT_TOTAL+'点以上、または法規制が3のものを「著しい環境側面」として重点的に管理しています。</div>';
+      '<div class="note" style="margin-bottom:8px;">評価：規模・頻度・法規制を1〜3で評価し、合計'+ASPECT_SIGNIFICANT_TOTAL+'点以上、または法規制が3のもの、環境影響評価表(EMS-A-06 有害・A-07 有益)で◎を付けたものを「著しい環境側面」として重点的に管理しています。</div>';
   }
   if (R.key === "comms"){
     const yr = t.slice(0,4), ty = list.filter(r => String(r.date).startsWith(yr));
@@ -792,8 +791,12 @@ async function renderReg(p){
     const ex = list.filter(r => ["permitExp","contractExp"].some(k => r[k] && daysLeft(r[k]) < 0));
     top = '<div class="kpis"><div class="kpi"><div class="k">委託先</div><div class="v">'+list.length+'<small>社</small></div></div><div class="kpi"><div class="k">評価 適正</div><div class="v">'+list.filter(r => r.evalResult === "適正").length+'<small>社</small></div></div><div class="kpi"><div class="k">許可・契約の期限切れ</div><div class="v" style="color:'+(ex.length ? '#b91c1c' : '#15803d')+'">'+ex.length+'<small>件</small></div></div></div>';
   }
-  if (R.key === "issues" || R.key === "risks"){
-    const g = R.key === "issues" ? ["外部の課題","内部の課題"] : ["リスク","機会"];
+  if (R.key === "risks"){
+    top = '<div class="kpis"><div class="kpi"><div class="k">課題</div><div class="v">'+new Set(list.map(r => r.issue)).size+'<small>件</small></div></div>'+
+      ["年次","随時","半期","毎月"].map(k => [k, list.filter(r => r.freq === k).length]).filter(x => x[1]).map(([k, n]) => '<div class="kpi"><div class="k">チェック頻度 '+k+'</div><div class="v">'+n+'<small>件</small></div></div>').join("")+'</div>';
+  }
+  if (R.key === "issues"){
+    const g = ["外部の課題","内部の課題"];
     top = '<div class="kpis">'+g.map(k => '<div class="kpi"><div class="k">'+k+'</div><div class="v">'+list.filter(r => r.kind === k).length+'<small>件</small></div></div>').join("")+'</div>';
   }
   const cell = (r, f) => {
@@ -807,6 +810,7 @@ async function renderReg(p){
   };
   const extraH = R.key === "aspects" ? '<th style="width:150px">評価</th>' : "";
   const extra = r => { if (R.key !== "aspects") return ""; const s = aspectScore(r);
+    if (s.byMark && s.sig !== null) return '<td class="c">'+(s.sig ? '<span class="badge b-ng">著しい ◎</span>' : '<span class="note">—</span>')+'</td>';
     return '<td class="c">'+(s.sig === null ? '<span class="note">未評価</span>' : (s.sig ? '<span class="badge b-ng">著しい</span><br>' : '')+'<span class="note">規模'+r.scale+'・頻度'+r.freq+'・法'+r.law+' = <b>'+s.total+'</b></span>')+'</td>'; };
   return await head(p, sub) + pdb + top + '<div class="tw"><table class="t"><tr>'+cols.map(f => '<th>'+esc(f.label)+'</th>').join("")+extraH+'</tr>'+
     list.map(r => '<tr'+(R.key === "aspects" && aspectScore(r).sig ? ' class="sigRow"' : '')+'>'+cols.map(f => cell(r, f)).join("")+extra(r)+'</tr>').join("")+'</table></div>';

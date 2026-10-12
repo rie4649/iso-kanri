@@ -4506,6 +4506,7 @@ const SECTION_DEFS = [
   { key: "skills", grp: "sup", cl: "7.2", name: "力量（資格の一覧）" },
   { key: "safety", grp: "sup", cl: "7.2 / 8.2", name: "安全災害対策（安全衛生パトロール・教育訓練）" },
   { key: "plan:comms", grp: "sup", cl: "7.4", name: "コミュニケーション・苦情" },
+  { key: "docs", grp: "sup", cl: "7.5", name: "EMS文書管理（文書の一覧・原本PDF・見直しの記録）" },
   { key: "manual", grp: "sup", cl: "7.5 / 8.1", name: "環境手順書" },
   { key: "photos", grp: "sup", cl: "7.5", name: "写真の記録（車両・設備・保管・掲示・現場）" },
   // 運用(8章)
@@ -4534,6 +4535,11 @@ const SECTION_GROUPS = [
   ["org", "会社と体制（4・5章）"], ["plan", "計画（6章）"], ["sup", "支援（7章）"], ["op", "運用（8章）"], ["mon", "監視・測定（9.1）"], ["imp", "評価・改善（9.2〜10章）"], ["soc", "社会との関わり"], ["set", "設定"]
 ];
 
+// 他のページ(EMS文書管理など)から「index.html#sec=水質検査のキー」で、その画面を開いて来られるようにする
+window.addEventListener("load", () => {
+  const m = location.hash.match(/^#sec=(.+)$/);
+  if (m) { const k = decodeURIComponent(m[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {} setTimeout(() => openSection(k), 300); }
+});
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
   document.getElementById("homeMenu").innerHTML =
@@ -4554,6 +4560,7 @@ window.openSection = function(sec) {
   if (sec === "summary") { location.href = "summary.html"; return; }
   if (sec === "permit") { location.href = "permit.html"; return; }
   if (sec === "skills") { location.href = "skills.html"; return; }
+  if (sec === "docs") { location.href = "docs.html"; return; }
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   const target = document.getElementById("section-" + sec);
   if (!target) return;
