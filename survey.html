@@ -35,9 +35,35 @@
   項目ごとに当社の回答を選び、必要に応じて補足(根拠・数値・名称)を入力し、画面下の「保存」を押してください。<br>
   <span class="tag ok">仮の回答</span>はアプリのデータから仮に入れた回答です(保存で確定)。「クリア」でその項目の回答を消せます。
   「見せる」の印は、回答を人に見せるときの目安です(売上・財務などは初期状態で非表示)。</div>
+  <details class="help" style="padding:10px 14px;"><summary style="font-weight:700;color:var(--navy);cursor:pointer;">📘 提出の記録の使い方（ここを押すと開きます）</summary>
+    <div style="margin-top:6px;">① 下の項目に回答を入れて「保存」（いつもの最新版。最終保存日が上に出ます）<br>
+    ② 取引先(排出事業者さま)に調査票を提出したら、「📤 この内容で提出したことを記録」を押し、提出日・提出先・回答者を入れる<br>
+    ③ その時点の回答がまるごと控えとして残ります。「提出の記録」から、いつ・どこへ・何と答えたかを見たり印刷したりできます<br>
+    ※ 回答を直して保存し直しても、提出した控えは変わりません</div></details>
+  <div class="card" style="border-left:4px solid var(--navy);">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📤 提出の記録</b><span class="note" id="lastSaved" style="margin:0;"></span>
+      <button class="btn pri sm" onclick="openSubmit()">この内容で提出したことを記録</button></div>
+    <div id="subList"></div>
+  </div>
   <div class="tabs" id="tabs"></div>
   <div id="list"><div class="empty">読み込み中…</div></div>
 </div>
+<div class="bg" id="subBg" onclick="if(event.target===this)closeSubmit()"><div class="modal" style="max-width:460px;">
+  <h2>提出したことを記録</h2>
+  <div class="note" style="margin-top:0;">いま保存されている回答が、この日付の控えとして残ります。</div>
+  <label for="sDate">提出日</label><input id="sDate" type="date">
+  <label for="sTo">提出先(会社名など)</label><input id="sTo" placeholder="例: ○○株式会社">
+  <label for="sBy">回答者</label><input id="sBy" placeholder="例: 環境管理責任者 川村">
+  <label for="sMemo">メモ(任意)</label><input id="sMemo" placeholder="例: メールで提出／定期の確認">
+  <div class="mBtns"><button class="btn" onclick="closeSubmit()">キャンセル</button><button class="btn pri" onclick="saveSubmit()">記録する</button></div>
+</div></div>
+<div id="subView" style="display:none;position:fixed;inset:0;z-index:60;background:#fff;overflow:auto;"></div>
+<style>
+@media print { body > *:not(#subView) { display:none !important; } #subView { position:static !important; display:block !important; overflow:visible !important; } #subView .noPrint { display:none !important; } }
+#subView .pv { max-width:900px; margin:0 auto; padding:16px; }
+#subView table { border-collapse:collapse; width:100%; font-size:13px; } #subView th, #subView td { border:1px solid #cbd5e1; padding:5px 7px; text-align:left; vertical-align:top; }
+#subView th { background:#eef2f7; }
+</style>
 <div class="saveBar"><span class="cnt" id="cnt"></span>
   <button class="btn" id="undoBtn" onclick="undoAll()">変更を取り消す</button>
   <button class="btn pri" id="saveBtn" onclick="saveAll()">保存</button></div>
@@ -73,7 +99,9 @@ function initAns(items){
       : { ans: it.pre ? it.pre[0] : "", num: it.pre ? it.pre[1] : "", memo:"", on: !it.off, isPre: !!it.pre };
   });
 }
-ref.get().then(d => { saved = d.exists ? (d.data().items || {}) : null; initAns(saved); render(); })
+let lastSavedAt = null;
+function showLastSaved(){ const el = document.getElementById("lastSaved"); if (el) el.textContent = lastSavedAt ? "最終保存 "+lastSavedAt.getFullYear()+"/"+(lastSavedAt.getMonth()+1)+"/"+lastSavedAt.getDate()+" "+String(lastSavedAt.getHours()).padStart(2,"0")+":"+String(lastSavedAt.getMinutes()).padStart(2,"0") : "まだ保存されていません"; }
+ref.get().then(d => { saved = d.exists ? (d.data().items || {}) : null; const u = d.exists && d.data().updatedAt; lastSavedAt = u && u.toDate ? u.toDate() : null; showLastSaved(); initAns(saved); render(); })
   .catch(e => { initAns(null); render(); toast("読み込みエラー: "+e.message); });
 
 const answered = a => !!(a.ans || a.num);
@@ -118,7 +146,7 @@ async function saveAll(){
   SURVEY_ITEMS.forEach(it => { const a = ans[it.id]; items[it.id] = { ans:a.ans||"", num:a.num||"", memo:a.memo||"", on:!!a.on }; });
   try {
     await ref.set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    saved = items; dirty = false; SURVEY_ITEMS.forEach(it => ans[it.id].isPre = false);
+    saved = items; dirty = false; SURVEY_ITEMS.forEach(it => ans[it.id].isPre = false); lastSavedAt = new Date(); showLastSaved();
     render(); toast("保存しました");
   } catch(e){ toast("保存できませんでした: "+e.message); }
 }
@@ -132,6 +160,52 @@ function undoAll(){
   if (!confirm("保存していない変更をすべて取り消して、最後に保存した状態に戻します。よろしいですか？")) return;
   initAns(saved); dirty = false; render(); toast("変更を取り消しました");
 }
+/* ===== 提出の記録(isoSurveySubmits: 提出日・提出先・回答者・メモ・その時の回答の控え) ===== */
+let subs = [];
+const SUB_COL = "isoSurveySubmits";
+const fdj = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : (s||""); };
+db.collection(SUB_COL).onSnapshot(sn => { subs = sn.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)); renderSubs(); }, e => console.error(e));
+function renderSubs(){
+  const el = document.getElementById("subList"); if (!el) return;
+  el.innerHTML = subs.length ? subs.map(x => { const n = Object.values(x.items||{}).filter(a => a.ans || a.num).length;
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line2);"><span style="flex:1;min-width:220px;"><b>'+esc(fdj(x.date))+'</b>　'+esc(x.to||"(提出先なし)")+'<span class="tag gray" style="margin-left:6px;">回答者 '+esc(x.by||"-")+'</span><span class="tag gray">回答 '+n+'項目</span>'+(x.memo ? '<span class="note" style="margin:0 0 0 4px;">'+esc(x.memo)+'</span>' : '')+'</span>'+
+      '<button class="btn sm" onclick="viewSub(\''+x.id+'\')">控えを見る・印刷</button><button class="btn sm del" onclick="delSub(\''+x.id+'\')">削除</button></div>'; }).join("")
+    : '<div class="note">まだ提出の記録はありません。調査票を提出したら、上のボタンで記録してください。</div>';
+}
+function openSubmit(){
+  if (dirty || !saved){ toast("先に「保存」を押してから記録してください"); return; }
+  const d = new Date(); document.getElementById("sDate").value = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  document.getElementById("sTo").value = ""; document.getElementById("sMemo").value = "";
+  document.getElementById("sBy").value = (subs[0] && subs[0].by) || "";
+  document.getElementById("subBg").classList.add("show");
+}
+function closeSubmit(){ document.getElementById("subBg").classList.remove("show"); }
+async function saveSubmit(){
+  const date = document.getElementById("sDate").value, to = document.getElementById("sTo").value.trim();
+  if (!date || !to){ toast("提出日と提出先を入れてください"); return; }
+  try {
+    await db.collection(SUB_COL).add({ date, to, by:document.getElementById("sBy").value.trim(), memo:document.getElementById("sMemo").value.trim(), items: saved, createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    closeSubmit(); toast("提出の記録を残しました");
+  } catch(e){ toast("記録できませんでした: "+e.message); }
+}
+async function delSub(id){
+  const x = subs.find(s => s.id === id); if (!x || !confirm(fdj(x.date)+" "+(x.to||"")+" への提出の記録を削除しますか？")) return;
+  try { await db.collection(SUB_COL).doc(id).delete(); toast("削除しました"); } catch(e){ toast("削除に失敗: "+e.message); }
+}
+function viewSub(id){
+  const x = subs.find(s => s.id === id); if (!x) return;
+  const v = document.getElementById("subView");
+  let rows = "", last = "";
+  SURVEY_ITEMS.forEach(it => { const a = (x.items||{})[it.id] || {}; const head = it.f+" "+(it.f === "D1" ? "共通事項" : "収集運搬 ― "+it.sec);
+    if (head !== last){ rows += '<tr><th colspan="3">'+esc(head)+'</th></tr>'; last = head; }
+    rows += '<tr><td style="white-space:nowrap;">'+it.f+'-'+it.no+'</td><td>'+esc(it.q)+'</td><td>'+esc(a.ans||"")+(a.num ? '<div style="color:#475569;">'+esc(a.num)+'</div>' : '')+'</td></tr>'; });
+  v.innerHTML = '<div class="pv"><div class="noPrint" style="display:flex;gap:8px;margin-bottom:12px;position:sticky;top:0;background:#fff;padding:6px 0;"><button class="btn" onclick="document.getElementById(\'subView\').style.display=\'none\'">← 戻る</button><button class="btn pri" onclick="window.print()">印刷・PDF</button></div>'+
+    '<h2 style="font-size:18px;color:#1e3a5f;">廃棄物処理委託先調査票(共通事項・収集運搬) 回答の控え</h2>'+
+    '<div style="margin:8px 0 12px;line-height:1.8;">提出日：<b>'+esc(fdj(x.date))+'</b>　提出先：<b>'+esc(x.to||"")+'</b>　回答者：'+esc(x.by||"")+(x.memo ? '<br>メモ：'+esc(x.memo) : '')+'<br>回答者の会社：株式会社関根商店</div>'+
+    '<table><tr><th style="width:60px;">番号</th><th>確認項目</th><th style="width:38%;">当社の回答</th></tr>'+rows+'</table></div>';
+  v.style.display = "block"; v.scrollTop = 0;
+}
+
 function goBack(){
   if (dirty && !confirm("保存していない変更があります。保存せずにISO管理に戻りますか？")) return;
   dirty = false; location.href = "index.html";
