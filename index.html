@@ -424,6 +424,9 @@
     <div class="search-box"><input type="text" id="waterTestSearchInput" placeholder="検査場所で検索"></div>
     <button class="jpeg-btn" id="jpegBtnWaterTest">🖨️ JPEG</button>
   </div>
+  <details class="howto" style="background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;line-height:1.8;color:#334155;"><summary style="font-weight:bold;color:#1e3a5f;cursor:pointer;">📘 使い方（ここを押すと開きます）</summary><div style="margin-top:6px;"><b>■ 検査の記録</b><br>右下の＋で検査日・場所・pHなどを入れて保存します。</div>
+<div style="margin-top:6px;"><b>■ 計量証明書（分析証）の入れ方</b><br>その検査日の記録の「✏️編集」→「添付」で、PDFや写真を選んで保存します。<br>例：2026年1月20日の検査 → 1月20日の記録に「計量証明書 2026.01.20.jpg」を添付。<br>環境への取り組みの水質検査の表の「記録」から開けます。SDGsの水質pHの目標からも同じものに飛べます（SDGs側に入れ直す必要はありません）。</div>
+<div style="margin-top:6px;"><b>■ 採水・現場の写真</b><br>ホームの「写真の記録」→「保管・掲示・現場の様子」→ 項目「水質検査の様子」に入れます。<br><b>撮影日が検査日の前後7日以内</b>なら、環境への取り組みの水質検査の表で、その検査の行に自動で並びます（撮影日は写真から自動で入ります。違うときは写真の「編集」で直せます）。</div></details>
   <div class="year-filter-tabs" id="waterTestYearTabs"></div>
   <div class="field-hint" id="waterAttachUsage" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;"></div>
   <div class="list" id="waterTestListContainer"><div class="loading">読み込み中...</div></div>
@@ -608,9 +611,37 @@
     <div style="font-size:14px;font-weight:bold;color:#166534;">🔗 NAGANO SDGs BUSINESS PORTAL(長野県公式)</div>
     <div style="font-size:12px;color:#52525b;margin-top:2px;">長野県SDGs推進企業の登録企業検索(上田市)。当社の登録情報の確認はこちら</div>
   </a>
+  <details class="howto" style="background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;line-height:1.8;color:#334155;"><summary style="font-weight:bold;color:#1e3a5f;cursor:pointer;">📘 使い方（ここを押すと開きます）</summary><div style="margin-top:6px;"><b>■ 目標と進捗</b><br>右下の＋で目標を作り、目標ごとの「＋進捗を追加」で実績を記録すると達成率が自動計算されます。</div>
+<div style="margin-top:6px;"><b>■ 目標の資料（PDF・写真）</b><br>目標カードの「📎 資料を追加」→ ファイルを選ぶ → 資料の名前を入れる。<br>例：ブリケット化の目標 →「センダライ粉のゆくえ」のPDF。環境への取り組みのSDGsページで「資料を見る」ボタンになります。<br>※ 水質の分析証はここではなく「水質検査」の記録に添付します。</div>
+<div style="margin-top:6px;"><b>■ SDGs取組レベル結果（長野県SDGs推進企業登録制度）</b><br>更新のたびに県から届く「結果レポート」の内容を、下の「取組レベル結果」の「＋ 結果を追加」から入れます。<br>
+① 発行日と、2ページ目の表の数字（環境・経済・社会・社内浸透・経営実装のスコアとレベル、経営実装度、Step1〜5の％）を入力<br>
+② 「公開用を添付」に<b>2ページ目だけのPDF</b>を入れる（ホームページ等で公開してよいページ）<br>
+③ 「全ページを添付（社内用）」に届いたPDFをそのまま入れる<br>
+<b>※ 3ページ目以降は社外に出さない決まりです。</b>環境への取り組み（視察・監査で見せる画面）には、数字と「公開用」だけが出ます。<br>
+2回目からは前回との差（例：社内浸透 13%→○%）が自動で出ます。</div></details>
   <div class="year-filter-tabs" id="sdgsYearTabs"></div>
   <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">目標ごとに「＋進捗を追加」で活動内容・実績値を記録すると達成率が自動計算されます</div>
   <div class="list" id="sdgsListContainer"><div class="loading">読み込み中...</div></div>
+  <div style="margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div style="font-size:16px;font-weight:bold;color:#166534;">🏅 SDGs取組レベル結果（長野県SDGs推進企業登録制度）</div>
+    <button class="btn-edit" style="background:#dcfce7;color:#15803d;" onclick="openSdgsLevel()">＋ 結果を追加</button>
+  </div>
+  <div class="list" id="sdgsLevelContainer"></div>
+  <div id="sdgsLevelBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow:auto;padding:16px;" onclick="if(event.target===this)closeSdgsLevel()">
+    <div style="background:#fff;border-radius:14px;padding:16px;max-width:560px;margin:20px auto;">
+      <h2 style="font-size:17px;margin-bottom:6px;">SDGs取組レベル結果</h2>
+      <div style="font-size:12px;color:#64748b;line-height:1.7;">結果レポート2ページ目の表のとおりに入れてください。スコアは「得点/満点」、レベルは1〜5。</div>
+      <input type="hidden" id="lvId">
+      <label style="display:block;font-size:13px;font-weight:bold;margin:10px 0 4px;">発行日</label><input type="date" id="lvIssued" style="width:100%;padding:9px;border:1px solid #d9d9e3;border-radius:8px;">
+      <div id="lvItems"></div>
+      <label style="display:block;font-size:13px;font-weight:bold;margin:10px 0 4px;">経営実装度（A〜E）</label>
+      <select id="lvRank" style="width:100%;padding:9px;border:1px solid #d9d9e3;border-radius:8px;"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select>
+      <div style="font-size:13px;font-weight:bold;margin:10px 0 4px;">SDGs経営実装度 Step1〜5（%）</div>
+      <div id="lvSteps" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>
+      <label style="display:block;font-size:13px;font-weight:bold;margin:10px 0 4px;">コメント（任意・レポートの総評など）</label><textarea id="lvMemo" style="width:100%;min-height:70px;padding:9px;border:1px solid #d9d9e3;border-radius:8px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:14px;"><button type="button" class="btn-cancel" style="flex:1;" onclick="closeSdgsLevel()">キャンセル</button><button type="button" class="btn-cancel" id="lvDel" style="flex:0 0 auto;color:#b91c1c;" onclick="deleteSdgsLevel()">削除</button><button type="button" style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:bold;" onclick="saveSdgsLevel()">保存</button></div>
+    </div>
+  </div>
   <button class="fab" id="addSdgsGoalBtn" style="background:#16a34a;">＋</button>
 </div>
 
@@ -5704,6 +5735,7 @@ let allSdgsDocs = [];
 db.collection(SDGS_DOC_COL).onSnapshot(snap => {
   allSdgsDocs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
   if (document.getElementById("sdgsListContainer")) renderSdgsList();
+  if (typeof renderSdgsLevels === "function") renderSdgsLevels();
 }, err => console.error(err));
 function sdgsDocsHtml(g) {
   const docs = allSdgsDocs.filter(d => d.goalId === g.id);
@@ -5730,7 +5762,8 @@ function sdgsBlobToBase64(blob) {
 }
 async function uploadSdgsDoc(goalId, file) {
   if (file.size > SDGS_DOC_MAX_MB * 1024 * 1024) { alert(SDGS_DOC_MAX_MB + "MBまでのファイルにしてください"); return; }
-  const title = prompt("資料の名前（環境への取り組みのボタンに出ます）", file.name.replace(/\.[^.]+$/, ""));
+  const title = String(goalId).startsWith("level-") ? (String(goalId).startsWith("level-pub") ? "SDGs取組レベル 結果レポート（公開用）" : "SDGs取組レベル 結果レポート（全ページ・社内用）")
+    : prompt("資料の名前（環境への取り組みのボタンに出ます）", file.name.replace(/\.[^.]+$/, ""));
   if (title === null) return;
   try {
     const b64 = await sdgsBlobToBase64(file);
@@ -5762,6 +5795,70 @@ window.deleteSdgsDoc = async function(id) {
     const snap = await db.collection(SDGS_CHUNK_COL).where("fileId", "==", id).get();
     const b = db.batch(); snap.docs.forEach(x => b.delete(x.ref)); b.delete(db.collection(SDGS_DOC_COL).doc(id)); await b.commit();
   } catch (e) { alert("削除に失敗しました: " + e.message); }
+};
+
+// ---- SDGs取組レベル結果(長野県SDGs推進企業登録制度)。Firestore: sdgsLevels。添付は sdgsGoalDocs に goalId "level-pub:ID"(公開用=2ページ目)/"level-full:ID"(全ページ・社内用) ----
+const SDGS_LEVEL_COL = "sdgsLevels";
+const LV_ITEMS = [["env","環境"],["eco","経済"],["soc","社会"],["inner","社内浸透"],["impl","経営実装"]];
+const LV_STEPS = ["Step1 SDGsを理解する","Step2 優先課題を決定する","Step3 目標を設定する","Step4 経営に統合する","Step5 報告とコミュニケーションを行う"];
+const LV_SEED = { issued:"2026-04-17", items:{ env:{s:7,m:13,lv:3}, eco:{s:8,m:13,lv:3}, soc:{s:14,m:24,lv:3}, inner:{s:2,m:15,lv:1}, impl:{s:29,m:65,lv:2} }, rank:"D", steps:[44,36,33,29,38],
+  memo:"「経済」の取り組みはまずまず。「社内浸透」はまだこれから（従業員の巻き込みがカギ）。経営実装は「経営に統合する」視点が不足。" };
+let allSdgsLevels = [];
+db.collection(SDGS_LEVEL_COL).onSnapshot(async snap => {
+  allSdgsLevels = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.issued || "").localeCompare(String(a.issued || "")));
+  if (!allSdgsLevels.length) {   // 初回だけ 2026/4/17 発行分を入れておく
+    try { const f = await db.collection("isoSettings").doc("seeds").get();
+      if (!(f.exists && f.data().sdgsLevel2026)) { await db.collection("isoSettings").doc("seeds").set({ sdgsLevel2026: true }, { merge: true }); await db.collection(SDGS_LEVEL_COL).add({ ...LV_SEED, createdMs: Date.now() }); return; } } catch (e) { console.error(e); }
+  }
+  renderSdgsLevels();
+}, err => console.error(err));
+function lvPct(it) { return it && Number(it.m) ? Math.round(Number(it.s) / Number(it.m) * 100) : null; }
+function renderSdgsLevels() {
+  const box = document.getElementById("sdgsLevelContainer"); if (!box) return;
+  if (!allSdgsLevels.length) { box.innerHTML = '<div class="empty-state">まだ結果がありません（＋ 結果を追加 から入力）</div>'; return; }
+  box.innerHTML = allSdgsLevels.map((L, i) => {
+    const prev = allSdgsLevels[i + 1];
+    const docBtns = (key, label) => { const d = allSdgsDocs.filter(x => x.goalId === key + ":" + L.id);
+      return d.length ? d.map(x => `<div class="water-test-item-line"><span>${label}　${escapeHtml(x.title || x.fileName)}</span><span><button class="btn-edit" style="padding:4px 10px;" onclick="openSdgsDoc('${x.id}')">開く</button> <span style="cursor:pointer;" onclick="deleteSdgsDoc('${x.id}')">🗑</span></span></div>`).join("")
+        : `<div class="water-test-item-line"><span style="color:#94a3b8;">${label}　未添付</span><span><button class="btn-edit" style="padding:4px 10px;" onclick="pickSdgsDoc('${key}:${L.id}')">添付</button></span></div>`; };
+    return `<div class="event-card" style="border-left-color:#16a34a;">
+      <div class="event-date">${escapeHtml(L.issued || "")} 発行</div>
+      <div class="event-title">経営実装度 ${escapeHtml(L.rank || "—")}</div>
+      <div class="water-test-card-items">${LV_ITEMS.map(([k, n]) => { const it = (L.items || {})[k] || {}, pc = lvPct(it), pp = prev ? lvPct((prev.items || {})[k]) : null;
+        return `<div class="water-test-item-line"><span>${n}</span><span>${it.s ?? "-"}/${it.m ?? "-"}（${pc ?? "-"}%）　レベル${it.lv ?? "-"}${pp != null && pc != null ? `　<span style="color:${pc >= pp ? "#15803d" : "#b91c1c"};">前回 ${pp}%</span>` : ""}</span></div>`; }).join("")}</div>
+      <div class="water-test-card-items">${LV_STEPS.map((n, j) => `<div class="water-test-item-line"><span>${n}</span><span>${(L.steps || [])[j] ?? "-"}%</span></div>`).join("")}</div>
+      ${L.memo ? `<div class="event-notes">${escapeHtml(L.memo)}</div>` : ""}
+      <div class="water-test-card-items">${docBtns("level-pub", "🌐 公開用（2ページ目）")}${docBtns("level-full", "🔒 全ページ（社内用）")}</div>
+      <div class="event-actions"><button class="btn-edit" onclick="openSdgsLevel('${L.id}')">編集</button></div>
+    </div>`; }).join("");
+}
+window.openSdgsLevel = function(id) {
+  const L = allSdgsLevels.find(x => x.id === id) || { items: {}, steps: [] };
+  document.getElementById("lvId").value = id || "";
+  document.getElementById("lvIssued").value = L.issued || "";
+  document.getElementById("lvRank").value = L.rank || "";
+  document.getElementById("lvMemo").value = L.memo || "";
+  document.getElementById("lvDel").style.display = id ? "" : "none";
+  const inp = 'style="width:100%;padding:8px;border:1px solid #d9d9e3;border-radius:8px;" type="number" step="any"';
+  document.getElementById("lvItems").innerHTML = LV_ITEMS.map(([k, n]) => { const it = (L.items || {})[k] || {};
+    return `<div style="font-size:13px;font-weight:bold;margin:10px 0 4px;">${n}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+      <input ${inp} id="lv_${k}_s" placeholder="得点" value="${it.s ?? ""}"><input ${inp} id="lv_${k}_m" placeholder="満点" value="${it.m ?? ""}"><input ${inp} id="lv_${k}_lv" placeholder="レベル" value="${it.lv ?? ""}"></div>`; }).join("");
+  document.getElementById("lvSteps").innerHTML = LV_STEPS.map((n, j) => `<label style="font-size:12px;">${n}<input ${inp} id="lv_step${j}" value="${(L.steps || [])[j] ?? ""}"></label>`).join("");
+  document.getElementById("sdgsLevelBg").style.display = "block";
+};
+window.closeSdgsLevel = function() { document.getElementById("sdgsLevelBg").style.display = "none"; };
+window.saveSdgsLevel = async function() {
+  const id = document.getElementById("lvId").value, issued = document.getElementById("lvIssued").value;
+  if (!issued) { alert("発行日を入れてください"); return; }
+  const n = el => { const v = document.getElementById(el).value; return v === "" ? null : Number(v); };
+  const items = {}; LV_ITEMS.forEach(([k]) => items[k] = { s: n("lv_" + k + "_s"), m: n("lv_" + k + "_m"), lv: n("lv_" + k + "_lv") });
+  const data = { issued, items, rank: document.getElementById("lvRank").value, steps: LV_STEPS.map((_, j) => n("lv_step" + j)), memo: document.getElementById("lvMemo").value.trim() };
+  try { if (id) await db.collection(SDGS_LEVEL_COL).doc(id).update(data); else await db.collection(SDGS_LEVEL_COL).add({ ...data, createdMs: Date.now() }); closeSdgsLevel(); }
+  catch (e) { alert("保存に失敗しました: " + e.message); }
+};
+window.deleteSdgsLevel = async function() {
+  const id = document.getElementById("lvId").value; if (!id || !confirm("この結果を削除しますか？（添付は残ります）")) return;
+  try { await db.collection(SDGS_LEVEL_COL).doc(id).delete(); closeSdgsLevel(); } catch (e) { alert("削除に失敗しました: " + e.message); }
 };
 
 function renderSdgsList() {
