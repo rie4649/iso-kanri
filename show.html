@@ -307,28 +307,43 @@ let purposes = null;
 function loadPurposes(){ return purposes || (purposes = col("sectionPurposes").then(a => { const m = {}; a.forEach(x => m[x.id] = x); return m; })); }
 
 /* ---------- ファイルを開く ---------- */
-async function openInline(colName, fileId){
-  const w = window.open("", "_blank");
+/* 添付(PDF・写真)は別のタブに飛ばず、このページの上に重ねて表示する(✕ 閉じるで元のページへ) */
+let viewerUrl = null;
+function showViewer(blob, title){
+  closeViewer();
+  viewerUrl = URL.createObjectURL(blob);
+  const isImg = String(blob.type).startsWith("image/");
+  const bg = document.createElement("div"); bg.id = "fileViewer";
+  bg.style.cssText = "position:fixed;inset:0;z-index:95;background:rgba(15,23,42,.92);display:flex;flex-direction:column;";
+  bg.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e3a5f;color:#fff;">'+
+      '<button style="border:1px solid rgba(255,255,255,.6);border-radius:8px;padding:9px 16px;font-size:15px;font-weight:bold;cursor:pointer;background:#fff;color:#1e3a5f;" onclick="closeViewer()">← 戻る</button>'+
+      '<div style="flex:1;font-weight:bold;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(title || "資料")+'</div>'+
+      '<a style="border:1px solid rgba(255,255,255,.6);border-radius:8px;padding:9px 16px;font-size:15px;font-weight:bold;cursor:pointer;background:transparent;color:#fff;text-decoration:none;" href="'+viewerUrl+'" target="_blank" rel="noopener">別のタブで開く</a>'+
+      '<button style="border:1px solid rgba(255,255,255,.6);border-radius:8px;padding:9px 16px;font-size:15px;font-weight:bold;cursor:pointer;background:transparent;color:#fff;" onclick="closeViewer()" aria-label="閉じる">✕ 閉じる</button></div>'+
+    (isImg ? '<div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:12px;"><img src="'+viewerUrl+'" alt="" style="max-width:100%;max-height:100%;background:#fff;"></div>'
+           : '<iframe src="'+viewerUrl+'" title="'+esc(title || "資料")+'" style="flex:1;border:none;background:#fff;width:100%;"></iframe>');
+  document.body.appendChild(bg);
+}
+function closeViewer(){ const v = document.getElementById("fileViewer"); if (v) v.remove(); if (viewerUrl){ const u = viewerUrl; viewerUrl = null; setTimeout(() => URL.revokeObjectURL(u), 60000); } }
+document.addEventListener("keydown", e => { if (e.key === "Escape" && document.getElementById("fileViewer")){ e.stopPropagation(); closeViewer(); } }, true);
+function b64Blob(b64, type){ const bin = atob(b64), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i); return new Blob([arr], { type }); }
+async function openInline(colName, fileId, title){
+  toast("開いています…");
   try {
     const d = await db.collection(colName).doc(fileId).get();
     if (!d.exists) throw new Error("ファイルが見つかりません");
-    const f = d.data(); const bin = atob(f.data); const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/octet-stream" }));
-    if (w) w.location.href = url; else window.open(url, "_blank");
-  } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
+    const f = d.data();
+    showViewer(b64Blob(f.data, f.type || "application/octet-stream"), title || f.name || "添付");
+  } catch(e){ alert("開けませんでした: "+e.message); }
 }
-async function openChunked(chunkCol, fileId, type){
-  const w = window.open("", "_blank");
+async function openChunked(chunkCol, fileId, type, title){
+  toast("開いています…");
   try {
     const snap = await db.collection(chunkCol).where("fileId", "==", fileId).get();
     const parts = snap.docs.map(x => x.data()).sort((a,b) => a.idx - b.idx);
     if (!parts.length) throw new Error("中身が見つかりません");
-    const bin = atob(parts.map(p => p.data).join("")); const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([arr], { type: type || "application/pdf" }));
-    if (w) w.location.href = url; else window.open(url, "_blank");
-  } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
+    showViewer(b64Blob(parts.map(p => p.data).join(""), type || "application/pdf"), title);
+  } catch(e){ alert("開けませんでした: "+e.message); }
 }
 function attBtns(atts, fileCol){
   return (atts||[]).map(a => a.fileId
@@ -1402,7 +1417,7 @@ async function renderSdgs(p){
       (detail ? '<div class="note">'+esc(detail)+'</div>' : '')+(x.notes ? '<div class="note">'+esc(x.notes)+'</div>' : '')+
       // 資料(ISO管理のSDGsで目標ごとにアップ)と、水質の目標は分析証のある水質検査へ
       docs.filter(d => d.goalId === x.id).sort((a,b) => (a.createdMs||0) - (b.createdMs||0)).map(d =>
-        '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">資料を見る：'+esc(d.title || d.fileName || "資料")+'</button>').join("")+
+        '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\',\''+esc(String(d.title||"資料").replace(/'/g,""))+'\')">資料を見る：'+esc(d.title || d.fileName || "資料")+'</button>').join("")+
       (/水質/.test(x.name||"") ? '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="goKey(\'water\')">分析証を見る(水質検査の記録へ) ›</button>' : '')+'</div>';
   };
   return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty()) + sdgsLevelHtml(lvs, docs) +
@@ -1424,7 +1439,7 @@ function sdgsLevelHtml(lvs, docs){
       return '<tr><td><b>'+n+'</b></td><td class="c">'+(it.s ?? "-")+' / '+(it.m ?? "-")+'</td><td><div class="bar" style="height:14px;"><i style="width:'+(p1||0)+'%"></i></div><div class="note" style="margin:0;">'+(p1 ?? "-")+'%</div></td><td class="c">'+(it.lv ?? "-")+'</td>'+
         (prev ? '<td class="c">'+(p0 ?? "-")+'%'+(p0 != null && p1 != null ? (p1 >= p0 ? ' <span class="ok">↑</span>' : ' <span class="ng">↓</span>') : '')+'</td>' : '')+'</tr>'; }).join("")+'</table></div>'+
     '<div class="tw" style="margin-top:8px;"><table class="t"><tr>'+ST.map((n, j) => '<th>Step'+(j+1)+'<br><span style="font-weight:normal;">'+n+'</span></th>').join("")+'</tr><tr>'+ST.map((_, j) => '<td class="c"><b>'+((L.steps||[])[j] ?? "-")+'</b>%</td>').join("")+'</tr></table></div>'+
-    pub.map(d => '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">結果レポートを見る(公開用)</button>').join("");
+    pub.map(d => '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\',\'SDGs取組レベル 結果レポート(公開用)\')">結果レポートを見る(公開用)</button>').join("");
 }
 const SDGS_PORTAL = "https://nagano-sdgs.com/company/?f29%5B0%5D=%E4%B8%8A%E7%94%B0&f1&f4%5B0%5D=%E3%82%B5%E3%83%BC%E3%83%93%E3%82%B9%E6%A5%AD%EF%BC%88%E3%81%BB%E3%81%8B%E3%81%AB%E5%88%86%E9%A1%9E%E3%81%95%E3%82%8C%E3%81%AA%E3%81%84%E3%82%82%E3%81%AE%EF%BC%89&fx2&pg=dt&bpage=2";
 
@@ -1490,9 +1505,16 @@ async function show(i){
   document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>';
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
+/* 読み込んだデータは開いている間とっておくので、ISO管理で入力してからこの画面に戻ったら、読み直して今のページを描き直す */
+let hiddenAt = 0;
+function refreshData(){ Object.keys(cache).forEach(k => delete cache[k]); purposes = null; if (!document.getElementById("fileViewer")) show(cur); }
+document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 3000) refreshData(); });
+window.addEventListener("focus", () => { if (hiddenAt && Date.now() - hiddenAt > 3000){ hiddenAt = 0; refreshData(); } });
+window.addEventListener("blur", () => { hiddenAt = Date.now(); });
 function step(d){ go(cur + d); }
 document.addEventListener("keydown", e => {
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (document.getElementById("fileViewer")) return;   // 資料を開いている間はページを送らない
   if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && !e.shiftKey)){ e.preventDefault(); step(1); }
   if (["ArrowLeft","PageUp"].includes(e.key)){ e.preventDefault(); step(-1); }
   if (e.key === "Home") go(0);
