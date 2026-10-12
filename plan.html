@@ -24,7 +24,7 @@
 <body>
 <header class="bz">
   <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
-  <div><h1>ISOの計画・リスク</h1><div class="sub">課題・利害関係者・環境側面・リスクと機会・目標・委託先・監視測定・苦情・緊急事態の訓練・校正・マネジメントレビュー。ここで入力した内容が見せるモードに表示されます</div></div>
+  <div><h1>ISOの計画・リスク</h1><div class="sub">課題・利害関係者・環境側面・リスクと機会・目標・委託先・監視測定・苦情・緊急事態の訓練・校正・マネジメントレビュー。ここで入力した内容が「環境への取り組み」に表示されます</div></div>
 </header>
 <div class="wrap">
   <div class="tabs" id="tabs"></div>
@@ -35,7 +35,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTtl">
     <h2 id="editTtl"></h2>
     <div id="editForm"></div>
-    <label class="chk"><input type="checkbox" id="editDraft"> 下書きにする(見せるモードには表示しない)</label>
+    <label class="chk"><input type="checkbox" id="editDraft"> 下書きにする(環境への取り組みには表示しない)</label>
     <div class="mBtns">
       <button class="btn del" id="editDelBtn" onclick="delRow(editId, true)">削除</button>
       <span style="flex:1"></span>
@@ -266,7 +266,7 @@ async function saveEdit(){
   } catch(e){ toast("保存できませんでした: "+e.message); }
 }
 async function confirmRow(id){
-  try { await db.collection(ISO_REG_COL).doc(id).update({ draft:false, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }); toast("確定しました(見せるモードに表示されます)"); }
+  try { await db.collection(ISO_REG_COL).doc(id).update({ draft:false, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }); toast("確定しました(環境への取り組みに表示されます)"); }
   catch(e){ toast("確定できませんでした: "+e.message); }
 }
 async function delRow(id, fromModal){
