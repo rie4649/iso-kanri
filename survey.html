@@ -28,13 +28,13 @@
 <header class="bz">
   <button class="back" onclick="goBack()">← ISO管理に戻る</button>
   <div><h1>委託先調査票の回答</h1>
-  <div class="sub">廃棄物処理委託先調査票(共通事項・収集運搬)への当社回答。見せるモード「委託先調査への対応」に表示</div></div>
+  <div class="sub">廃棄物処理委託先調査票(共通事項・収集運搬)への当社回答(社内の控え。環境への取り組みには表示しません)</div></div>
 </header>
 <div class="wrap">
   <div class="help"><div class="ttl">入力のしかた</div>
   項目ごとに当社の回答を選び、必要に応じて補足(根拠・数値・名称)を入力し、画面下の「保存」を押してください。<br>
   <span class="tag ok">仮の回答</span>はアプリのデータから仮に入れた回答です(保存で確定)。「クリア」でその項目の回答を消せます。
-  「見せる」を外した項目は見せるモードに表示されません(売上・財務などは初期状態で非表示)。</div>
+  「見せる」の印は、回答を人に見せるときの目安です(売上・財務などは初期状態で非表示)。</div>
   <div class="tabs" id="tabs"></div>
   <div id="list"><div class="empty">読み込み中…</div></div>
 </div>
@@ -119,7 +119,7 @@ async function saveAll(){
   try {
     await ref.set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     saved = items; dirty = false; SURVEY_ITEMS.forEach(it => ans[it.id].isPre = false);
-    render(); toast("保存しました(見せるモードに反映されます)");
+    render(); toast("保存しました");
   } catch(e){ toast("保存できませんでした: "+e.message); }
 }
 function clearA(id){
