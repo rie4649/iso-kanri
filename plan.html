@@ -53,9 +53,11 @@
       <div><label for="dDate">日付(作成日・改定日)</label><input id="dDate" type="date"></div>
     </div>
     <label for="dTitle">文書名</label><input id="dTitle" placeholder="例: リスク対応計画書">
+    <label for="dReg">入れる台帳</label><select id="dReg"></select>
     <label for="dAuthor">作成者</label><input id="dAuthor" placeholder="例: 環境管理責任者">
     <label for="dMemo">改訂内容(任意)</label><input id="dMemo" placeholder="例: 気候変動のリスクを追加">
-    <label for="dFile">PDF・写真(15MBまで)</label><input id="dFile" type="file" accept="application/pdf,image/*">
+    <label for="dFile" id="dFileLbl">PDF・写真(15MBまで)</label><input id="dFile" type="file" accept="application/pdf,image/*">
+    <div class="note" id="dFileNote" style="display:none;">ファイルを選ばなければ、今のPDFのまま文字だけ直します。選ぶと中身を差し替えます。</div>
     <div class="mBtns"><button class="btn" onclick="closeDoc()">キャンセル</button><button class="btn pri" id="dSave" onclick="saveDoc()">登録</button></div>
   </div>
 </div>
@@ -239,19 +241,28 @@ function docsHtml(reg){
   const gs = docGroups(reg.key);
   const row = (d, cur) => '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;'+(cur ? '' : 'font-size:13px;color:var(--muted);')+'">'+
     '<span style="flex:1;min-width:200px;">'+(cur ? '<b>'+esc(d.docNo)+'　'+esc(d.title)+'</b>' : esc(d.docNo)+'　'+esc(d.title))+'　<span class="tag gray">'+esc(fdj(d.date))+'</span>'+(d.author ? '<span class="tag gray">作成 '+esc(d.author)+'</span>' : '')+(d.memo ? '<span style="font-size:12px;color:var(--muted);">'+esc(d.memo)+'</span>' : '')+'</span>'+
-    '<button class="btn sm" onclick="viewDoc(\''+d.id+'\')">開く</button>'+(cur ? '<button class="btn sm" onclick="openDoc(\''+d.id+'\')">新しい版</button>' : '')+'<button class="btn sm del" onclick="delDoc(\''+d.id+'\')">削除</button></div>';
+    '<button class="btn sm" onclick="viewDoc(\''+d.id+'\')">開く</button><button class="btn sm" onclick="openDoc(null,\''+d.id+'\')">修正</button>'+(cur ? '<button class="btn sm" onclick="openDoc(\''+d.id+'\')">新しい版</button>' : '')+'<button class="btn sm del" onclick="delDoc(\''+d.id+'\')">削除</button></div>';
   return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;"><b style="flex:1;color:var(--navy);">📄 計画書の原本(PDF)</b><button class="btn sm pri" onclick="openDoc()">＋ 計画書を登録</button></div>'+
     (gs.length ? gs.map(l => row(l[0], true)+(l.length > 1 ? '<details style="margin:0 0 6px 12px;"><summary style="font-size:12px;color:var(--muted);cursor:pointer;">改訂履歴('+(l.length-1)+'件)</summary>'+l.slice(1).map(d => row(d, false)).join("")+'</details>' : '')).join("")
       : '<div class="note">この台帳の計画書の原本(紙の計画書をPDFにしたもの)を、文書番号と日付つきで保管できます。環境への取り組みのこのページに「計画書を見る」ボタンが出ます。</div>')+'</div>';
 }
-let docBase = null;
-function openDoc(baseId){
-  docBase = pdocs.find(d => d.id === baseId) || null;
-  document.getElementById("docTtl").textContent = docBase ? "新しい版を登録("+docBase.docNo+")" : "計画書の原本を登録";
+let docBase = null, docEdit = null;
+/* baseId: その文書の新しい版を登録 / editId: 登録済みの版を修正(番号・名前・日付・台帳の直し、PDFの差し替え) */
+function openDoc(baseId, editId){
+  docEdit = pdocs.find(d => d.id === editId) || null;
+  docBase = docEdit || pdocs.find(d => d.id === baseId) || null;
+  document.getElementById("docTtl").textContent = docEdit ? "計画書の原本を修正" : docBase ? "新しい版を登録("+docBase.docNo+")" : "計画書の原本を登録";
   document.getElementById("dNo").value = docBase ? docBase.docNo || "" : "";
   document.getElementById("dTitle").value = docBase ? docBase.title || "" : "";
   document.getElementById("dAuthor").value = docBase ? docBase.author || "" : "";
-  document.getElementById("dDate").value = today(); document.getElementById("dMemo").value = ""; document.getElementById("dFile").value = "";
+  document.getElementById("dDate").value = docEdit ? docEdit.date || "" : today();
+  document.getElementById("dMemo").value = docEdit ? docEdit.memo || "" : "";
+  document.getElementById("dFile").value = "";
+  const rg = docEdit ? docEdit.reg : cur;
+  document.getElementById("dReg").innerHTML = ISO_REGS.map(r => '<option value="'+r.key+'"'+(r.key === rg ? ' selected' : '')+'>'+esc(r.name)+'('+esc(r.clause)+')</option>').join("");
+  document.getElementById("dFileNote").style.display = docEdit ? "" : "none";
+  document.getElementById("dFileLbl").textContent = docEdit ? "PDF・写真を差し替える(任意・15MBまで)" : "PDF・写真(15MBまで)";
+  document.getElementById("dSave").textContent = docEdit ? "保存" : "登録";
   document.getElementById("docBg").classList.add("show");
 }
 function closeDoc(){ document.getElementById("docBg").classList.remove("show"); }
@@ -260,15 +271,29 @@ async function saveDoc(){
   const no = document.getElementById("dNo").value.trim(), title = document.getElementById("dTitle").value.trim(), date = document.getElementById("dDate").value;
   const file = document.getElementById("dFile").files[0];
   if (!no || !title || !date){ toast("文書番号・文書名・日付を入れてください"); return; }
-  if (!file){ toast("PDFを選んでください"); return; }
-  if (file.size > 15 * 1024 * 1024){ toast("15MBまでのファイルにしてください"); return; }
-  const btn = document.getElementById("dSave"); btn.disabled = true; btn.textContent = "登録中…";
+  if (!file && !docEdit){ toast("PDFを選んでください"); return; }
+  if (file && file.size > 15 * 1024 * 1024){ toast("15MBまでのファイルにしてください"); return; }
+  const btn = document.getElementById("dSave"); btn.disabled = true; btn.textContent = "保存中…";
+  const meta = { reg:document.getElementById("dReg").value || cur, docNo:no, title, date, author:document.getElementById("dAuthor").value.trim(), memo:document.getElementById("dMemo").value.trim(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() };
+  if (docEdit){
+    try {
+      if (file){   // 中身の差し替え: 新しい中身を書いてから古い分割を消す
+        const b64 = await b64of(file), parts = []; for (let i = 0; i < b64.length; i += PCHUNK_SIZE) parts.push(b64.slice(i, i + PCHUNK_SIZE));
+        for (let i = 0; i < parts.length; i++) await db.collection(PCHUNK).doc(docEdit.id+"_"+i).set({ fileId:docEdit.id, idx:i, data:parts[i] });
+        const old = await db.collection(PCHUNK).where("fileId","==",docEdit.id).get();   // 前の中身の余った分だけ消す
+        const b = db.batch(); old.docs.filter(x => x.data().idx >= parts.length).forEach(x => b.delete(x.ref)); await b.commit();
+        Object.assign(meta, { fileName:file.name, fileType:file.type || "application/pdf", size:file.size, chunkCount:parts.length });
+      }
+      await db.collection(PDOC).doc(docEdit.id).update(meta);
+      closeDoc(); toast(meta.reg !== cur ? "保存しました(「"+regOf(meta.reg).name+"」へ移しました)" : "保存しました");
+    } catch(e){ toast("保存できませんでした: "+e.message); }
+    btn.disabled = false; btn.textContent = "保存"; return;
+  }
   try {
     const b64 = await b64of(file), parts = []; for (let i = 0; i < b64.length; i += PCHUNK_SIZE) parts.push(b64.slice(i, i + PCHUNK_SIZE));
     const ref = db.collection(PDOC).doc();
     for (let i = 0; i < parts.length; i++) await db.collection(PCHUNK).doc(ref.id+"_"+i).set({ fileId:ref.id, idx:i, data:parts[i] });
-    await ref.set({ reg:cur, docNo:no, title, date, author:document.getElementById("dAuthor").value.trim(), memo:document.getElementById("dMemo").value.trim(),
-      fileName:file.name, fileType:file.type || "application/pdf", size:file.size, chunkCount:parts.length, createdMs:Date.now(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+    await ref.set({ ...meta, fileName:file.name, fileType:file.type || "application/pdf", size:file.size, chunkCount:parts.length, createdMs:Date.now(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
     closeDoc(); toast("登録しました");
   } catch(e){ toast("登録できませんでした: "+e.message); }
   btn.disabled = false; btn.textContent = "登録";
