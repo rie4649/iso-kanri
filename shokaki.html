@@ -219,6 +219,7 @@ function renderDocs(){
           <div class="sub">${esc(d.date||"")} ・ ${esc(d.fileName||"")} ・ ${fmtSize(d.size)}</div>
         </div>
         <button class="openBtn" onclick="openDoc('${d.id}')">開く</button>
+        <button class="delBtn" style="background:#f1f5f9;color:#334155;" onclick="editDoc('${d.id}')">修正</button>
         <button class="delBtn" onclick="delDoc('${d.id}')">🗑</button>
       </div>`).join("")}
   `).join("");
@@ -281,6 +282,47 @@ window.openDoc = async function(id){
     const url = URL.createObjectURL(new Blob([arr], {type: d.fileType||"application/pdf"}));
     if(w) w.location.href = url; else window.open(url,"_blank");
   }catch(e){ if(w) w.close(); toast("❌ 開けませんでした: "+e.message); }
+};
+
+// 修正: 書類の種類・点検日の直しと、中身の差し替え
+window.editDoc = function(id){
+  const d = docs.find(x=>x.id===id); if(!d) return;
+  let bg = document.getElementById("editBg");
+  if(!bg){ bg = document.createElement("div"); bg.id = "editBg";
+    bg.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;overflow:auto;padding:16px;";
+    bg.addEventListener("click", e=>{ if(e.target===bg) bg.style.display="none"; }); document.body.appendChild(bg); }
+  const types = ["消火器管理票","防火対象物棟別一覧表","消防用設備等点検結果報告書","その他"];
+  if(d.type && !types.includes(d.type)) types.push(d.type);
+  const st = 'style="width:100%;padding:10px;border:1px solid #d4d4d8;border-radius:10px;font-size:15px;"';
+  bg.innerHTML = `<div style="background:#fff;border-radius:14px;padding:16px;max-width:460px;margin:40px auto;">
+    <h2 style="font-size:17px;margin-bottom:8px;">書類の修正</h2>
+    <label>書類の種類</label><select id="eType" ${st}>${types.map(t=>`<option${t===d.type?" selected":""}>${esc(t)}</option>`).join("")}</select>
+    <label>点検日(書類の日付)</label><input type="date" id="eDate" value="${esc(d.date||"")}" ${st}>
+    <label>中身を差し替える(任意)</label><input type="file" id="eFile" accept="application/pdf,image/*">
+    <div style="font-size:12px;color:#71717a;margin-top:4px;">ファイルを選ばなければ、種類と日付だけ直します。</div>
+    <div style="display:flex;gap:8px;margin-top:14px;"><button style="flex:1;padding:12px;border:none;border-radius:10px;background:#e4e4e7;font-weight:bold;" onclick="document.getElementById('editBg').style.display='none'">キャンセル</button>
+    <button id="eSave" style="flex:1;padding:12px;border:none;border-radius:10px;background:#b91c1c;color:#fff;font-weight:bold;">保存</button></div></div>`;
+  document.getElementById("eSave").onclick = async ()=>{
+    const type = document.getElementById("eType").value, date = document.getElementById("eDate").value, file = document.getElementById("eFile").files[0];
+    if(!date){ toast("点検日を入れてください"); return; }
+    if(file && file.size > MAX_MB*1024*1024){ toast(`⚠️ ${MAX_MB}MBまでのファイルにしてください`); return; }
+    const btn = document.getElementById("eSave"); btn.disabled = true; btn.textContent = "保存中…";
+    try{
+      const upd = { type, date };
+      if(file){
+        const b64 = await blobToBase64(file), chunks = [];
+        for(let i=0; i<b64.length; i+=CHUNK_SIZE) chunks.push(b64.slice(i, i+CHUNK_SIZE));
+        for(let i=0; i<chunks.length; i++) await db.collection(CHUNK_COL).doc(id+"_"+i).set({ fileId:id, idx:i, data:chunks[i] });
+        const old = await db.collection(CHUNK_COL).where("fileId","==",id).get();
+        const b = db.batch(); old.docs.filter(x=>x.data().idx >= chunks.length).forEach(x=>b.delete(x.ref)); await b.commit();
+        Object.assign(upd, { fileName:file.name, fileType:file.type||"application/pdf", size:file.size, chunkCount:chunks.length });
+      }
+      await db.collection(DOC_COL).doc(id).update(upd);
+      bg.style.display = "none"; toast("✅ 修正しました");
+    }catch(e){ toast("❌ 修正に失敗: "+e.message); }
+    btn.disabled = false; btn.textContent = "保存";
+  };
+  bg.style.display = "block";
 };
 
 window.delDoc = async function(id){
