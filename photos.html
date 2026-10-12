@@ -103,6 +103,8 @@
   <label for="editSel">振り分け先</label>
   <select id="editSel" onchange="document.getElementById('editOther').style.display=this.value==='other'?'':'none'"></select>
   <input id="editOther" placeholder="新しい名前" style="display:none;margin-top:6px;">
+  <label for="editDate">撮影日</label>
+  <input id="editDate" type="date">
   <label for="editMemo">メモ</label>
   <input id="editMemo" placeholder="例: 2026年10月 撮影">
   <div class="mBtns"><button class="btn del" style="margin-right:auto;" onclick="editDel()">削除</button><button class="btn" onclick="closeEdit()">キャンセル</button><button class="btn pri" onclick="saveEdit()">保存</button></div>
@@ -255,7 +257,7 @@ const DEFAULT_REC = [
 let recCats = DEFAULT_REC.slice();
 /* 項目の写真を出すページ(環境への取り組みのページ。page が無い項目は「保管・掲示の状況」) */
 const PAGE_OPTS = [["records","保管・掲示の状況"],["permit","許可の内容(積替え保管場所・処理施設)"],["water","水質検査"],["safety","安全衛生パトロール"],["training","教育訓練"],
-  ["emergency","緊急事態の訓練・テスト"],["shokaki","消火器・防火管理"],["comp","圧縮機定期点検"],["freon","フロン簡易点検"],["donation","地域貢献"]];
+  ["emergency","緊急事態の訓練・テスト"],["shokaki","消火器・防火管理"],["comp","圧縮機定期点検"],["freon","フロン排出抑制法簡易点検"],["donation","地域貢献"]];
 const pageName = k => (PAGE_OPTS.find(o => o[0] === (k || "records")) || PAGE_OPTS[0])[1];
 /* 最初から用意しておく項目(一度だけ自動で足す) */
 const EXTRA_REC = [{ name:"積替え保管場所の様子", q:"許可証の積替え・保管の場所", page:"permit" }, { name:"水質検査の様子", q:"採水・測定の様子", page:"water" }];
@@ -312,10 +314,24 @@ function guessTarget(fileName){
   return "";
 }
 function addPending(files){
-  [...files].forEach(f => pending.push({ id: ++pendSeq, file:f, url:URL.createObjectURL(f), sel:guessTarget(f.name), other:"" }));
+  [...files].forEach(f => { const p = { id: ++pendSeq, file:f, url:URL.createObjectURL(f), sel:guessTarget(f.name), other:"", date:todayYmd() };
+    pending.push(p); shotDateOf(f).then(d => { if (d){ p.date = d; renderPending(); } }); });
   document.getElementById("files").value = "";
   renderPending();
 }
+/* ---------- 撮影日(写真の中に記録されている日付 EXIF を読む。読めないときは今日) ---------- */
+function todayYmd(){ const d = new Date(), z = n => String(n).padStart(2, "0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
+function fdj(s){ const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : ""; }
+async function shotDateOf(file){
+  try {
+    const buf = new Uint8Array(await file.slice(0, 256 * 1024).arrayBuffer());
+    let txt = ""; for (let i = 0; i < buf.length; i++) txt += String.fromCharCode(buf[i]);
+    const all = [...txt.matchAll(/((?:19|20)\d{2}):(\d{2}):(\d{2}) \d{2}:\d{2}:\d{2}/g)].map(m => m[1]+"-"+m[2]+"-"+m[3]).filter(d => d <= todayYmd());
+    if (!all.length) return "";
+    return all.sort()[0];   // 撮影日時・更新日時のうち一番古いもの＝撮った日
+  } catch(e){ return ""; }
+}
+function setDate(id, v){ const p = pending.find(x => x.id === id); if (p) p.date = v; }
 function countDone(){ return pending.filter(p => p.sel && (p.sel !== "other" || p.other.trim())).length; }
 function renderPending(){
   document.getElementById("pendArea").style.display = pending.length ? "" : "none";
@@ -323,6 +339,7 @@ function renderPending(){
   document.getElementById("pend").innerHTML = pending.map((p, i) =>
     '<div class="pd'+(p.sel ? ' ok' : '')+'"><img src="'+p.url+'" alt="">'+
     '<div class="fn">'+esc(p.file.name)+'</div>'+
+    '<label style="margin:4px 8px 2px;font-size:12px;">撮影日</label><input type="date" value="'+esc(p.date||"")+'" onchange="setDate('+p.id+',this.value)" style="margin:0 8px 4px;width:calc(100% - 16px);">'+
     '<select aria-label="車両・設備" onchange="setSel('+p.id+',this.value)">'+optionsHtml(p.sel)+'</select>'+
     (p.sel === "other" ? '<input placeholder="'+(mode === "rec" ? '新しい項目の名前' : '設備の名前')+'" value="'+esc(p.other)+'" oninput="setOther('+p.id+',this.value)">' : '')+
     (i < pending.length-1 && p.sel ? '<button class="btn sm" onclick="fillDown('+p.id+')">↓ 下の写真も同じにする</button>' : '')+
@@ -438,7 +455,7 @@ async function uploadPhotos(){
       const thumb = await shrink(p.file, 480, .72);
       const ref = db.collection(PHOTO_COL).doc();
       await db.collection(FILE_COL).doc(ref.id).set({ data: full });   // 先に大きい写真
-      await ref.set({ kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName, memo, thumb, isMain: !hasMain.has(tg.targetId),
+      await ref.set({ kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName, memo, thumb, shotDate: p.date || "", isMain: !hasMain.has(tg.targetId),
         createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       hasMain.add(tg.targetId); ok++;
       if (tg.kind === "record" && !recCats.some(c => c.name === tg.targetName)) await addCat(tg.targetName);   // 新しい項目は項目一覧にも足す
@@ -498,7 +515,7 @@ function renderRec(){
 function tgtHtml(name, model, list){
   return '<div class="tgt"><div class="ttl">'+esc(name)+(model ? '<small>'+esc(model)+'</small>' : '')+'<small>'+list.length+'枚</small></div><div class="ph">'+
     list.map(p => '<div class="pc'+(p.isMain ? ' main' : '')+'"><img src="'+p.thumb+'" alt="'+esc(name)+'" onclick="openLb(\''+p.id+'\')">'+
-      '<div class="memo">'+(p.isMain ? '<span class="tag ok">代表</span>' : '')+esc(p.memo || "")+'</div>'+
+      '<div class="memo">'+(p.isMain ? '<span class="tag ok">代表</span>' : '')+(p.shotDate ? '<span class="tag gray">'+esc(fdj(p.shotDate))+' 撮影</span>' : '')+esc(p.memo || "")+'</div>'+
       '<div class="btns"><button class="btn sm'+(p.isMain ? ' is' : '')+'" onclick="setMain(\''+p.id+'\')">'+(p.isMain ? '代表' : '代表にする')+'</button>'+
       '<button class="btn sm" onclick="openEdit(\''+p.id+'\')">編集</button>'+
       '<button class="btn sm del" onclick="askDel(\''+p.id+'\')">削除</button></div></div>').join("")+'</div></div>';
@@ -553,6 +570,7 @@ function openEdit(id){
   document.getElementById("editSel").innerHTML = opts;
   document.getElementById("editOther").value = ""; document.getElementById("editOther").style.display = "none";
   document.getElementById("editMemo").value = p.memo || "";
+  document.getElementById("editDate").value = p.shotDate || "";
   document.getElementById("editImg").src = p.thumb;
   document.getElementById("editTtl").textContent = "写真の編集 ― " + p.targetName;
   document.getElementById("editBg").classList.add("show");
@@ -567,7 +585,7 @@ async function saveEdit(){
   const tg = sel ? targetOf({ sel, other }) : null; mode = saveMode;
   if (!tg){ toast("振り分け先を選んでください"); return; }
   const memo = document.getElementById("editMemo").value.trim();
-  const upd = { memo, kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName };
+  const upd = { memo, shotDate: document.getElementById("editDate").value || "", kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName };
   const b = db.batch();
   if (tg.targetId !== p.targetId){
     // 移動先に代表がなければ代表にする。移動元の代表だった場合は、残りの一番古い写真を代表にする
