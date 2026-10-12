@@ -5698,6 +5698,72 @@ function renderSdgsYearTabs() {
 }
 window.setSdgsFY = function(f) { currentSdgsFY = f; renderSdgsList(); };
 
+// ---- SDGs目標の資料(PDF・写真)。Firestore: sdgsGoalDocs(目次)/ sdgsGoalChunks(中身・分割base64、最大15MB) ----
+const SDGS_DOC_COL = "sdgsGoalDocs", SDGS_CHUNK_COL = "sdgsGoalChunks", SDGS_CHUNK_SIZE = 700 * 1024, SDGS_DOC_MAX_MB = 15;
+let allSdgsDocs = [];
+db.collection(SDGS_DOC_COL).onSnapshot(snap => {
+  allSdgsDocs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+  if (document.getElementById("sdgsListContainer")) renderSdgsList();
+}, err => console.error(err));
+function sdgsDocsHtml(g) {
+  const docs = allSdgsDocs.filter(d => d.goalId === g.id);
+  const water = /水質/.test(g.name || "");
+  if (!docs.length && !water) return "";
+  return `<div class="water-test-card-items">` +
+    docs.map(d => `<div class="water-test-item-line"><span>📎 ${escapeHtml(d.title || d.fileName || "資料")}</span><span><button class="btn-edit" style="padding:4px 10px;" onclick="openSdgsDoc('${d.id}')">開く</button> <span style="cursor:pointer;" onclick="deleteSdgsDoc('${d.id}')">🗑</span></span></div>`).join("") +
+    (water ? `<div class="water-test-item-line"><span>🧪 分析証は水質検査の各記録に添付</span><span><button class="btn-edit" style="padding:4px 10px;" onclick="openSection('waterTest')">水質検査へ</button></span></div>` : "") +
+    `</div>`;
+}
+let sdgsDocGoalId = null;
+window.pickSdgsDoc = function(goalId) {
+  sdgsDocGoalId = goalId;
+  let inp = document.getElementById("sdgsDocFile");
+  if (!inp) {
+    inp = document.createElement("input"); inp.type = "file"; inp.id = "sdgsDocFile"; inp.accept = "application/pdf,image/*"; inp.style.display = "none";
+    inp.addEventListener("change", () => { const f = inp.files[0]; inp.value = ""; if (f) uploadSdgsDoc(sdgsDocGoalId, f); });
+    document.body.appendChild(inp);
+  }
+  inp.click();
+};
+function sdgsBlobToBase64(blob) {
+  return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result).split(",")[1]); r.onerror = () => reject(new Error("ファイルを読み込めませんでした")); r.readAsDataURL(blob); });
+}
+async function uploadSdgsDoc(goalId, file) {
+  if (file.size > SDGS_DOC_MAX_MB * 1024 * 1024) { alert(SDGS_DOC_MAX_MB + "MBまでのファイルにしてください"); return; }
+  const title = prompt("資料の名前（環境への取り組みのボタンに出ます）", file.name.replace(/\.[^.]+$/, ""));
+  if (title === null) return;
+  try {
+    const b64 = await sdgsBlobToBase64(file);
+    const chunks = []; for (let i = 0; i < b64.length; i += SDGS_CHUNK_SIZE) chunks.push(b64.slice(i, i + SDGS_CHUNK_SIZE));
+    const ref = db.collection(SDGS_DOC_COL).doc();
+    for (let i = 0; i < chunks.length; i++) await db.collection(SDGS_CHUNK_COL).doc(ref.id + "_" + i).set({ fileId: ref.id, idx: i, data: chunks[i] });   // 先に中身
+    await ref.set({ goalId, title: (title || "").trim() || file.name, fileName: file.name, fileType: file.type || "application/pdf", size: file.size, chunkCount: chunks.length,
+      createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    alert("資料を追加しました");
+  } catch (e) { console.error(e); alert("アップに失敗しました: " + e.message); }
+}
+window.openSdgsDoc = async function(id) {
+  const d = allSdgsDocs.find(x => x.id === id); if (!d) return;
+  const w = window.open("", "_blank");
+  try {
+    const snap = await db.collection(SDGS_CHUNK_COL).where("fileId", "==", id).get();
+    const parts = snap.docs.map(x => x.data()).sort((a, b) => a.idx - b.idx);
+    if (!parts.length) throw new Error("中身が見つかりません");
+    const bin = atob(parts.map(x => x.data).join("")), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: d.fileType || "application/pdf" }));
+    if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch (e) { if (w) w.close(); alert("開けませんでした: " + e.message); }
+};
+window.deleteSdgsDoc = async function(id) {
+  const d = allSdgsDocs.find(x => x.id === id); if (!d) return;
+  if (!confirm(`資料「${d.title || d.fileName}」を削除しますか？`)) return;
+  try {
+    const snap = await db.collection(SDGS_CHUNK_COL).where("fileId", "==", id).get();
+    const b = db.batch(); snap.docs.forEach(x => b.delete(x.ref)); b.delete(db.collection(SDGS_DOC_COL).doc(id)); await b.commit();
+  } catch (e) { alert("削除に失敗しました: " + e.message); }
+};
+
 function renderSdgsList() {
   const container = document.getElementById("sdgsListContainer");
   if (!container) return;
@@ -5771,8 +5837,10 @@ function renderSdgsList() {
         ${avgWindowsHtml}
         ${(g.notes || "").trim() ? `<div class="event-notes">${escapeHtml(g.notes)}</div>` : ""}
         ${logHtml ? `<div class="water-test-card-items">${logHtml}</div>` : ""}
+        ${sdgsDocsHtml(g)}
         <div class="event-actions">
           <button class="btn-edit" style="background:#dcfce7;color:#15803d;" onclick="openAddSdgsProgress('${g.id}')">＋ 進捗を追加</button>
+          <button class="btn-edit" style="background:#eef2f7;color:#1e3a5f;" onclick="pickSdgsDoc('${g.id}')">📎 資料を追加</button>
           <button class="btn-edit" onclick="openEditSdgsGoal('${g.id}')">編集</button>
           <button class="btn-delete" onclick="deleteSdgsGoal('${g.id}')">削除</button>
         </div>
