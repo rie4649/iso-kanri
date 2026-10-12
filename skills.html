@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>力量(資格の一覧)</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .kpis { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--navy); border-radius:6px; padding:10px 14px; min-width:150px; }
+  .kpi .k { font-size:12px; color:var(--muted); font-weight:700; }
+  .kpi .v { font-size:26px; font-weight:800; color:var(--navy); }
+  .kpi .v small { font-size:13px; margin-left:3px; color:var(--muted); }
+  .tw { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:6px; }
+  table.t { border-collapse:collapse; font-size:13px; min-width:100%; }
+  table.t th, table.t td { border:1px solid var(--line2); padding:7px 6px; text-align:center; }
+  table.t th { background:var(--navyBg); color:var(--navy); font-weight:700; min-width:64px; }
+  table.t th:first-child, table.t td:first-child { position:sticky; left:0; background:#fff; text-align:left; white-space:nowrap; z-index:1; }
+  table.t th:first-child { background:var(--navyBg); }
+  table.t tr.none td:first-child { color:var(--muted); }
+  .ok { color:var(--ok); } .wn { color:#b45309; } .ng { color:var(--danger); }
+  .dt { display:block; font-size:10px; }
+  .filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+</style>
+</head>
+<body>
+
+<header class="bz">
+  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>力量(資格の一覧)</h1>
+  <div class="sub">マスター管理の名前と、業務管理アプリの資格から自動で表示(ここでは入力しません)</div></div>
+</header>
+
+<div class="wrap">
+  <div class="help"><div class="ttl">力量<span class="cl">7.2</span></div>
+    業務に必要な資格を誰が持っているかの一覧です。<b>名前の登録・並び順はマスター管理</b>、<b>資格の登録は業務管理アプリ</b>で行うと、ここと「環境への取り組み」に自動で反映されます。資格がまだない人も表に出ます。</div>
+  <div class="bar"><button class="btn" onclick="location.href='show.html#skills'">環境への取り組みで見る</button></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="filters" id="filters"></div>
+  <div id="list"><div class="empty">読み込み中…</div></div>
+  <div class="note">● 保有　黄色＝有効期限が90日以内　赤＝期限切れ(有効期限が登録されている資格のみ判定)</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function esc(t){ return String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const pad = n => String(n).padStart(2, "0");
+const todayYmd = () => { const d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+function fd(s){ if (!s) return ""; const p = String(s).split("-"); return p.length < 3 ? s : Number(p[0])+"/"+Number(p[1])+"/"+Number(p[2]); }
+function daysLeft(ds){ return Math.round((new Date(ds+"T00:00:00") - new Date(todayYmd()+"T00:00:00")) / 86400000); }
+
+let emps = [], quals = [], filter = "all";
+db.collection("employees").onSnapshot(s => { emps = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); }, e => { document.getElementById("list").innerHTML = '<div class="empty">読み込みエラー: '+esc(e.message)+'</div>'; });
+db.collection("qualifications").onSnapshot(s => { quals = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); }, () => {});
+
+function setFilter(f){ filter = f; render(); }
+function render(){
+  const es = emps.filter(e => e.name).sort((a,b) => (a.order ?? 9999) - (b.order ?? 9999));
+  const qs = quals.filter(q => q.name).sort((a,b) => (a.order ?? 9999) - (b.order ?? 9999)).map(q => q.name);
+  es.forEach(e => (e.qualifications||[]).forEach(q => { if (!qs.includes(q)) qs.push(q); }));
+  const used = qs.filter(q => es.some(e => (e.qualifications||[]).includes(q)));
+  const has = (e, q) => (e.qualifications||[]).includes(q);
+  const exOf = (e, q) => ((e.qualificationDates||{})[q]||{}).expiryDate || "";
+  const warn = es.reduce((a, e) => a + used.filter(q => has(e, q) && exOf(e, q) && daysLeft(exOf(e, q)) <= 90).length, 0);
+  const holders = es.filter(e => (e.qualifications||[]).length);
+  document.getElementById("kpis").innerHTML =
+    '<div class="kpi"><div class="k">在籍(登録されている人)</div><div class="v">'+es.length+'<small>名</small></div></div>'+
+    '<div class="kpi"><div class="k">資格あり</div><div class="v">'+holders.length+'<small>名</small></div></div>'+
+    '<div class="kpi"><div class="k">資格がまだない人</div><div class="v">'+(es.length - holders.length)+'<small>名</small></div></div>'+
+    '<div class="kpi"><div class="k">期限90日以内・切れ</div><div class="v" style="color:'+(warn ? '#b45309' : 'var(--ok)')+'">'+warn+'<small>件</small></div></div>';
+  document.getElementById("filters").innerHTML = [["all","全員"],["none","資格がまだない人"],["warn","期限が近い・切れ"]].map(([k, l]) =>
+    '<button class="btn sm'+(filter === k ? ' pri' : '')+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
+  let rows = es;
+  if (filter === "none") rows = es.filter(e => !(e.qualifications||[]).length);
+  if (filter === "warn") rows = es.filter(e => used.some(q => has(e, q) && exOf(e, q) && daysLeft(exOf(e, q)) <= 90));
+  if (!es.length){ document.getElementById("list").innerHTML = '<div class="empty">まだ誰も登録されていません(マスター管理で名前を登録できます)</div>'; return; }
+  const mark = (e, q) => {
+    if (!has(e, q)) return '';
+    const ex = exOf(e, q); if (!ex) return '<span class="ok">●</span>';
+    const dl = daysLeft(ex);
+    return dl < 0 ? '<span class="ng">●<span class="dt">期限切れ '+esc(fd(ex))+'</span></span>' : dl <= 90 ? '<span class="wn">●<span class="dt">'+esc(fd(ex))+'まで</span></span>' : '<span class="ok">●</span>';
+  };
+  const cnt = q => es.filter(e => has(e, q)).length;
+  document.getElementById("list").innerHTML = '<div class="tw"><table class="t"><tr><th>氏名</th>'+used.map(q => '<th>'+esc(q)+'</th>').join("")+'</tr>'+
+    (rows.length ? rows.map(e => '<tr class="'+((e.qualifications||[]).length ? '' : 'none')+'"><td><b>'+esc(e.name)+'</b>'+((e.qualifications||[]).length ? '' : ' <span class="tag gray">資格なし</span>')+'</td>'+used.map(q => '<td>'+mark(e, q)+'</td>').join("")+'</tr>').join("")
+      : '<tr><td colspan="'+(used.length + 1)+'" style="text-align:center;color:var(--muted);">該当する人はいません</td></tr>')+
+    '<tr><td><b>人数</b></td>'+used.map(q => '<td><b>'+cnt(q)+'</b></td>').join("")+'</tr></table></div>';
+}
+</script>
+</body>
+</html>
