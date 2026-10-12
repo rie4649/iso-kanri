@@ -403,13 +403,13 @@ const PAGES = [
   { key:"shokaki", ch:3, icon:"🧯", name:"消火器・防火管理", render: renderShokaki },
   { key:"emergency", ch:3, icon:"", name:"緊急事態の訓練・テスト", reg:"emergency", render: renderReg },
   { key:"calendar", ch:3, icon:"📅", name:"年間の活動(カレンダー)", purpose:"calendar", render: renderCalendar },
-  { key:"monitoring", ch:4, icon:"", name:"監視・測定の計画", reg:"monitoring", render: renderReg },
+  { key:"monitoring", ch:4, icon:"", name:"監視・測定の計画", reg:"monitoring", render: renderMonitoring },
   { key:"water", ch:4, icon:"🧪", name:"水質検査", purpose:"waterTest", render: renderWater },
   { key:"noise", ch:4, icon:"🔊", name:"騒音チェック", purpose:"noiseCheck", render: renderNoise },
   { key:"comp", ch:4, icon:"🛠️", name:"圧縮機定期点検", purpose:"noiseCheck", render: renderComp },
   { key:"diesel", ch:4, icon:"⛽", name:"軽油使用量", purpose:"diesel", render: renderDiesel },
   { key:"lifeline", ch:4, icon:"⚡", name:"ライフライン(電気・ガス・水道)", purpose:"lifeline", render: renderLifeline },
-  { key:"freon", ch:4, icon:"🌡️", name:"フロン簡易点検", purpose:"freon", render: renderFreon },
+  { key:"freon", ch:4, icon:"🌡️", name:"フロン排出抑制法簡易点検", purpose:"freon", render: renderFreon },
   { key:"safety", ch:4, icon:"🦺", name:"安全衛生パトロール", purpose:"safety", render: renderSafety },
   { key:"clean", ch:4, icon:"🧹", name:"クリーン度チェック", purpose:"clean", render: renderClean },
   { key:"metal", ch:4, icon:"🔩", name:"金属拾い上げ", purpose:"metal", render: renderMetal },
@@ -478,7 +478,7 @@ async function renderDash(p){
   const qi = m => [8,9,10].includes(m) ? 0 : [11,12,1].includes(m) ? 1 : [2,3,4].includes(m) ? 2 : 3;
   const curQ = qi(new Date().getMonth()+1) + 1, done = new Set(fr.filter(x => fyOf(x.date) === fy).map(x => x.equipment+"|"+qi(Number(String(x.date).slice(5,7)))));
   const need = fe.length * curQ;
-  card(!need ? "n" : done.size >= need ? "g" : done.size >= need - fe.length ? "y" : "r", "🌡️ フロン簡易点検", done.size+" / "+need+"回", "機器 "+fe.length+"台 × 3か月ごと(今年度)", "freon");
+  card(!need ? "n" : done.size >= need ? "g" : done.size >= need - fe.length ? "y" : "r", "🌡️ フロン排出抑制法簡易点検", done.size+" / "+need+"回", "機器 "+fe.length+"台 × 3か月ごと(今年度)", "freon");
   // 水質・騒音・教育(今年)
   card("n", "🧪 水質検査", wt.filter(x => String(x.date).startsWith(y)).length+"回", y+"年の検査回数", "water");
   card("n", "🔊 騒音チェック", nc.filter(x => String(x.date).startsWith(y)).length+"回", y+"年の測定回数", "noise");
@@ -614,9 +614,10 @@ function phThumb(ph, tid, w){
   return '<img src="'+l[0].thumb+'" alt="" onclick="phOpen(\''+esc(tid)+'\',\''+l[0].id+'\')" style="width:'+(w||80)+'px;aspect-ratio:4/3;object-fit:cover;border-radius:6px;cursor:zoom-in;vertical-align:middle;flex:0 0 auto;">'+
     (l.length > 1 ? '<span class="note" style="margin-left:4px;">'+l.length+'枚</span>' : '');
 }
+const phDate = x => x.shotDate ? fd(x.shotDate)+" 撮影" : "";
 function phGrid(list){
   return '<div class="recg">'+list.map(x => '<div class="recc" onclick="phOpen(\''+esc(x.targetId)+'\',\''+x.id+'\')"><img src="'+x.thumb+'" alt="">'+
-    '<div class="recm">'+esc(x.targetName)+(x.memo ? '　'+esc(x.memo) : '')+'</div></div>').join("")+'</div>';
+    '<div class="recm">'+esc(x.targetName)+(x.memo ? '　'+esc(x.memo) : '')+(x.shotDate ? '<div class="note" style="margin:2px 0 0;">'+esc(phDate(x))+'</div>' : '')+'</div></div>').join("")+'</div>';
 }
 /* 機械・設備のカード(写真＋関係するページへのボタン) */
 function machineCards(ph, items, link){
@@ -693,7 +694,7 @@ async function eqShow(){
     bg.onclick = e => { if (e.target === bg) bg.remove(); }; document.body.appendChild(bg); }
   const x = eqLb.list[eqLb.i], n = eqLb.list.length, nav = "width:56px;height:56px;border-radius:50%;border:none;font-size:22px;cursor:pointer;flex:0 0 auto;";
   bg.innerHTML = (n > 1 ? '<button style="'+nav+'" onclick="eqLb.i=(eqLb.i+'+(n-1)+')%'+n+';eqShow()" aria-label="前の写真">◀</button>' : '')+
-    '<div style="text-align:center;min-width:0;"><img id="eqLbImg" src="'+x.thumb+'" alt="" style="max-width:100%;max-height:82vh;border-radius:10px;"><div style="color:#fff;font-size:18px;margin-top:8px;">'+esc(x.targetName)+(x.memo ? '　'+esc(x.memo) : '')+(n > 1 ? '　('+(eqLb.i+1)+' / '+n+')' : '')+'</div></div>'+
+    '<div style="text-align:center;min-width:0;"><img id="eqLbImg" src="'+x.thumb+'" alt="" style="max-width:100%;max-height:82vh;border-radius:10px;"><div style="color:#fff;font-size:18px;margin-top:8px;">'+esc(x.targetName)+(x.memo ? '　'+esc(x.memo) : '')+(x.shotDate ? '　'+esc(fd(x.shotDate))+' 撮影' : '')+(n > 1 ? '　('+(eqLb.i+1)+' / '+n+')' : '')+'</div></div>'+
     (n > 1 ? '<button style="'+nav+'" onclick="eqLb.i=(eqLb.i+1)%'+n+';eqShow()" aria-label="次の写真">▶</button>' : '')+
     '<button style="position:absolute;top:14px;right:18px;'+nav+'width:48px;height:48px;" onclick="document.getElementById(\'eqLb\').remove()" aria-label="閉じる">✕</button>';
   try { const d = await db.collection("isoPhotoFiles").doc(x.id).get(); const im = document.getElementById("eqLbImg"); if (d.exists && im && eqLb.list[eqLb.i] === x) im.src = d.data().data; } catch(e){}
@@ -732,7 +733,7 @@ async function renderRecords(p){
   return await head(p, "書類の保管や掲示の様子を写真で") + names.map(n =>
     '<h3 class="sec">'+esc(n)+(qOf(n) ? '<span class="recQ">'+esc(qOf(n))+'</span>' : '')+'</h3>'+
     '<div class="recg">'+byN[n].map(x => '<div class="recc" onclick="eqLb.list=eqPhotos.filter(y=>y.targetId===\''+esc(x.targetId)+'\').sort((a,b)=>(b.isMain?1:0)-(a.isMain?1:0)||(a.createdMs||0)-(b.createdMs||0));eqLb.i=eqLb.list.findIndex(y=>y.id===\''+x.id+'\');eqShow()">'+
-      '<img src="'+x.thumb+'" alt="'+esc(n)+'">'+(x.memo ? '<div class="recm">'+esc(x.memo)+'</div>' : '')+'</div>').join("")+'</div>').join("")+
+      '<img src="'+x.thumb+'" alt="'+esc(n)+'">'+(x.memo || x.shotDate ? '<div class="recm">'+esc(x.memo || "")+(x.shotDate ? '<div class="note" style="margin:2px 0 0;">'+esc(fd(x.shotDate))+' 撮影</div>' : '')+'</div>' : '')+'</div>').join("")+'</div>').join("")+
     (missing.length ? '<div class="note" style="margin-top:12px;">まだ写真がない項目：'+missing.map(c => esc(c.name)).join("、")+'</div>' : '')+
     '<div class="note" style="margin-top:6px;">写真を押すと大きく表示されます。</div>';
 }
@@ -742,6 +743,9 @@ async function renderReg(p){
   const R = ISO_REGS.find(r => r.key === p.reg);
   let list = (await col(ISO_REG_COL)).filter(r => r.reg === R.key && !r.draft);
   const sub = "ISO14001 "+R.clause;
+  if (!list.length && R.key === "calib") return await head(p, sub) + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「測定機器の点検・校正」から入力します)") +
+    '<div class="purpose" style="margin-top:12px;"><b>このページに載せるもの</b>　測定に使う機器そのものが正しく測れるかの確認です(点検の記録は「監視・測定の計画」と各ページにあります)。\n'+
+    '例：トラックスケール(計量法の定期検査)／騒音計(騒音チェックに使用)／pH計・温度計(水質検査に使用)</div>';
   if (!list.length) return await head(p, sub) + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「"+R.name+"」から入力します)");
   if (R.dated) list.sort((a,b) => String(b[R.dated]||"").localeCompare(String(a[R.dated]||"")));
   else if (R.key === "aspects") list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
@@ -1383,7 +1387,48 @@ async function renderSdgs(p){
       (pct != null ? '<div class="bar" style="margin-top:6px;"><i style="width:'+Math.min(100, pct)+'%"></i></div><div class="note">達成率 '+num(pct)+'%</div>' : '')+
       (detail ? '<div class="note">'+esc(detail)+'</div>' : '')+(x.notes ? '<div class="note">'+esc(x.notes)+'</div>' : '')+'</div>';
   };
-  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty());
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty()) +
+    '<a href="'+SDGS_PORTAL+'" target="_blank" rel="noopener" style="display:block;border:1px solid #cbd5e1;border-left:5px solid #15803d;border-radius:10px;padding:12px 16px;margin-top:16px;text-decoration:none;background:#f8fafc;">'+
+    '<div style="font-size:17px;font-weight:bold;color:#166534;">NAGANO SDGs BUSINESS PORTAL(長野県公式) ›</div><div class="note">長野県SDGs推進企業の登録企業検索(上田市)。当社の登録情報はこちらで公開されています</div></a>';
+}
+const SDGS_PORTAL = "https://nagano-sdgs.com/company/?f29%5B0%5D=%E4%B8%8A%E7%94%B0&f1&f4%5B0%5D=%E3%82%B5%E3%83%BC%E3%83%93%E3%82%B9%E6%A5%AD%EF%BC%88%E3%81%BB%E3%81%8B%E3%81%AB%E5%88%86%E9%A1%9E%E3%81%95%E3%82%8C%E3%81%AA%E3%81%84%E3%82%82%E3%81%AE%EF%BC%89&fx2&pg=dt&bpage=2";
+
+/* ---------- 監視・測定の計画(9.1.1) ----------
+   各記録ページを自動で一覧にする(最後に実施した日・今年度の回数は記録から自動)。
+   頻度・判断基準は、ISO管理の「監視・測定の計画」に手で入れた行があればそちらを優先して使う */
+const MON_ITEMS = [
+  { key:"water", name:"水質検査", what:"排水の水質", method:"外部の検査機関による水質検査", criteria:"排水基準(pHなど)", c:"waterTests", words:["水質"] },
+  { key:"noise", name:"騒音チェック", what:"敷地境界の騒音", method:"騒音計による測定", criteria:"70dB以下", c:"noiseChecks", words:["騒音"] },
+  { key:"comp", name:"圧縮機定期点検", what:"圧縮梱包機の状態", method:"点検表(EMS-C-21)による点検", criteria:"全項目 異常なし", c:"compressorInspections", words:["圧縮"] },
+  { key:"safety", name:"安全衛生パトロール", what:"職場の安全・防火", method:"チェック表(EMS-C-25・18項目)", freq:"月1回", criteria:"不備ゼロ", c:"safetyPatrols", words:["パトロール","安全衛生"] },
+  { key:"freon", name:"フロン排出抑制法簡易点検", what:"フロン類使用機器", method:"簡易点検", freq:"3か月に1回", criteria:"フロン排出抑制法の簡易点検", c:"freonRecords", words:["フロン"] },
+  { key:"clean", name:"クリーン度チェック", what:"構内の清潔さ", method:"区域ごとの点数評価", criteria:"", c:"cleanlinessChecks", words:["クリーン","清潔"] },
+  { key:"metal", name:"金属拾い上げ", what:"金属の拾い出し(資源化)", method:"品目ごとの数量×単価の集計", criteria:"", c:"metalRecords", words:["金属","拾い"] },
+  { key:"diesel", name:"軽油使用量", what:"軽油の使用量(CO₂)", method:"給油記録の集計", freq:"毎月", criteria:"年度目標", c:"dieselRecords", ym:true, words:["軽油"] },
+  { key:"lifeline", name:"ライフライン(電気・ガス・水道)", what:"電気・ガス・水道の使用量", method:"検針票の集計", freq:"毎月", criteria:"前年度との比較", c:"lifelineRecords", ym:true, words:["ライフライン","電気","ガス","水道"] }
+];
+async function renderMonitoring(p){
+  const [regs, pm, ...data] = await Promise.all([col(ISO_REG_COL), loadPurposes()].concat(MON_ITEMS.map(m => col(m.c))));
+  const manual = regs.filter(r => r.reg === "monitoring" && !r.draft);
+  const fy = curFy(), used = new Set();
+  const dOf = (m, x) => m.ym ? (x.yearMonth || "") : String(x.date || x.yearMonth || "").slice(0, 10);
+  const rows = MON_ITEMS.map((m, i) => {
+    const l = data[i].map(x => dOf(m, x)).filter(Boolean).sort();
+    const last = l[l.length-1] || "", n = l.filter(d => fyOf(d.slice(0,7)) === fy).length;
+    const mr = manual.find(r => m.words.some(w => String(r.item||"").includes(w) || String(r.record||"").includes(w)));
+    if (mr) used.add(mr.id);
+    const freq = (mr && mr.freq) || m.freq || "", crit = (mr && mr.criteria) || m.criteria || "";
+    const code = (pm[PAGES.find(x => x.key === m.key)?.purpose] || {}).emsCode || "";
+    return '<tr><td><button class="openBtn" style="font-weight:bold;" onclick="goKey(\''+m.key+'\')">'+esc(m.name)+' ›</button>'+(code ? '<div class="note">'+esc(code)+'</div>' : '')+'</td>'+
+      '<td>'+esc((mr && mr.item) || m.what)+'</td><td>'+esc((mr && mr.method) || m.method)+'</td><td class="c">'+(freq ? esc(freq) : '<span class="note">—</span>')+'</td><td>'+(crit ? esc(crit) : '<span class="note">—</span>')+'</td>'+
+      '<td class="c nw">'+(last ? esc(m.ym ? last.replace(/^(\d{4})-0?(\d+)$/, "$1/$2") : fd(last)) : '<span class="note">記録なし</span>')+'</td><td class="c">'+n+'<small>'+(m.ym ? 'か月' : '回')+'</small></td></tr>';
+  }).join("");
+  const rest = manual.filter(r => !used.has(r.id));
+  return await head(p, "ISO14001 9.1.1・名前を押すと記録のページへ") +
+    '<div class="tw"><table class="t"><tr><th>記録のページ</th><th>監視・測定する対象</th><th>方法</th><th>頻度</th><th>判断基準</th><th>最後に実施</th><th>'+fyLabel(fy)+'</th></tr>'+rows+'</table></div>'+
+    (rest.length ? '<h3 class="sec">その他の監視・測定</h3><div class="tw"><table class="t"><tr><th>監視・測定する項目</th><th>方法</th><th>頻度</th><th>判断基準</th><th>担当</th><th>記録の場所</th></tr>'+
+      rest.map(r => '<tr><td><b>'+esc(r.item)+'</b></td><td>'+esc(r.method)+'</td><td class="c">'+esc(r.freq)+'</td><td>'+esc(r.criteria)+'</td><td class="c">'+esc(r.owner)+'</td><td>'+esc(r.record)+'</td></tr>').join("")+'</table></div>' : '')+
+    '<div class="note" style="margin-top:8px;">頻度・判断基準は、ISO管理の「監視・測定の計画」に同じ項目を入れるとそちらが優先されます。測定に使う機器(騒音計・トラックスケールなど)の確認は「測定機器の点検・校正」のページです。</div>';
 }
 
 /* =====================================================================
