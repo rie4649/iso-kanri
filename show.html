@@ -754,14 +754,25 @@ async function renderRecords(p){
 }
 
 /* ---------- ISOの計画・リスクの台帳(registers.js の定義で表示。下書きは出さない) ---------- */
+/* 計画書の原本(ISO管理の「ISOの計画・リスク」で台帳ごとに登録)。各文書番号の最新の版だけボタンにする */
+async function planDocBtns(regKey){
+  const docs = (await col("isoPlanDocs")).filter(d => d.reg === regKey);
+  const latest = {}; docs.forEach(d => { const k = d.docNo || d.title; const c = latest[k];
+    if (!c || String(d.date||"") > String(c.date||"") || (String(d.date||"") === String(c.date||"") && (d.createdMs||0) > (c.createdMs||0))) latest[k] = d; });
+  const l = Object.values(latest).sort((a,b) => String(a.docNo).localeCompare(String(b.docNo)));
+  if (!l.length) return "";
+  return '<div style="margin:-4px 0 12px;">'+l.map(d => { const t = String((d.docNo||"")+" "+(d.title||"")).trim();
+    return '<button class="openBtn" style="margin:0 8px 6px 0;" onclick="openChunked(\'isoPlanChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\',\''+esc(t.replace(/'/g,""))+'\')">計画書を見る：'+esc(t)+'('+esc(fd(d.date))+')</button>'; }).join("")+'</div>';
+}
 async function renderReg(p){
   const R = ISO_REGS.find(r => r.key === p.reg);
+  const pdb = await planDocBtns(R.key);
   let list = (await col(ISO_REG_COL)).filter(r => r.reg === R.key && !r.draft);
   const sub = "ISO14001 "+R.clause;
-  if (!list.length && R.key === "calib") return await head(p, sub) + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「測定機器の点検・校正」から入力します)") +
+  if (!list.length && R.key === "calib") return await head(p, sub) + pdb + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「測定機器の点検・校正」から入力します)") +
     '<div class="purpose" style="margin-top:12px;"><b>このページに載せるもの</b>　測定に使う機器そのものが正しく測れるかの確認です(点検の記録は「監視・測定の計画」と各ページにあります)。\n'+
     '例：トラックスケール(計量法の定期検査)／騒音計(騒音チェックに使用)／pH計・温度計(水質検査に使用)</div>';
-  if (!list.length) return await head(p, sub) + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「"+R.name+"」から入力します)");
+  if (!list.length) return await head(p, sub) + pdb + (pdb ? '<div class="note">台帳の項目はまだ入力されていません。内容は上の計画書をご覧ください。</div>' : empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「"+R.name+"」から入力します)"));
   if (R.dated) list.sort((a,b) => String(b[R.dated]||"").localeCompare(String(a[R.dated]||"")));
   else if (R.key === "aspects") list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
   else list.sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
@@ -797,7 +808,7 @@ async function renderReg(p){
   const extraH = R.key === "aspects" ? '<th style="width:150px">評価</th>' : "";
   const extra = r => { if (R.key !== "aspects") return ""; const s = aspectScore(r);
     return '<td class="c">'+(s.sig === null ? '<span class="note">未評価</span>' : (s.sig ? '<span class="badge b-ng">著しい</span><br>' : '')+'<span class="note">規模'+r.scale+'・頻度'+r.freq+'・法'+r.law+' = <b>'+s.total+'</b></span>')+'</td>'; };
-  return await head(p, sub) + top + '<div class="tw"><table class="t"><tr>'+cols.map(f => '<th>'+esc(f.label)+'</th>').join("")+extraH+'</tr>'+
+  return await head(p, sub) + pdb + top + '<div class="tw"><table class="t"><tr>'+cols.map(f => '<th>'+esc(f.label)+'</th>').join("")+extraH+'</tr>'+
     list.map(r => '<tr'+(R.key === "aspects" && aspectScore(r).sig ? ' class="sigRow"' : '')+'>'+cols.map(f => cell(r, f)).join("")+extra(r)+'</tr>').join("")+'</table></div>';
 }
 
@@ -1474,7 +1485,7 @@ async function renderMonitoring(p){
       '<td class="c nw">'+(last ? esc(m.ym ? last.replace(/^(\d{4})-0?(\d+)$/, "$1/$2") : fd(last)) : '<span class="note">記録なし</span>')+'</td><td class="c">'+n+'<small>'+(m.ym ? 'か月' : '回')+'</small></td></tr>';
   }).join("");
   const rest = manual.filter(r => !used.has(r.id));
-  return await head(p, "ISO14001 9.1.1・名前を押すと記録のページへ") +
+  return await head(p, "ISO14001 9.1.1・名前を押すと記録のページへ") + await planDocBtns("monitoring") +
     '<div class="tw"><table class="t"><tr><th>記録のページ</th><th>監視・測定する対象</th><th>方法</th><th>頻度</th><th>判断基準</th><th>最後に実施</th><th>'+fyLabel(fy)+'</th></tr>'+rows+'</table></div>'+
     (rest.length ? '<h3 class="sec">その他の監視・測定</h3><div class="tw"><table class="t"><tr><th>監視・測定する項目</th><th>方法</th><th>頻度</th><th>判断基準</th><th>担当</th><th>記録の場所</th></tr>'+
       rest.map(r => '<tr><td><b>'+esc(r.item)+'</b></td><td>'+esc(r.method)+'</td><td class="c">'+esc(r.freq)+'</td><td>'+esc(r.criteria)+'</td><td class="c">'+esc(r.owner)+'</td><td>'+esc(r.record)+'</td></tr>').join("")+'</table></div>' : '')+
