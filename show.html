@@ -1367,7 +1367,7 @@ async function renderShokaki(p){
 
 /* ---------- SDGs ---------- */
 async function renderSdgs(p){
-  const [g, pr] = await Promise.all([col("sdgsGoals"), col("sdgsProgress")]);
+  const [g, pr, docs] = await Promise.all([col("sdgsGoals"), col("sdgsProgress"), col("sdgsGoalDocs")]);
   const P = regPer(p.key, pickPeriods(g.map(x => x.fy), p.key));
   const l = g.filter(x => x.fy === P.cur).sort((a,b) => String(a.name).localeCompare(String(b.name), "ja"));
   const card = x => {
@@ -1385,7 +1385,11 @@ async function renderSdgs(p){
       (x.indicator ? '<div class="note">指標：'+esc(x.indicator)+'</div>' : '')+
       '<div class="v">'+(val == null ? '-' : num(val))+'<small>'+esc(x.unit||"")+(x.targetValue ? ' / 目標 '+num(x.targetValue)+' '+esc(x.unit||"") : '')+'</small></div>'+
       (pct != null ? '<div class="bar" style="margin-top:6px;"><i style="width:'+Math.min(100, pct)+'%"></i></div><div class="note">達成率 '+num(pct)+'%</div>' : '')+
-      (detail ? '<div class="note">'+esc(detail)+'</div>' : '')+(x.notes ? '<div class="note">'+esc(x.notes)+'</div>' : '')+'</div>';
+      (detail ? '<div class="note">'+esc(detail)+'</div>' : '')+(x.notes ? '<div class="note">'+esc(x.notes)+'</div>' : '')+
+      // 資料(ISO管理のSDGsで目標ごとにアップ)と、水質の目標は分析証のある水質検査へ
+      docs.filter(d => d.goalId === x.id).sort((a,b) => (a.createdMs||0) - (b.createdMs||0)).map(d =>
+        '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">資料を見る：'+esc(d.title || d.fileName || "資料")+'</button>').join("")+
+      (/水質/.test(x.name||"") ? '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="goKey(\'water\')">分析証を見る(水質検査の記録へ) ›</button>' : '')+'</div>';
   };
   return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty()) +
     '<a href="'+SDGS_PORTAL+'" target="_blank" rel="noopener" style="display:block;border:1px solid #cbd5e1;border-left:5px solid #15803d;border-radius:10px;padding:12px 16px;margin-top:16px;text-decoration:none;background:#f8fafc;">'+
