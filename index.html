@@ -689,7 +689,7 @@
     <div id="orgPrintArea"><div class="loading">読み込み中...</div></div>
   </div>
   <div id="companyPolicyPanel" style="display:none;">
-    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">ここで入力・修正した内容が「見せるモード」の環境方針などに出ます（見せるモードは見るだけで、入力はここで行います）</div>
+    <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">ここで入力・修正した内容が「環境への取り組み」の環境方針などに出ます（環境への取り組みは見るだけで、入力はここで行います）</div>
     <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
       <h3 style="font-size:16px;margin:0 0 6px;">🌿 環境方針</h3>
       <div class="field"><label>方針の文章（改行もそのまま出ます。行の頭に「・」を付けた行は項目名になります）</label>
@@ -709,7 +709,7 @@
       </div>
       <div class="field"><label>次回の審査（予定）</label><input type="text" id="polNextAudit" placeholder="例：2027年9月 定期審査"></div>
       <div class="field"><label>適用範囲（ISO14001 4.3）</label><textarea id="polScope" rows="3" style="width:100%;font-size:14px;padding:10px;border:1px solid #d9d9e3;border-radius:10px;box-sizing:border-box;" placeholder="例：本社・工場における産業廃棄物の収集運搬および中間処理、金属スクラップのリサイクル"></textarea></div>
-      <div class="field-hint" style="color:#8b8b9e;font-size:12px;">有効期限を入れると、見せるモードの「ひと目で分かるまとめ」「審査前チェック」に残りの日数が出ます。</div>
+      <div class="field-hint" style="color:#8b8b9e;font-size:12px;">有効期限を入れると、環境への取り組みの「ひと目で分かるまとめ」に残りの日数が出ます。</div>
       <button class="btn-save" id="polSaveBtn" style="width:100%;margin-top:12px;padding:14px;border:none;border-radius:12px;background:#15803d;color:#fff;font-size:16px;font-weight:bold;">💾 保存する</button>
       <div id="polStatus" class="field-hint" style="color:#8b8b9e;font-size:12px;margin-top:6px;"></div>
     </div>
@@ -4448,44 +4448,53 @@ if (isIOS && !isStandalone) { installBtn.style.display = "inline-block"; }
 
 // ---- セクション定義（ホームメニュー・ヘッダー・目的欄で共用） ----
 const SECTION_DEFS = [
-  { key: "company", grp: "plan", cl: "4.1 / 5.2 / 5.3", name: "会社情報（沿革・組織図・環境方針）" },
+  // 会社と体制(4・5章)
+  { key: "company", grp: "org", cl: "4.1 / 5.2 / 5.3", name: "会社情報（沿革・組織図・環境方針）" },
+  // 計画(6章)
   { key: "plan", grp: "plan", cl: "4.1〜6.2", name: "ISOの計画・リスク（課題・利害関係者・環境側面・リスク・目標）" },
   { key: "horei", grp: "plan", cl: "6.1.3", name: "法規制一覧" },
   { key: "kyoka", grp: "plan", cl: "6.1.3", name: "許可一覧" },
+  { key: "permit", grp: "plan", cl: "6.1.3", name: "許可の内容（事業の範囲・積替え保管場所・処理施設）" },
   { key: "sdgs", grp: "plan", cl: "6.2", name: "SDGs" },
-  { key: "manual", grp: "op", cl: "7.5 / 8.1", name: "環境手順書" },
+  { key: "metal", grp: "plan", cl: "6.2", name: "進捗記録金属拾い上げ" },
+  { key: "clean", grp: "plan", cl: "6.2", name: "進捗記録クリーン度チェック" },
+  // 支援(7章)
+  { key: "skills", grp: "sup", cl: "7.2", name: "力量（資格の一覧）" },
+  { key: "safety", grp: "sup", cl: "7.2 / 8.2", name: "安全災害対策（安全衛生パトロール・教育訓練）" },
+  { key: "plan:comms", grp: "sup", cl: "7.4", name: "コミュニケーション・苦情" },
+  { key: "manual", grp: "sup", cl: "7.5 / 8.1", name: "環境手順書" },
+  { key: "photos", grp: "sup", cl: "7.5", name: "写真の記録（車両・設備・保管・掲示・現場）" },
+  // 運用(8章)
   { key: "plan:vendors", grp: "op", cl: "8.1", name: "外部委託先の管理（許可・契約の期限・評価）" },
   { key: "survey", grp: "op", cl: "8.1", name: "委託先調査票の回答" },
-  { key: "plan:comms", grp: "op", cl: "7.4", name: "コミュニケーション・苦情" },
-  { key: "safety", grp: "op", cl: "8.2", name: "安全災害対策" },
-  { key: "shokaki", grp: "op", cl: "8.2", name: "消火器・防火管理" },
   { key: "plan:emergency", grp: "op", cl: "8.2", name: "緊急事態の訓練・テスト" },
-  { key: "photos", grp: "op", cl: "7.5", name: "写真の記録（車両・保管・掲示）" },
-  { key: "donation", grp: "op", cl: "4.2", name: "地域貢献" },
+  { key: "shokaki", grp: "op", cl: "8.2", name: "消火器・防火管理" },
+  // 監視・測定(9.1)
   { key: "plan:monitoring", grp: "mon", cl: "9.1.1", name: "監視・測定の計画" },
-  { key: "plan:calib", grp: "mon", cl: "9.1", name: "測定機器の点検・校正" },
-  { key: "calendar", grp: "mon", cl: "9.1", name: "カレンダー" },
-  { key: "summary", grp: "mon", cl: "9.1", name: "年間サマリー" },
   { key: "waterTest", grp: "mon", cl: "9.1.1", name: "水質検査" },
   { key: "noiseCheck", grp: "mon", cl: "9.1.1", name: "騒音チェック" },
   { key: "diesel", grp: "mon", cl: "9.1.1", name: "軽油使用量" },
   { key: "lifeline", grp: "mon", cl: "9.1.1", name: "ライフライン" },
   { key: "freon", grp: "mon", cl: "9.1.2", name: "フロン排出抑制法簡易点検記録" },
-  { key: "metal", grp: "mon", cl: "6.2", name: "進捗記録金属拾い上げ" },
-  { key: "clean", grp: "mon", cl: "6.2", name: "進捗記録クリーン度チェック" },
+  { key: "plan:calib", grp: "mon", cl: "9.1", name: "測定機器の点検・校正" },
+  { key: "calendar", grp: "mon", cl: "9.1", name: "カレンダー" },
+  { key: "summary", grp: "mon", cl: "9.1", name: "年間サマリー" },
+  // 評価・改善(9.2〜10章)
   { key: "kiroku", grp: "imp", cl: "9.2 / 10.2", name: "内部監査・是正処置の記録" },
   { key: "plan:review", grp: "imp", cl: "9.3", name: "マネジメントレビュー" },
+  // 社会との関わり
+  { key: "donation", grp: "soc", cl: "", name: "地域貢献" },
   { key: "master", grp: "set", cl: "", name: "マスター管理" }
 ];
 const SECTION_GROUPS = [
-  ["plan", "計画（4〜6章）"], ["op", "支援・運用（7〜8章）"], ["mon", "監視・測定（9.1）"], ["imp", "評価・改善（9.2〜10章）"], ["set", "設定"]
+  ["org", "会社と体制（4・5章）"], ["plan", "計画（6章）"], ["sup", "支援（7章）"], ["op", "運用（8章）"], ["mon", "監視・測定（9.1）"], ["imp", "評価・改善（9.2〜10章）"], ["soc", "社会との関わり"], ["set", "設定"]
 ];
 
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
   document.getElementById("homeMenu").innerHTML =
-    // 監査・視察・プロジェクター用の「見せるモード」(見るだけ)
-    `<div class="hm-show" onclick="location.href='show.html'"><div><b>見せるモード</b><small>ISO監査・視察・プロジェクター用（閲覧のみ。内容はこの画面で入力）</small></div><span class="go">開く ›</span></div>` +
+    // 監査・視察・プロジェクター用の「環境への取り組み」(旧 見せるモード。見るだけ)
+    `<div class="hm-show" onclick="location.href='show.html'"><div><b>環境への取り組み</b><small>ISO監査・視察・プロジェクター用（閲覧のみ。内容はこの画面で入力）</small></div><span class="go">開く ›</span></div>` +
     SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("");
 }
 
@@ -4499,6 +4508,8 @@ window.openSection = function(sec) {
   if (sec === "horei") { location.href = "horei.html"; return; }
   if (sec === "kiroku") { location.href = "kiroku.html"; return; }
   if (sec === "summary") { location.href = "summary.html"; return; }
+  if (sec === "permit") { location.href = "permit.html"; return; }
+  if (sec === "skills") { location.href = "skills.html"; return; }
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   const target = document.getElementById("section-" + sec);
   if (!target) return;
@@ -6517,7 +6528,7 @@ document.getElementById("polSaveBtn").addEventListener("click", async () => {
   data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
   try {
     await db.collection(COMPANY_COLLECTION).doc("profile").set(data, { merge: true });   // ほかの項目は消さずに残す
-    document.getElementById("polStatus").textContent = "✅ 保存しました（見せるモードにも反映されます）";
+    document.getElementById("polStatus").textContent = "✅ 保存しました（環境への取り組みにも反映されます）";
   } catch (e) { alert("保存できませんでした: " + e.message); }
 });
 // ---- サブタブ切替 ----
