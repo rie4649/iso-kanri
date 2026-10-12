@@ -481,6 +481,8 @@
 
 <!-- ================= 地域貢献セクション ================= -->
 <div class="section" id="section-donation">
+  <details class="howto" style="background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;line-height:1.8;color:#334155;"><summary style="font-weight:bold;color:#1e3a5f;cursor:pointer;">📘 使い方（ここを押すと開きます）</summary><div style="margin-top:6px;"><b>■ 活動の記録</b><br>カレンダーで予定を作り、「地域貢献」に数えるマークを付けると、ここに自動で並びます（例：2026/9/16 令和8年熊本地震義援金）。金額や送金先はメモに書きます。</div>
+<div style="margin-top:6px;"><b>■ 書類の添付</b><br>活動のカードの「📎 書類を添付」から、感謝状・報告と御礼・領収書などのPDFや写真を入れます。<br><b>※ 書類は社内の控えです。環境への取り組みには出ません。</b></div></details>
   <div class="master-sub-tabs">
     <div class="master-sub-tab active" data-donationview="activity">📅 活動実績</div>
     <div class="master-sub-tab" data-donationview="activitySummary">📊 活動ごと</div>
@@ -595,6 +597,8 @@
       <button class="jpeg-btn" id="jpegBtnTraining">🖨️ JPEG</button>
     </div>
     <div class="year-filter-tabs" id="trainingYearTabs"></div>
+    <details class="howto" style="background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;line-height:1.8;color:#334155;"><summary style="font-weight:bold;color:#1e3a5f;cursor:pointer;">📘 使い方（ここを押すと開きます）</summary><div style="margin-top:6px;"><b>■ 記録のしかた</b><br>「＋」で実施日・種別・テーマ・対象者・実施者を入れ、実施報告書（例：FS-02 フォークリフト安全講習 実施報告書）を「添付」に入れます。</div>
+<div style="margin-top:6px;"><b>■ 手順書とつなぐ</b><br>「使った手順書・マニュアル」で環境手順書から選ぶと、記録と手順書がつながります（例：FS-01 フォークリフト運転作業マニュアル）。手順書がまだ無いときは、先に「環境手順書」の＋で追加します。<br>種別が「定期テスト」のときは、手順書の改訂が必要かも記録します。</div></details>
     <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">教育訓練と定期テスト（安全教育）の記録です。定期テストは対象の環境手順書と紐付きます。改訂「あり」で保存したら、環境手順書タブで版数・改定日の更新を忘れずに</div>
     <div class="list" id="trainingListContainer"><div class="loading">読み込み中...</div></div>
     <button class="fab" id="addTrainingBtn" style="background:#0e7490;">＋</button>
@@ -762,8 +766,9 @@
       <div class="field"><label>教材</label><input type="text" id="trainingMaterials" placeholder="例：ヒヤリハット事例資料"></div>
     </div>
     <div class="field"><label>実施内容・結果</label><textarea id="trainingNotes" rows="5" style="width:100%;font-size:14px;padding:10px;border:1px solid #d9d9e3;border-radius:10px;box-sizing:border-box;" placeholder="実施した内容、結果、理解確認の方法など"></textarea></div>
+    <div class="field"><label id="trainingManualLabel">使った手順書・マニュアル（環境手順書から選択・任意）</label><select id="trainingManual"><option value="">選択してください</option></select>
+      <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">例：フォークリフト講習（FS-02）→ FS-01 フォークリフト運転作業マニュアル。手順書は「環境手順書」の＋で追加できます</div></div>
     <div id="trainingTestFields" style="display:none;">
-      <div class="field"><label>対象手順書（環境手順書から選択）</label><select id="trainingManual"><option value="">選択してください</option></select></div>
       <div class="field-row">
         <div class="field"><label>手順書改訂の必要性</label><select id="trainingRevision"><option value="none">改訂の必要なし</option><option value="needed">改訂が必要（あり）</option></select></div>
         <div class="field" id="trainingRevisionNoteField" style="display:none;"><label>改訂内容</label><input type="text" id="trainingRevisionNote" placeholder="例：（7）電気設備の安全確認を追加"></div>
@@ -4199,6 +4204,12 @@ window.setActivityYear = function(y) {
   renderActivityList();
 };
 
+// 地域貢献の書類(感謝状・報告と御礼など)。SDGsの資料と同じ保管場所(sdgsGoalDocs)に goalId "event:予定ID" で保存。社内のみ(環境への取り組みには出さない)
+function activityDocsHtml(ev) {
+  const docs = (typeof allSdgsDocs !== "undefined" ? allSdgsDocs : []).filter(d => d.goalId === "event:" + ev.id);
+  if (!docs.length) return "";
+  return `<div class="water-test-card-items">` + docs.map(d => `<div class="water-test-item-line"><span>📎 ${escapeHtml(d.title || d.fileName || "書類")}</span><span><button class="btn-edit" style="padding:4px 10px;" onclick="openSdgsDoc('${d.id}')">開く</button> <span style="cursor:pointer;" onclick="deleteSdgsDoc('${d.id}')">🗑</span></span></div>`).join("") + `</div>`;
+}
 function renderActivityList() {
   const container = document.getElementById("activityListContainer");
   if (!container) return;
@@ -4233,7 +4244,9 @@ function renderActivityList() {
           ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
           <div class="event-title">${escapeHtml(ev.title)}</div>
           ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
+          ${activityDocsHtml(ev)}
           <div class="event-actions">
+            <button class="btn-edit" style="background:#eef2f7;color:#1e3a5f;" onclick="pickSdgsDoc('event:${ev.id}')">📎 書類を添付</button>
             <button class="btn-edit" onclick="openEditEvent('${ev.id}')">編集</button>
             <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
           </div>
@@ -5736,6 +5749,7 @@ db.collection(SDGS_DOC_COL).onSnapshot(snap => {
   allSdgsDocs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
   if (document.getElementById("sdgsListContainer")) renderSdgsList();
   if (typeof renderSdgsLevels === "function") renderSdgsLevels();
+  if (document.getElementById("activityListContainer") && typeof renderActivityList === "function") renderActivityList();
 }, err => console.error(err));
 function sdgsDocsHtml(g) {
   const docs = allSdgsDocs.filter(d => d.goalId === g.id);
@@ -5763,7 +5777,7 @@ function sdgsBlobToBase64(blob) {
 async function uploadSdgsDoc(goalId, file) {
   if (file.size > SDGS_DOC_MAX_MB * 1024 * 1024) { alert(SDGS_DOC_MAX_MB + "MBまでのファイルにしてください"); return; }
   const title = String(goalId).startsWith("level-") ? (String(goalId).startsWith("level-pub") ? "SDGs取組レベル 結果レポート（公開用）" : "SDGs取組レベル 結果レポート（全ページ・社内用）")
-    : prompt("資料の名前（環境への取り組みのボタンに出ます）", file.name.replace(/\.[^.]+$/, ""));
+    : prompt(String(goalId).startsWith("event:") ? "書類の名前（例：熊本地震義援金 報告と御礼）※社内のみ・環境への取り組みには出ません" : "資料の名前（環境への取り組みのボタンに出ます）", file.name.replace(/\.[^.]+$/, ""));
   if (title === null) return;
   try {
     const b64 = await sdgsBlobToBase64(file);
@@ -6827,6 +6841,9 @@ function drawTrainingList(){
   box.innerHTML = items.map(t => {
     const att = (t.attachments || []).map(a => `<span class="attach-chip">${trainingAttachLinkHtml(a)}</span>`).join("");
     let testInfo = "";
+    if (t.kind !== "test" && t.manualLabel) {
+      testInfo = `<div style="margin-top:5px;font-size:12px;color:#55556b;">手順書：${escapeHtml(t.manualLabel)}</div>`;
+    }
     if (t.kind === "test") {
       const rev = t.revisionNeeded === "needed"
         ? '<span style="background:#fee2e2;color:#b91c1c;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">改訂あり' + (t.revisionNote ? "：" + escapeHtml(t.revisionNote) : "") + '</span>'
@@ -6916,6 +6933,7 @@ function fillTrainingManualOptions(selectedId, selectedLabel){
 function toggleTrainingTestFields(){
   const isTest = document.getElementById("trainingKind").value === "test";
   document.getElementById("trainingTestFields").style.display = isTest ? "block" : "none";
+  document.getElementById("trainingManualLabel").textContent = isTest ? "対象手順書（環境手順書から選択）" : "使った手順書・マニュアル（環境手順書から選択・任意）";
 }
 document.getElementById("trainingKind").addEventListener("change", toggleTrainingTestFields);
 document.getElementById("trainingRevision").addEventListener("change", () => {
@@ -6976,8 +6994,8 @@ document.getElementById("trainingSaveBtn").addEventListener("click", async () =>
     instructor: document.getElementById("trainingInstructor").value.trim(),
     materials: document.getElementById("trainingMaterials").value.trim(),
     notes: document.getElementById("trainingNotes").value.trim(),
-    manualId: kind === "test" ? manualSel.value : "",
-    manualLabel: kind === "test" && manualSel.value ? manualSel.options[manualSel.selectedIndex].text : "",
+    manualId: manualSel.value || "",
+    manualLabel: manualSel.value ? manualSel.options[manualSel.selectedIndex].text : "",
     revisionNeeded: kind === "test" ? document.getElementById("trainingRevision").value : "",
     revisionNote: kind === "test" && document.getElementById("trainingRevision").value === "needed" ? document.getElementById("trainingRevisionNote").value.trim() : "",
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -7038,7 +7056,7 @@ document.getElementById("jpegBtnTraining").addEventListener("click", async () =>
       '<td style="border:1px solid #cbd5e1;padding:6px;white-space:nowrap;">' + (t.kind === "test" ? "定期テスト" : "教育訓練") + '</td>' +
       '<td style="border:1px solid #cbd5e1;padding:6px;">' + escapeHtml(t.theme || "") + '</td>' +
       '<td style="border:1px solid #cbd5e1;padding:6px;">' + escapeHtml(t.participants || "") + '</td>' +
-      '<td style="border:1px solid #cbd5e1;padding:6px;">' + (t.kind === "test" ? escapeHtml(t.manualLabel || "") + (t.revisionNeeded === "needed" ? "／改訂あり" + (t.revisionNote ? "：" + escapeHtml(t.revisionNote) : "") : "／改訂の必要なし") : "—") + '</td>' +
+      '<td style="border:1px solid #cbd5e1;padding:6px;">' + (t.kind === "test" ? escapeHtml(t.manualLabel || "") + (t.revisionNeeded === "needed" ? "／改訂あり" + (t.revisionNote ? "：" + escapeHtml(t.revisionNote) : "") : "／改訂の必要なし") : (t.manualLabel ? escapeHtml(t.manualLabel) : "—")) + '</td>' +
       '</tr>').join("") + '</table>';
   document.body.appendChild(wrapper);
   try {
