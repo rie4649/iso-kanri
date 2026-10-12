@@ -44,6 +44,21 @@
     </div>
   </div>
 </div>
+<div class="bg" id="docBg" onclick="if(event.target===this)closeDoc()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="docTtl">
+    <h2 id="docTtl">計画書の原本を登録</h2>
+    <div class="note" style="margin-top:0;">同じ文書番号で登録すると「新しい版」になり、前の版は改訂履歴に残ります。</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div><label for="dNo">文書番号</label><input id="dNo" placeholder="例: EMS-A-10"></div>
+      <div><label for="dDate">日付(作成日・改定日)</label><input id="dDate" type="date"></div>
+    </div>
+    <label for="dTitle">文書名</label><input id="dTitle" placeholder="例: リスク対応計画書">
+    <label for="dAuthor">作成者</label><input id="dAuthor" placeholder="例: 環境管理責任者">
+    <label for="dMemo">改訂内容(任意)</label><input id="dMemo" placeholder="例: 気候変動のリスクを追加">
+    <label for="dFile">PDF・写真(15MBまで)</label><input id="dFile" type="file" accept="application/pdf,image/*">
+    <div class="mBtns"><button class="btn" onclick="closeDoc()">キャンセル</button><button class="btn pri" id="dSave" onclick="saveDoc()">登録</button></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -205,7 +220,78 @@ function render(){
   if (!list.length) h += '<div class="empty">まだ登録がありません。<br>「＋ 追加」から入力してください。'+(hasEx ? '<br>一般的な例を下書きで入れて、会社に合わせて直すこともできます。' : '')+'</div>';
   else h += '<div class="count">'+list.length+'件(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>';
   h += list.map(r => cardHtml(reg, r)).join("");
-  document.getElementById("body").innerHTML = h;
+  const i = h.indexOf('<div class="bar">');   // 説明の下・＋追加の上に計画書の原本
+  document.getElementById("body").innerHTML = i >= 0 ? h.slice(0, i) + docsHtml(reg) + h.slice(i) : docsHtml(reg) + h;
+}
+
+/* ===== 計画書の原本(PDF)。台帳ごとに文書番号で版を管理(いちばん新しい日付が現在の版、ほかは改訂履歴)
+   Firestore: isoPlanDocs(目次 reg・docNo・title・date・author・memo)/ isoPlanChunks(中身・分割base64) ===== */
+const PDOC = "isoPlanDocs", PCHUNK = "isoPlanChunks", PCHUNK_SIZE = 700 * 1024;
+let pdocs = [];
+db.collection(PDOC).onSnapshot(s => { pdocs = s.docs.map(d => ({ id:d.id, ...d.data() })); if (rows) render(); }, e => console.error(e));
+const fdj = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : (s||""); };
+function docGroups(regKey){
+  const g = {}; pdocs.filter(d => d.reg === regKey).forEach(d => (g[d.docNo || d.title] = g[d.docNo || d.title] || []).push(d));
+  Object.values(g).forEach(l => l.sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)));
+  return Object.keys(g).sort().map(k => g[k]);
+}
+function docsHtml(reg){
+  const gs = docGroups(reg.key);
+  const row = (d, cur) => '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;'+(cur ? '' : 'font-size:13px;color:var(--muted);')+'">'+
+    '<span style="flex:1;min-width:200px;">'+(cur ? '<b>'+esc(d.docNo)+'　'+esc(d.title)+'</b>' : esc(d.docNo)+'　'+esc(d.title))+'　<span class="tag gray">'+esc(fdj(d.date))+'</span>'+(d.author ? '<span class="tag gray">作成 '+esc(d.author)+'</span>' : '')+(d.memo ? '<span style="font-size:12px;color:var(--muted);">'+esc(d.memo)+'</span>' : '')+'</span>'+
+    '<button class="btn sm" onclick="viewDoc(\''+d.id+'\')">開く</button>'+(cur ? '<button class="btn sm" onclick="openDoc(\''+d.id+'\')">新しい版</button>' : '')+'<button class="btn sm del" onclick="delDoc(\''+d.id+'\')">削除</button></div>';
+  return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;"><b style="flex:1;color:var(--navy);">📄 計画書の原本(PDF)</b><button class="btn sm pri" onclick="openDoc()">＋ 計画書を登録</button></div>'+
+    (gs.length ? gs.map(l => row(l[0], true)+(l.length > 1 ? '<details style="margin:0 0 6px 12px;"><summary style="font-size:12px;color:var(--muted);cursor:pointer;">改訂履歴('+(l.length-1)+'件)</summary>'+l.slice(1).map(d => row(d, false)).join("")+'</details>' : '')).join("")
+      : '<div class="note">この台帳の計画書の原本(紙の計画書をPDFにしたもの)を、文書番号と日付つきで保管できます。環境への取り組みのこのページに「計画書を見る」ボタンが出ます。</div>')+'</div>';
+}
+let docBase = null;
+function openDoc(baseId){
+  docBase = pdocs.find(d => d.id === baseId) || null;
+  document.getElementById("docTtl").textContent = docBase ? "新しい版を登録("+docBase.docNo+")" : "計画書の原本を登録";
+  document.getElementById("dNo").value = docBase ? docBase.docNo || "" : "";
+  document.getElementById("dTitle").value = docBase ? docBase.title || "" : "";
+  document.getElementById("dAuthor").value = docBase ? docBase.author || "" : "";
+  document.getElementById("dDate").value = today(); document.getElementById("dMemo").value = ""; document.getElementById("dFile").value = "";
+  document.getElementById("docBg").classList.add("show");
+}
+function closeDoc(){ document.getElementById("docBg").classList.remove("show"); }
+function b64of(file){ return new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.onerror = () => ng(new Error("ファイルを読み込めませんでした")); r.readAsDataURL(file); }); }
+async function saveDoc(){
+  const no = document.getElementById("dNo").value.trim(), title = document.getElementById("dTitle").value.trim(), date = document.getElementById("dDate").value;
+  const file = document.getElementById("dFile").files[0];
+  if (!no || !title || !date){ toast("文書番号・文書名・日付を入れてください"); return; }
+  if (!file){ toast("PDFを選んでください"); return; }
+  if (file.size > 15 * 1024 * 1024){ toast("15MBまでのファイルにしてください"); return; }
+  const btn = document.getElementById("dSave"); btn.disabled = true; btn.textContent = "登録中…";
+  try {
+    const b64 = await b64of(file), parts = []; for (let i = 0; i < b64.length; i += PCHUNK_SIZE) parts.push(b64.slice(i, i + PCHUNK_SIZE));
+    const ref = db.collection(PDOC).doc();
+    for (let i = 0; i < parts.length; i++) await db.collection(PCHUNK).doc(ref.id+"_"+i).set({ fileId:ref.id, idx:i, data:parts[i] });
+    await ref.set({ reg:cur, docNo:no, title, date, author:document.getElementById("dAuthor").value.trim(), memo:document.getElementById("dMemo").value.trim(),
+      fileName:file.name, fileType:file.type || "application/pdf", size:file.size, chunkCount:parts.length, createdMs:Date.now(), updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+    closeDoc(); toast("登録しました");
+  } catch(e){ toast("登録できませんでした: "+e.message); }
+  btn.disabled = false; btn.textContent = "登録";
+}
+async function delDoc(id){
+  const d = pdocs.find(x => x.id === id); if (!d || !confirm(d.docNo+" "+d.title+"("+fdj(d.date)+")を削除しますか？")) return;
+  try { const s = await db.collection(PCHUNK).where("fileId","==",id).get(); const b = db.batch(); s.docs.forEach(x => b.delete(x.ref)); b.delete(db.collection(PDOC).doc(id)); await b.commit(); toast("削除しました"); }
+  catch(e){ toast("削除に失敗: "+e.message); }
+}
+/* 開くときは別タブに飛ばず、この画面の上に重ねて表示(← 戻るで閉じる) */
+async function viewDoc(id){
+  const d = pdocs.find(x => x.id === id); if (!d) return;
+  toast("開いています…");
+  try {
+    const s = await db.collection(PCHUNK).where("fileId","==",id).get();
+    const parts = s.docs.map(x => x.data()).sort((a,b) => a.idx - b.idx); if (!parts.length) throw new Error("中身が見つかりません");
+    const bin = atob(parts.map(x => x.data).join("")), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type:d.fileType || "application/pdf" }));
+    const v = document.createElement("div"); v.id = "pv"; v.style.cssText = "position:fixed;inset:0;z-index:80;background:#1f2937;display:flex;flex-direction:column;";
+    v.innerHTML = '<div style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:var(--navy);color:#fff;"><button class="btn" onclick="document.getElementById(\'pv\').remove()">← 戻る</button><b style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.docNo+" "+d.title+"("+fdj(d.date)+")")+'</b><a class="btn" href="'+url+'" target="_blank" rel="noopener" style="text-decoration:none;">別のタブで開く</a></div>'+
+      (String(d.fileType).startsWith("image/") ? '<div style="flex:1;overflow:auto;text-align:center;"><img src="'+url+'" style="max-width:100%;"></div>' : '<iframe src="'+url+'" style="flex:1;border:none;background:#fff;width:100%;"></iframe>');
+    document.body.appendChild(v);
+  } catch(e){ toast("開けませんでした: "+e.message); }
 }
 
 function cardHtml(reg, r){
