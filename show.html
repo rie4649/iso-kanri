@@ -632,7 +632,7 @@ async function pagePhotos(key){
   if (key === "records" || key === "cover") return "";
   const [ph, cats] = await Promise.all([col("isoPhotos"), recCatsGet()]);
   const names = cats.filter(c => c.page === key).map(c => c.name); if (!names.length) return "";
-  const l = sortPh(ph.filter(x => x.kind === "record" && names.includes(x.targetName))); if (!l.length) return "";
+  const l = sortPh(ph.filter(x => x.kind === "record" && names.includes(x.targetName) && !(key === "water" && waterMatched.has(x.id)))); if (!l.length) return "";
   eqPhotos = ph;
   return '<h3 class="sec">写真</h3>' + phGrid(l) + '<div class="note">写真を押すと大きく表示されます。</div>';
 }
@@ -1150,8 +1150,21 @@ async function renderCalendar(p){
 }
 
 /* ---------- 水質検査 ---------- */
+let waterMatched = new Set(), byTestIds = {};   // 検査の行に並べた写真(ページ下の「写真」には出さない)
 async function renderWater(p){
-  const w = await col("waterTests");
+  const [w, ph, cats] = await Promise.all([col("waterTests"), col("isoPhotos"), recCatsGet()]);
+  eqPhotos = ph;
+  // 「水質検査の様子」など表示先が水質検査の写真を、撮影日が検査日の前後7日以内でいちばん近い検査に割り当てる
+  const wNames = cats.filter(c => c.page === "water").map(c => c.name);
+  const dayN = d => Math.round(new Date(d+"T00:00:00").getTime() / 86400000);
+  const byTest = {}; waterMatched = new Set();
+  sortPh(ph.filter(x => x.kind === "record" && wNames.includes(x.targetName) && x.shotDate)).forEach(x => {
+    let best = null, bd = 8;
+    w.forEach(t => { if (!/^\d{4}-\d{2}-\d{2}/.test(String(t.date||""))) return; const d = Math.abs(dayN(String(t.date).slice(0,10)) - dayN(x.shotDate)); if (d < bd){ bd = d; best = t; } });
+    if (best){ (byTest[best.id] = byTest[best.id] || []).push(x); waterMatched.add(x.id); }
+  });
+  const phCell = t => (byTest[t.id] || []).map(x => '<img src="'+x.thumb+'" alt="" title="'+esc(fd(x.shotDate))+' 撮影" onclick="eqLb.list=sortPh(eqPhotos.filter(y=>waterMatched.has(y.id)&&(byTestIds[\''+t.id+'\']||[]).includes(y.id)));eqLb.i=Math.max(0,eqLb.list.findIndex(y=>y.id===\''+x.id+'\'));eqShow()" style="width:64px;aspect-ratio:4/3;object-fit:cover;border-radius:4px;margin:1px;cursor:zoom-in;vertical-align:middle;">').join("");
+  byTestIds = {}; Object.keys(byTest).forEach(k => byTestIds[k] = byTest[k].map(x => x.id));
   const P = regPer(p.key, pickPeriods(w.map(x => String(x.date||"").slice(0,4)), p.key));
   const l = w.filter(x => String(x.date||"").startsWith(P.cur||"~")).sort((a,b) => String(b.date).localeCompare(String(a.date)));
   const names = []; l.forEach(x => (x.items||[]).forEach(i => { if (i.name && !names.includes(i.name)) names.push(i.name); }));
@@ -1160,10 +1173,11 @@ async function renderWater(p){
     '<div class="kpis"><div class="kpi"><div class="k">検査回数</div><div class="v">'+l.length+'<small>回</small></div></div>'+
     '<div class="kpi"><div class="k">平均水温</div><div class="v">'+num(avg("temp"))+'<small>℃</small></div></div>'+
     '<div class="kpi"><div class="k">平均PH</div><div class="v">'+num(avg("ph"), 2)+'</div></div></div>'+
-    (l.length ? '<div class="tw"><table class="t"><tr><th>検査日</th><th>場所</th><th>水温(℃)</th><th>PH</th>'+names.map(n => '<th>'+esc(n)+'</th>').join("")+'<th>備考</th><th>記録</th></tr>'+l.map(x => {
+    (l.length ? '<div class="tw"><table class="t"><tr><th>検査日</th><th>場所</th><th>水温(℃)</th><th>PH</th>'+names.map(n => '<th>'+esc(n)+'</th>').join("")+'<th>備考</th><th>記録</th><th>写真</th></tr>'+l.map(x => {
       const m = {}; (x.items||[]).forEach(i => m[i.name] = i.value);
       return '<tr><td class="c nw">'+fd(x.date)+(x.time ? ' '+esc(x.time) : '')+'</td><td class="c">'+esc(x.location)+'</td><td class="r">'+num(x.temp)+'</td><td class="r">'+num(x.ph, 2)+'</td>'+
-        names.map(n => '<td class="c">'+esc(m[n] == null ? "" : m[n])+'</td>').join("")+'<td>'+esc(x.notes)+'</td><td class="c">'+attBtns(x.attachments, "waterTestFiles")+'</td></tr>'; }).join("")+'</table></div>' : empty());
+        names.map(n => '<td class="c">'+esc(m[n] == null ? "" : m[n])+'</td>').join("")+'<td>'+esc(x.notes)+'</td><td class="c">'+attBtns(x.attachments, "waterTestFiles")+'</td><td class="c" style="min-width:140px;">'+phCell(x)+'</td></tr>'; }).join("")+'</table></div>'+
+      '<div class="note">「記録」は計量証明書(分析証)。「写真」は採水・現場の写真で、撮影日が検査日の前後7日以内のものを自動で並べています。</div>' : empty());
 }
 
 /* ---------- 騒音チェック ---------- */
@@ -1367,7 +1381,7 @@ async function renderShokaki(p){
 
 /* ---------- SDGs ---------- */
 async function renderSdgs(p){
-  const [g, pr, docs] = await Promise.all([col("sdgsGoals"), col("sdgsProgress"), col("sdgsGoalDocs")]);
+  const [g, pr, docs, lvs] = await Promise.all([col("sdgsGoals"), col("sdgsProgress"), col("sdgsGoalDocs"), col("sdgsLevels")]);
   const P = regPer(p.key, pickPeriods(g.map(x => x.fy), p.key));
   const l = g.filter(x => x.fy === P.cur).sort((a,b) => String(a.name).localeCompare(String(b.name), "ja"));
   const card = x => {
@@ -1391,9 +1405,26 @@ async function renderSdgs(p){
         '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">資料を見る：'+esc(d.title || d.fileName || "資料")+'</button>').join("")+
       (/水質/.test(x.name||"") ? '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="goKey(\'water\')">分析証を見る(水質検査の記録へ) ›</button>' : '')+'</div>';
   };
-  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty()) +
+  return await head(p, P.cur ? fySub(P.cur) : "", perHtml(p.key, P, fyLabel)) + (l.length ? '<div class="kpis">'+l.map(card).join("")+'</div>' : empty()) + sdgsLevelHtml(lvs, docs) +
     '<a href="'+SDGS_PORTAL+'" target="_blank" rel="noopener" style="display:block;border:1px solid #cbd5e1;border-left:5px solid #15803d;border-radius:10px;padding:12px 16px;margin-top:16px;text-decoration:none;background:#f8fafc;">'+
     '<div style="font-size:17px;font-weight:bold;color:#166534;">NAGANO SDGs BUSINESS PORTAL(長野県公式) ›</div><div class="note">長野県SDGs推進企業の登録企業検索(上田市)。当社の登録情報はこちらで公開されています</div></a>';
+}
+/* SDGs取組レベル結果(長野県SDGs推進企業登録制度)。社外に出せるのは結果レポート2ページ目の内容だけなので、数字と「公開用」の添付だけを出す(全ページ・社内用は出さない) */
+function sdgsLevelHtml(lvs, docs){
+  if (!lvs.length) return "";
+  const L = lvs.slice().sort((a,b) => String(b.issued||"").localeCompare(String(a.issued||"")))[0];
+  const prev = lvs.slice().sort((a,b) => String(b.issued||"").localeCompare(String(a.issued||"")))[1];
+  const IT = [["env","環境"],["eco","経済"],["soc","社会"],["inner","社内浸透"],["impl","経営実装"]];
+  const ST = ["SDGsを理解する","優先課題を決定する","目標を設定する","経営に統合する","報告とコミュニケーション"];
+  const pc = it => it && Number(it.m) ? Math.round(Number(it.s) / Number(it.m) * 100) : null;
+  const pub = docs.filter(d => d.goalId === "level-pub:"+L.id);
+  return '<h3 class="sec">SDGs取組レベル(長野県SDGs推進企業登録制度)<span class="recQ">'+esc(fd(L.issued))+' 発行</span></h3>'+
+    '<div class="kpis"><div class="kpi"><div class="k">SDGs経営実装度</div><div class="v">'+esc(L.rank || "—")+'<small>(A〜E)</small></div></div></div>'+
+    '<div class="tw"><table class="t"><tr><th>項目</th><th>スコア</th><th>得点率</th><th>レベル(1〜5)</th>'+(prev ? '<th>前回('+esc(fd(prev.issued))+')</th>' : '')+'</tr>'+IT.map(([k, n]) => { const it = (L.items||{})[k] || {}, p1 = pc(it), p0 = prev ? pc((prev.items||{})[k]) : null;
+      return '<tr><td><b>'+n+'</b></td><td class="c">'+(it.s ?? "-")+' / '+(it.m ?? "-")+'</td><td><div class="bar" style="height:14px;"><i style="width:'+(p1||0)+'%"></i></div><div class="note" style="margin:0;">'+(p1 ?? "-")+'%</div></td><td class="c">'+(it.lv ?? "-")+'</td>'+
+        (prev ? '<td class="c">'+(p0 ?? "-")+'%'+(p0 != null && p1 != null ? (p1 >= p0 ? ' <span class="ok">↑</span>' : ' <span class="ng">↓</span>') : '')+'</td>' : '')+'</tr>'; }).join("")+'</table></div>'+
+    '<div class="tw" style="margin-top:8px;"><table class="t"><tr>'+ST.map((n, j) => '<th>Step'+(j+1)+'<br><span style="font-weight:normal;">'+n+'</span></th>').join("")+'</tr><tr>'+ST.map((_, j) => '<td class="c"><b>'+((L.steps||[])[j] ?? "-")+'</b>%</td>').join("")+'</tr></table></div>'+
+    pub.map(d => '<button class="openBtn" style="margin:8px 6px 0 0;" onclick="openChunked(\'sdgsGoalChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">結果レポートを見る(公開用)</button>').join("");
 }
 const SDGS_PORTAL = "https://nagano-sdgs.com/company/?f29%5B0%5D=%E4%B8%8A%E7%94%B0&f1&f4%5B0%5D=%E3%82%B5%E3%83%BC%E3%83%93%E3%82%B9%E6%A5%AD%EF%BC%88%E3%81%BB%E3%81%8B%E3%81%AB%E5%88%86%E9%A1%9E%E3%81%95%E3%82%8C%E3%81%AA%E3%81%84%E3%82%82%E3%81%AE%EF%BC%89&fx2&pg=dt&bpage=2";
 
