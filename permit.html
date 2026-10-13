@@ -9,7 +9,15 @@
   .vers { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
   .vers button { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:6px; padding:8px 12px; font-size:13px; font-weight:600; cursor:pointer; text-align:left; }
   .vers button small { display:block; font-size:11px; font-weight:normal; color:var(--muted); margin-top:1px; }
-  .vers button.on { border-color:var(--navy); background:var(--navyBg); color:var(--navy); }
+  .vers button.on { border-color:var(--navy); background:var(--navy); color:#fff; }
+  .vers button.on small { color:#dbeafe; }
+  .vers .tag { margin-left:4px; }
+  .tag.cur { background:#dcfce7; color:#15803d; border-color:#86efac; } .tag.fut { background:#ffedd5; color:#c2410c; border-color:#fdba74; } .tag.past { background:#f3f4f6; color:#6b7280; border-color:#d1d5db; }
+  /* 収集運搬業 / 処分業 の切り替え(選んでいる方は紺の塗りつぶし) */
+  .bizSeg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .bizSeg button { border:2px solid var(--navy); background:#fff; color:var(--navy); border-radius:8px; padding:10px 12px; font-size:15px; font-weight:700; cursor:pointer; text-align:left; }
+  .bizSeg button small { display:block; font-size:12px; font-weight:normal; color:var(--muted); margin-top:2px; }
+  .bizSeg button.on { background:var(--navy); color:#fff; } .bizSeg button.on small { color:#dbeafe; }
   .sec { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:12px 14px; margin-bottom:12px; }
   .sec h2 { font-size:15px; color:var(--navy); margin-bottom:4px; }
   .tw { overflow-x:auto; margin-top:8px; }
@@ -43,7 +51,7 @@
     ・<b>場所や面積が変わったとき</b>は「＋ 変更を登録(新しい版)」を押して、いつから変わるかを入れてから書き換えます。前の内容は<b>変更の履歴</b>として残り、「いつから今の場所か」を見せられます。<br>
     ・保管場所の写真は「写真の記録」→ 保管・掲示・現場の様子 で、出すページを「許可の内容」にした項目に入れると表示されます。</div>
 
-  <div class="tabs" id="bizTabs"></div>
+  <div class="bizSeg" id="bizTabs"></div>
   <div class="bar"><button class="btn pri" onclick="openNew()">＋ 変更を登録(新しい版)</button><button class="btn" onclick="location.href='photos.html?mode=rec'">写真の記録へ</button></div>
   <div class="vers" id="vers"></div>
   <div id="body"><div class="empty">読み込み中…</div></div>
@@ -162,11 +170,11 @@ function setBiz(b){
 function render(){
   document.getElementById("bizTabs").innerHTML = BIZ.map(([k, l]) => { const c = allVers.filter(v => v.biz === k); const t0 = todayYmd();
     const cv = c.slice().sort((a,b) => String(b.startDate||"").localeCompare(String(a.startDate||""))).find(v => !v.startDate || v.startDate <= t0);
-    return '<button class="'+(k === biz ? "on" : "")+'" onclick="setBiz(\''+k+'\')">'+esc(l)+'<small>'+(cv && cv.startDate ? fd(cv.startDate)+"から" : "開始日なし")+'・版 '+c.length+'</small></button>'; }).join("");
+    return '<button class="'+(k === biz ? "on" : "")+'" onclick="setBiz(\''+k+'\')">'+(k === biz ? "✓ " : "")+esc(l)+'<small>'+(cv && cv.startDate ? fd(cv.startDate)+"から" : "開始日なし")+'・版 '+c.length+'</small></button>'; }).join("");
   const cur = currentVer(), t = todayYmd();
   document.getElementById("vers").innerHTML = sorted().map(v => {
     const st = v === cur ? "現在" : (v.startDate && v.startDate > t ? "予定" : "過去");
-    return '<button class="'+(v.id === selId ? "on" : "")+'" onclick="pick(\''+v.id+'\')">'+(v.startDate ? fd(v.startDate)+"から" : "開始日なし")+'　<span class="tag '+(st === "現在" ? "ok" : "gray")+'">'+st+'</span><small>'+esc(v.memo || "")+'</small></button>'; }).join("");
+    return '<button class="'+(v.id === selId ? "on" : "")+'" onclick="pick(\''+v.id+'\')">'+(v.startDate ? fd(v.startDate)+"から" : "開始日なし")+'　<span class="tag '+(st === "現在" ? "cur" : st === "予定" ? "fut" : "past")+'">'+st+'</span><small>'+esc(v.memo || "")+'</small></button>'; }).join("");
   const b = document.getElementById("body");
   if (!draft){ b.innerHTML = '<div class="empty">読み込み中…</div>'; return; }
   b.innerHTML = '<div class="sec"><h2>この版の情報</h2><div class="head2"><div><label for="vDate">適用開始日</label><input id="vDate" type="date" value="'+esc(draft.startDate||"")+'" oninput="setTop(\'startDate\',this.value)"></div>'+

@@ -241,7 +241,7 @@ function render(){
 }
 /* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
 let cstats = null, cstatsLoading = false;
-function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey); }
+function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey && !d.abolished); }   // 廃止した文書は出さない
 function emsDocsHtml(reg){
   const ds = linkedDocs(reg.key);
   return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 計画書の原本(PDF)</b>'+

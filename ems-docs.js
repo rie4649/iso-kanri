@@ -134,7 +134,7 @@ const EMS = (function(){
     const f = opt.editId ? files.find(x => x.id === opt.editId) : null;
     const code0 = f ? f.code : (opt.code || (opt.codes && opt.codes[0]) || "");
     const last = code0 ? filesOf(code0)[0] : null;
-    const codes = opt.codes || docs.map(d => d.id);
+    const codes = opt.codes || docs.filter(d => !d.abolished || d.id === code0).map(d => d.id);   // 廃止した文書は選べない(その文書から開いたときを除く)
     const nextVer = last && last.ver ? String(Number(last.ver) + 1).padStart(2,"0") : "";
     bg.innerHTML = '<div class="modal" style="max-width:520px;"><h2>'+(f ? "原本の修正" : "原本(PDF)の登録")+'</h2>'+
       '<label for="emsCode">文書</label><select id="emsCode">'+codes.map(c => '<option value="'+esc(c)+'"'+(c === code0 ? " selected" : "")+'>'+esc(label(c))+'</option>').join("")+'</select>'+

@@ -763,7 +763,7 @@ async function renderRecords(p){
 /* 計画書の原本(EMS文書管理の文書のうち「入力する場所」がこの台帳のもの)。各文書の最新の版だけボタンにする */
 async function planDocBtns(regKey){
   const [docs, files] = await Promise.all([col("emsDocs"), col("emsDocFiles")]);
-  const ds = docs.filter(d => d.link === "plan:"+regKey).sort((a,b) => (a.order||999) - (b.order||999));
+  const ds = docs.filter(d => d.link === "plan:"+regKey && !d.abolished).sort((a,b) => (a.order||999) - (b.order||999));
   const btns = ds.map(d => { const f = files.filter(x => x.code === d.id).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || String(b.ver||"").localeCompare(String(a.ver||"")))[0];
     if (!f) return ""; const t = "EMS-"+d.id+" "+d.name;
     return '<button class="openBtn" style="margin:0 8px 6px 0;" onclick="openChunked(\''+esc(f.chunkCol||"emsDocChunks")+'\',\''+esc(f.chunkId||f.id)+'\',\''+esc(f.fileType||"application/pdf")+'\',\''+esc(t.replace(/'/g,""))+'\')">計画書を見る：'+esc(t)+'('+esc(fd(f.date))+')</button>'; }).filter(Boolean);
