@@ -257,6 +257,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="registers.js"></script>
 <script src="survey-items.js"></script>
+<script src="contract-stats.js"></script>
 <script>
 /* =====================================================================
    環境への取り組み(旧 見せるモード。監査・視察・プロジェクター用)
@@ -658,40 +659,45 @@ async function renderFull(p){ const h = await p.render(p); return h + await page
 function permitSort(a, b){ return String(b.startDate||"").localeCompare(String(a.startDate||"")) || (b.createdMs||0) - (a.createdMs||0); }
 const dash = v => (v == null || String(v).trim() === "") ? "—" : esc(v);
 async function renderPermit(p){
-  const [vers, ph, cm] = await Promise.all([col("isoPermitScopes"), col("isoPhotos"), col("compressorMachines")]);
+  const [vers0, ph, cm] = await Promise.all([col("isoPermitScopes"), col("isoPhotos"), col("compressorMachines")]);
   eqPhotos = ph;
-  if (!vers.length) return await head(p, "許可証の記載内容") + empty("ISO管理の「許可の内容」から入力すると、ここに出ます");
-  const t = todayYmd(), all = vers.slice().sort(permitSort);
-  const curV = all.find(v => !v.startDate || v.startDate <= t) || all[all.length-1];
-  const future = all.filter(v => v.startDate && v.startDate > t);
-  const past = all.filter(v => v !== curV && !future.includes(v));
-  const cs = curV.collectScope || [], st = curV.sites || [], ms = curV.midScope || [], fc = curV.facilities || [];
-  const sum = k => st.reduce((a, x) => a + (Number(String(x[k]||"").replace(/[^\d.]/g, "")) || 0), 0);
-  let h = await head(p, "許可証の記載内容"+(curV.startDate ? "・"+fd(curV.startDate)+"から" : ""));
-  if (future.length) h += '<div class="note" style="color:#b45309;font-weight:bold;margin-bottom:8px;">変更の予定：'+future.map(v => fd(v.startDate)+"から"+(v.memo ? "("+esc(v.memo)+")" : "")).join("、")+'</div>';
-  // 収集運搬
-  if (cs.length || st.length){
-    h += '<h3 class="sec">産業廃棄物 収集運搬業</h3>';
+  if (!vers0.length) return await head(p, "許可証の記載内容") + empty("ISO管理の「許可の内容」から入力すると、ここに出ます");
+  const t = todayYmd();
+  // 収集運搬業と処分業は別々の許可。それぞれに適用開始日と変更の履歴(前の作りの版は両方として扱う)
+  const track = b => {
+    const all = vers0.filter(v => v.biz === b || !v.biz).sort(permitSort);
+    if (!all.length) return null;
+    const curV = all.find(v => !v.startDate || v.startDate <= t) || all[all.length-1];
+    return { all, curV, future: all.filter(v => v.startDate && v.startDate > t), past: all.filter(v => v !== curV && !(v.startDate && v.startDate > t)) };
+  };
+  const histHtml = T => '<div class="note" style="margin:8px 0 2px;font-weight:bold;">変更の履歴</div><div class="tw"><table class="t"><tr><th>適用開始</th><th>内容</th></tr>'+
+    T.future.concat([T.curV]).concat(T.past).map(v => '<tr'+(v === T.curV ? ' style="background:#eff6ff;"' : '')+'><td class="c nw">'+(v.startDate ? fd(v.startDate) : "—")+(v === T.curV ? '<div class="note">現在</div>' : T.future.includes(v) ? '<div class="note">予定</div>' : '')+'</td><td>'+esc(v.memo || "")+'</td></tr>').join("")+'</table></div>';
+  const sinceTxt = T => (T.curV.startDate ? fd(T.curV.startDate)+"から" : "")+(T.future.length ? '<span class="badge b-wn" style="margin-left:8px;">変更の予定 '+T.future.map(v => fd(v.startDate)+"から").join("、")+'</span>' : '');
+  let h = await head(p, "許可証の記載内容");
+  const C = track("collect");
+  if (C){
+    const cs = C.curV.collectScope || [], st = C.curV.sites || [];
+    const sum = k => st.reduce((a, x) => a + (Number(String(x[k]||"").replace(/[^\d.]/g, "")) || 0), 0);
+    h += '<h3 class="sec">産業廃棄物 収集運搬業<span class="recQ">'+sinceTxt(C)+'</span></h3>';
     if (cs.length) h += '<div class="note" style="margin-bottom:6px;">事業の範囲　○：取り扱うもの　◎：積替え又は保管行為を含むもの</div><div class="tw"><table class="t"><tr><th>取り扱う産業廃棄物の種類</th><th>積替保管</th><th>石綿含有<br>産業廃棄物</th><th>水銀使用製品<br>産業廃棄物</th><th>水銀含有<br>ばいじん等</th><th>自動車等<br>破砕物</th></tr>'+
       cs.map(x => '<tr><td><b>'+esc(x.kind)+'</b></td>'+["store","asb","hg","hgd","car"].map(k => '<td class="c">'+dash(x[k])+'</td>').join("")+'</tr>').join("")+'</table></div>';
     if (st.length) h += '<h3 class="sec">積替え・保管の場所</h3><div class="kpis"><div class="kpi"><div class="k">保管場所</div><div class="v">'+st.length+'<small>か所</small></div></div>'+
       '<div class="kpi"><div class="k">面積の合計</div><div class="v">'+num(sum("area"), 2)+'<small>㎡</small></div></div><div class="kpi"><div class="k">保管上限の合計</div><div class="v">'+num(sum("cap"), 2)+'<small>㎥</small></div></div></div>'+
       '<div class="tw"><table class="t"><tr><th>種類</th><th>所在地</th><th>面積(㎡)</th><th>保管上限(㎥)</th><th>高さ上限(m)</th></tr>'+
       st.map(x => '<tr><td><b>'+esc(x.kind)+'</b></td><td>'+esc(x.place)+'</td><td class="r">'+dash(x.area)+'</td><td class="r">'+dash(x.cap)+'</td><td class="r">'+dash(x.height)+'</td></tr>').join("")+'</table></div>';
+    h += histHtml(C);
   }
-  // 中間処理
-  if (ms.length || fc.length){
-    h += '<h3 class="sec">産業廃棄物 処分業(中間処理)</h3>';
+  const M = track("mid");
+  if (M){
+    const ms = M.curV.midScope || [], fc = M.curV.facilities || [];
+    h += '<h3 class="sec">産業廃棄物 処分業(中間処理)<span class="recQ">'+sinceTxt(M)+'</span></h3>';
     if (ms.length) h += '<div class="tw"><table class="t"><tr><th>事業の区分</th><th>処理方式</th><th>取り扱う産業廃棄物の種類</th></tr>'+ms.map(x => '<tr><td class="c">'+esc(x.kubun)+'</td><td class="c">'+esc(x.method)+'</td><td>'+esc(x.kinds)+'</td></tr>').join("")+'</table></div>';
     if (fc.length) h += '<div class="tw" style="margin-top:10px;"><table class="t"><tr><th>写真</th><th>施設の種類</th><th>設置場所</th><th>設置年月日・許可番号</th><th>処理能力</th></tr>'+fc.map(x => {
       const eq = x.equip || ((cm.find(m => /圧縮|梱包/.test(m.name||"")) || cm[0] || {}).name) || "";
       return '<tr><td class="c">'+(eq ? phThumb(ph, "e:"+eq, 110) : '')+'</td><td><b>'+esc(x.type)+'</b>'+(eq && cm.some(m => m.name === eq) ? '<div><button class="openBtn" style="margin-top:6px;" onclick="goKey(\'comp\')">点検記録 ›</button></div>' : '')+'</td>'+
         '<td>'+esc(x.place)+'</td><td class="c">'+[x.setDate, x.permitNo].filter(Boolean).map(esc).join("<br>")+'</td><td>'+esc(x.capacity)+'</td></tr>'; }).join("")+'</table></div>';
+    h += histHtml(M);
   }
-  // 変更の履歴
-  h += '<h3 class="sec">変更の履歴</h3><div class="tw"><table class="t"><tr><th>適用開始</th><th>内容</th><th>保管場所</th></tr>'+
-    future.concat([curV]).concat(past).map(v => '<tr'+(v === curV ? ' style="background:#eff6ff;"' : '')+'><td class="c nw">'+(v.startDate ? fd(v.startDate) : "—")+(v === curV ? '<div class="note">現在</div>' : future.includes(v) ? '<div class="note">予定</div>' : '')+'</td>'+
-      '<td>'+esc(v.memo || "")+'</td><td class="c">'+(v.sites||[]).length+'か所</td></tr>').join("")+'</table></div>';
   return h;
 }
 
@@ -765,12 +771,16 @@ async function planDocBtns(regKey){
 }
 async function renderReg(p){
   const R = ISO_REGS.find(r => r.key === p.reg);
-  const pdb = await planDocBtns(R.key);
+  let pdb = await planDocBtns(R.key);
+  if (R.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
+    try { pdb += '<h3 class="sec">契約件数</h3>' + ContractStats.html(await ContractStats.load()) + '<h3 class="sec">委託先の評価</h3>'; } catch(e){ console.error(e); }
+  }
   let list = (await col(ISO_REG_COL)).filter(r => r.reg === R.key && !r.draft);
   const sub = "ISO14001 "+R.clause;
   if (!list.length && R.key === "calib") return await head(p, sub) + pdb + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「測定機器の点検・校正」から入力します)") +
     '<div class="purpose" style="margin-top:12px;"><b>このページに載せるもの</b>　測定に使う機器そのものが正しく測れるかの確認です(点検の記録は「監視・測定の計画」と各ページにあります)。\n'+
     '例：トラックスケール(計量法の定期検査)／騒音計(騒音チェックに使用)／pH計・温度計(水質検査に使用)</div>';
+  if (!list.length && R.key === "vendors") return await head(p, sub) + pdb + empty("委託先の評価はまだ登録がありません(ISO管理の「ISOの計画・リスク」→「外部委託先の管理」から入力します)");
   if (!list.length) return await head(p, sub) + pdb + (pdb ? '<div class="note">台帳の項目はまだ入力されていません。内容は上の計画書をご覧ください。</div>' : empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「"+R.name+"」から入力します)"));
   if (R.dated) list.sort((a,b) => String(b[R.dated]||"").localeCompare(String(a[R.dated]||"")));
   else if (R.key === "aspects") list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
@@ -933,13 +943,18 @@ const DEFAULT_POLICY = {
   policySigner: "代表取締役　関根健巳"
 };
 async function renderPolicy(p){
-  const pf = await profile();
-  const pol = pf.policy || DEFAULT_POLICY.policy;
-  const date = pf.policy ? pf.policyDate : (pf.policyDate || DEFAULT_POLICY.policyDate);
-  const signer = pf.policy ? pf.policySigner : (pf.policySigner || DEFAULT_POLICY.policySigner);
-  return await head(p, esc(pf.company || COMPANY)) + policyHtml(pol)+
+  const [pf, pv] = await Promise.all([profile(), col("envPolicies")]);
+  // ISO管理の「環境方針の版」で登録した版のうち、日付がいちばん新しいもの(今日以前)を今の方針として出す
+  const t = todayYmd(), vers = pv.slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0));
+  const curV = vers.find(v => !v.date || v.date <= t) || vers[0];
+  const pol = curV ? curV.text : (pf.policy || DEFAULT_POLICY.policy);
+  const date = curV ? curV.dateLabel || fd(curV.date) : (pf.policy ? pf.policyDate : (pf.policyDate || DEFAULT_POLICY.policyDate));
+  const signer = curV ? curV.signer : (pf.policy ? pf.policySigner : (pf.policySigner || DEFAULT_POLICY.policySigner));
+  const hist = vers.length > 0 ? '<h3 class="sec">制定・改定の履歴</h3><div class="tw"><table class="t"><tr><th style="width:120px">日付</th><th>内容</th></tr>'+
+    vers.slice().reverse().map(v => '<tr'+(v === curV ? ' style="background:#eff6ff;"' : '')+'><td class="c nw">'+esc(fd(v.date))+(v === curV ? '<div class="note">現在</div>' : '')+'</td><td>'+esc(v.memo || "")+'</td></tr>').join("")+'</table></div>' : '';
+  return await head(p, esc(pf.company || COMPANY)) + policyHtml(pol||"")+
     '<div class="policySign">'+(date ? esc(date)+'<br>' : '')+esc(pf.company || COMPANY)+'<br>'+esc(signer || "")+'</div>'+
-    (pf.scope ? '<div class="pol"><div class="ph">適用範囲(ISO14001 4.3)</div><div class="pt" style="white-space:pre-wrap;">'+esc(pf.scope)+'</div></div>' : '');
+    (pf.scope ? '<div class="pol"><div class="ph">適用範囲(ISO14001 4.3)</div><div class="pt" style="white-space:pre-wrap;">'+esc(pf.scope)+'</div></div>' : '') + hist;
 }
 
 /* ---------- 会社概要・認証の情報 ---------- */
@@ -1517,12 +1532,13 @@ async function show(i){
   touched = new Set();
   const html = await renderFull(p);
   if (coursePages()[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
-  document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>';
+  document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>'+
+    (p.key !== "cover" ? '<div class="noPrintBar" style="text-align:center;margin:14px 0 30px;"><button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="printCurrent()">このページを印刷</button></div>' : '');
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
 /* 読み込んだデータは開いている間とっておくので、ISO管理で入力してからこの画面に戻ったら、読み直して今のページを描き直す */
 let hiddenAt = 0;
-function refreshData(){ Object.keys(cache).forEach(k => delete cache[k]); purposes = null; if (!document.getElementById("fileViewer")) show(cur); }
+function refreshData(){ Object.keys(cache).forEach(k => delete cache[k]); purposes = null; if (typeof ContractStats !== "undefined") ContractStats.reset(); if (!document.getElementById("fileViewer")) show(cur); }
 document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 3000) refreshData(); });
 window.addEventListener("focus", () => { if (hiddenAt && Date.now() - hiddenAt > 3000){ hiddenAt = 0; refreshData(); } });
 window.addEventListener("blur", () => { hiddenAt = Date.now(); });
@@ -1549,16 +1565,19 @@ function doPrint(html){
   document.getElementById("printArea").innerHTML = html;
   setTimeout(() => window.print(), 300);
 }
+/* 印刷の上に会社名・ページ名・印刷日 */
+function printHead(p){ const t = new Date(); return '<div style="display:flex;justify-content:space-between;font-size:10pt;color:#475569;border-bottom:1px solid #cbd5e1;padding-bottom:4px;margin-bottom:8px;"><span>'+esc(COMPANY)+'　環境への取り組み　'+esc(p.name)+'</span><span>印刷日 '+t.getFullYear()+'/'+(t.getMonth()+1)+'/'+t.getDate()+'</span></div>'; }
 async function printCurrent(){
   const p = coursePages()[cur]; touched = new Set();
-  doPrint('<div class="pslide"><div class="slide">'+noEmoji(await p.render(p))+'</div></div>');
+  tkPrinting = true;
+  try { doPrint('<div class="pslide"><div class="slide">'+printHead(p)+noEmoji(await renderFull(p))+'</div></div>'); } finally { tkPrinting = false; }
 }
 async function printAll(){
   toast("全ページを準備しています…");
   const cp = coursePages(), parts = [], pf = await profile();
   tkPrinting = true;
   try {
-    for (const p of cp){ if (p.key === "cover") continue; touched = new Set(); parts.push('<div class="pslide"><div class="slide">'+noEmoji(await renderFull(p))+'</div></div>'); }
+    for (const p of cp){ if (p.key === "cover") continue; touched = new Set(); parts.push('<div class="pslide"><div class="slide">'+printHead(p)+noEmoji(await renderFull(p))+'</div></div>'); }
   } finally { tkPrinting = false; }
   const t = new Date();
   let toc = "", lastCh = -1, n = 0;

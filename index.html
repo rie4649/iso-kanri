@@ -727,10 +727,20 @@
     <div class="field-hint" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;">ここで入力・修正した内容が「環境への取り組み」の環境方針などに出ます（環境への取り組みは見るだけで、入力はここで行います）</div>
     <div style="background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);">
       <h3 style="font-size:16px;margin:0 0 6px;">🌿 環境方針</h3>
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;"><b style="flex:1;color:#1e3a5f;">制定・改定の版</b><button type="button" class="btn-edit" style="background:#dcfce7;color:#15803d;" onclick="newPolicyVer()">＋ 改定を登録</button></div>
+        <div style="font-size:12px;color:#64748b;margin:2px 0 6px;">改定するときは「＋ 改定を登録」で新しい版を作ります（前の版は残ります）。版を選ぶと下で直せます。日付がいちばん新しい版が「今の方針」として環境への取り組みに出ます。</div>
+        <div id="polVerList"></div>
+      </div>
+      <input type="hidden" id="polVerId">
+      <div class="field-row">
+        <div class="field"><label>この版の日付（制定・改定日）</label><input type="date" id="polVerDate"></div>
+        <div class="field"><label>改定の内容（履歴に出ます）</label><input type="text" id="polVerMemo" placeholder="例：一部改訂（気候変動への配慮）"></div>
+      </div>
       <div class="field"><label>方針の文章（改行もそのまま出ます。行の頭に「・」を付けた行は項目名になります）</label>
         <textarea id="polText" rows="18" style="width:100%;font-size:14px;line-height:1.7;padding:10px;border:1px solid #d9d9e3;border-radius:10px;box-sizing:border-box;"></textarea></div>
       <div class="field-row">
-        <div class="field"><label>制定・改定日</label><input type="text" id="polDate" placeholder="例：2004年10月1日制定　2025年10月1日 一部改訂"></div>
+        <div class="field"><label>方針の下に出す日付の文字</label><input type="text" id="polDate" placeholder="例：2004年10月1日制定　2025年10月1日 一部改訂"></div>
         <div class="field"><label>署名（役職・名前）</label><input type="text" id="polSigner" placeholder="例：代表取締役　関根健巳"></div>
       </div>
       <h3 style="font-size:16px;margin:18px 0 6px;">🏅 ISO認証の情報</h3>
@@ -6806,6 +6816,57 @@ const DEFAULT_POLICY = {
   policySigner: "代表取締役　関根健巳"
 };
 const POLICY_FIELDS = { polText:"policy", polDate:"policyDate", polSigner:"policySigner", polStandard:"standard", polCertNo:"certNo", polCertBody:"certBody", polCertExpiry:"certExpiry", polNextAudit:"nextAudit", polScope:"scope" };
+// ---- 環境方針の版(envPolicies)。date(制定・改定日)・dateLabel(方針の下の文字)・signer・text・memo(改定の内容) ----
+const POLICY_VER_COL = "envPolicies";
+let policyVers = [];
+const fdp = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : (s||"日付なし"); };
+function policyCurrent() { const t = new Date().toISOString().slice(0,10); const l = policyVers.slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||""))); return l.find(v => !v.date || v.date <= t) || l[0]; }
+function renderPolicyVers() {
+  const el = document.getElementById("polVerList"); if (!el) return;
+  const cur = policyCurrent(), sel = document.getElementById("polVerId").value;
+  el.innerHTML = policyVers.length ? policyVers.slice().sort((a,b) => String(b.date||"").localeCompare(String(a.date||""))).map(v =>
+    `<div style="display:flex;gap:6px;align-items:center;padding:5px 0;border-top:1px solid #e2e8f0;${v.id === sel ? "background:#eff6ff;" : ""}">
+      <span style="flex:1;font-size:13px;"><b>${escapeHtml(fdp(v.date))}</b>${v === cur ? ' <span style="background:#dcfce7;color:#15803d;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;">今の方針</span>' : ''}　${escapeHtml(v.memo || "")}</span>
+      <button type="button" class="btn-edit" style="padding:4px 10px;" onclick="pickPolicyVer('${v.id}')">${v.id === sel ? "編集中" : "開く・修正"}</button>
+      <span style="cursor:pointer;" onclick="deletePolicyVer('${v.id}')">🗑</span></div>`).join("") : '<div style="font-size:12px;color:#94a3b8;">まだ版がありません</div>';
+}
+window.pickPolicyVer = function(id) {
+  const v = policyVers.find(x => x.id === id); if (!v) return;
+  document.getElementById("polVerId").value = v.id;
+  document.getElementById("polVerDate").value = v.date || "";
+  document.getElementById("polVerMemo").value = v.memo || "";
+  document.getElementById("polText").value = v.text || "";
+  document.getElementById("polDate").value = v.dateLabel || "";
+  document.getElementById("polSigner").value = v.signer || "";
+  renderPolicyVers();
+};
+window.newPolicyVer = async function() {
+  const d = prompt("改定日を入れてください（例：2026-04-01）", new Date().toISOString().slice(0,10));
+  if (!d) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { alert("2026-04-01 の形で入れてください"); return; }
+  const memo = prompt("改定の内容（例：一部改訂 ○○を追加）", "") || "";
+  try {
+    const ref = await db.collection(POLICY_VER_COL).add({ date: d, memo, text: document.getElementById("polText").value, dateLabel: document.getElementById("polDate").value.trim(), signer: document.getElementById("polSigner").value.trim(), createdMs: Date.now() });
+    await loadPolicyVers(); pickPolicyVer(ref.id);
+    document.getElementById("polStatus").textContent = "新しい版を作りました。文章を直して「保存する」を押してください";
+  } catch (e) { alert("作れませんでした: " + e.message); }
+};
+window.deletePolicyVer = async function(id) {
+  const v = policyVers.find(x => x.id === id); if (!v) return;
+  if (!confirm(fdp(v.date) + " の版を削除しますか？（履歴からも消えます）")) return;
+  try { await db.collection(POLICY_VER_COL).doc(id).delete(); await loadPolicyVers(); const c = policyCurrent(); if (c) pickPolicyVer(c.id); await syncPolicyProfile(); }
+  catch (e) { alert("削除できませんでした: " + e.message); }
+};
+async function loadPolicyVers() {
+  const s = await db.collection(POLICY_VER_COL).get();
+  policyVers = s.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderPolicyVers();
+}
+/* 今の方針(日付がいちばん新しい版)を companyInfo/profile にも写す(ほかの画面がそこを読んでいるため) */
+async function syncPolicyProfile() {
+  const c = policyCurrent(); if (!c) return;
+  await db.collection(COMPANY_COLLECTION).doc("profile").set({ policy: c.text || "", policyDate: c.dateLabel || "", policySigner: c.signer || "" }, { merge: true });
+}
 async function loadPolicyForm() {
   let pf = {};
   try { const d = await db.collection(COMPANY_COLLECTION).doc("profile").get(); pf = d.exists ? d.data() : {}; } catch (e) { console.error(e); }
@@ -6818,12 +6879,30 @@ async function loadPolicyForm() {
   } else {
     document.getElementById("polStatus").textContent = "";
   }
+  try {
+    await loadPolicyVers();
+    if (!policyVers.length) {   // 初回: 今の方針を最初の版にする(EMS-C-01: 2025.10.01 一部改訂 気候変動への配慮)
+      await db.collection(POLICY_VER_COL).add({ date: "2025-10-01", memo: "2004年10月1日制定　2025年10月1日 一部改訂（気候変動への配慮）", text: document.getElementById("polText").value,
+        dateLabel: document.getElementById("polDate").value.trim(), signer: document.getElementById("polSigner").value.trim(), createdMs: Date.now() });
+      await loadPolicyVers();
+    }
+    const c = policyCurrent(); if (c) pickPolicyVer(c.id);
+  } catch (e) { console.error(e); }
 }
 document.getElementById("polSaveBtn").addEventListener("click", async () => {
   const data = {};
   Object.entries(POLICY_FIELDS).forEach(([id, f]) => { data[f] = document.getElementById(id).value.trim(); });
   data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+  const vid = document.getElementById("polVerId").value, vdate = document.getElementById("polVerDate").value;
+  if (vid && !vdate) { alert("この版の日付を入れてください"); return; }
   try {
+    if (vid) {   // 選んでいる版を保存(文章・日付・署名・改定の内容)
+      await db.collection(POLICY_VER_COL).doc(vid).update({ date: vdate, memo: document.getElementById("polVerMemo").value.trim(), text: data.policy, dateLabel: data.policyDate, signer: data.policySigner, updatedAt: data.updatedAt });
+      await loadPolicyVers();
+      const c = policyCurrent();   // 今の方針の版だけを profile に写す(古い版を直しても今の方針は変わらない)
+      ["policy","policyDate","policySigner"].forEach(k => delete data[k]);
+      if (c) Object.assign(data, { policy: c.text || "", policyDate: c.dateLabel || "", policySigner: c.signer || "" });
+    }
     await db.collection(COMPANY_COLLECTION).doc("profile").set(data, { merge: true });   // ほかの項目は消さずに残す
     document.getElementById("polStatus").textContent = "✅ 保存しました（環境への取り組みにも反映されます）";
   } catch (e) { alert("保存できませんでした: " + e.message); }

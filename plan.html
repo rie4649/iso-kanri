@@ -19,6 +19,10 @@
   .chk input { width:18px; height:18px; }
   .count { font-size:13px; color:var(--muted); margin:0 0 8px; }
   @media (max-width:560px){ .card .top { flex-direction:column; } .card .acts { justify-content:flex-start; } }
+  .kpis { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .kpi { background:#fff; border:1px solid var(--line); border-left:4px solid var(--navy); border-radius:6px; padding:8px 12px; min-width:150px; }
+  .kpi .k { font-size:12px; color:var(--muted); font-weight:700; } .kpi .v { font-size:24px; font-weight:800; color:var(--navy); } .kpi .v small { font-size:12px; color:var(--muted); margin-left:2px; }
+  table.cs { border-collapse:collapse; width:100%; font-size:13px; background:#fff; } table.cs th, table.cs td { border:1px solid var(--line); padding:5px 8px; } table.cs th { background:var(--navyBg); color:var(--navy); text-align:left; }
 </style>
 </head>
 <body>
@@ -172,6 +176,7 @@
 <script src="registers.js"></script>
 <script src="ems-seed.js"></script>
 <script src="ems-docs.js"></script>
+<script src="contract-stats.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -222,6 +227,10 @@ function render(){
   const reg = regOf(cur), list = sorted(reg);
   let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>';
   h += emsDocsHtml(reg);
+  if (reg.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
+    h += '<div class="card" style="border-left:4px solid var(--navy);"><b style="color:var(--navy);">📑 契約件数(共通マスタ管理と連動)</b><div id="cstats" style="margin-top:8px;">'+(cstats ? ContractStats.html(cstats, { tableClass:"cs" }) : '<div class="note">読み込み中…</div>')+'</div></div>';
+    if (!cstats && !cstatsLoading){ cstatsLoading = true; ContractStats.load().then(st => { cstats = st; render(); }).catch(e => { const el = document.getElementById("cstats"); if (el) el.textContent = "読み込めませんでした: "+e.message; }); }
+  }
   // 表(1行ずつの入力)。行があるときは開いたまま、0行のときはたたむ
   const tbl = '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 行を追加</button></div>'+
     (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
@@ -231,6 +240,7 @@ function render(){
   document.getElementById("body").innerHTML = h;
 }
 /* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
+let cstats = null, cstatsLoading = false;
 function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey); }
 function emsDocsHtml(reg){
   const ds = linkedDocs(reg.key);
