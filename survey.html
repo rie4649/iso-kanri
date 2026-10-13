@@ -93,6 +93,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="survey-items.js"></script>
 <script src="survey-templates.js"></script>
+<script>if (typeof SURVEY_TEMPLATES === "undefined") window.addEventListener("DOMContentLoaded", () => { const m = '<div class="empty" style="color:#b91c1c;line-height:1.8;">会社ごとの調査票のファイル(survey-templates.js)が見つかりません。<br>GitHubの iso-kanri に survey-templates.js をアップロードしてください。<br>(アップロード直後なら、1〜2分待ってから再読み込みしてください)</div>'; const l = document.getElementById("list"); if (l) l.innerHTML = m; });</script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -225,10 +226,11 @@ function showLastSaved(){ const el = document.getElementById("lastSaved"); if (e
 function setFilter(f){ filter = f; render(); }
 function render(){
   const all = ITEMS, n = all.filter(it => answered(ans[it.id])).length;
-  const secs = [...new Set(all.map(it => it.secLabel.split(" ― ")[0]))];
-  document.getElementById("tabs").innerHTML = [["all","すべて<small>"+all.length+"項目</small>"]].concat(secs.length > 1 && secs.length <= 12 ? secs.map(s => [s, esc(s)+"<small>"+all.filter(i => i.secLabel.split(" ― ")[0] === s).length+"項目</small>"]) : []).concat([["todo","未回答<small>"+(all.length-n)+"項目</small>"]])
+  const grp = it => { const m = it.secLabel.match(/^〔[^〕]+〕/); return m ? m[0] : it.secLabel.split(" ― ")[0]; };
+  const secs = [...new Set(all.map(grp))];
+  document.getElementById("tabs").innerHTML = [["all","すべて<small>"+all.length+"項目</small>"]].concat(secs.length > 1 && secs.length <= 12 ? secs.map(s => [s, esc(s)+"<small>"+all.filter(i => grp(i) === s).length+"項目</small>"]) : []).concat([["todo","未回答<small>"+(all.length-n)+"項目</small>"]])
     .map(([k,l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+esc(k)+'\')">'+l+'</button>').join("");
-  const list = all.filter(it => filter === "all" || (filter === "todo" ? !answered(ans[it.id]) : it.secLabel.split(" ― ")[0] === filter));
+  const list = all.filter(it => filter === "all" || (filter === "todo" ? !answered(ans[it.id]) : grp(it) === filter));
   let h = "", last = "";
   list.forEach(it => {
     if (!ans[it.id]) ans[it.id] = { ans:"", num:"", on:true, isPre:false };
