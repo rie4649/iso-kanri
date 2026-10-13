@@ -24,7 +24,7 @@
   .tpls { display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:8px; margin-bottom:12px; }
   .tpl { border:2px solid var(--navy); background:#fff; border-radius:8px; padding:10px 12px; cursor:pointer; text-align:left; font-family:inherit; color:var(--navy); }
   .tpl b { display:block; font-size:16px; } .tpl small { display:block; font-size:12px; color:var(--muted); margin-top:2px; line-height:1.5; }
-  .tpl.on { background:var(--navy); color:#fff; } .tpl.on small { color:#dbeafe; }
+  .tpl.on { background:var(--navy); color:#fff; } .tpl.add { border-style:dashed; background:#f8fafc; } .tpl.on small { color:#dbeafe; }
   .tag.com { background:#e0f2fe; color:#0369a1; border-color:#7dd3fc; }
   .doc { display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 7px; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
   @media (max-width:640px){ .ans { grid-template-columns:1fr 1fr; } .ans input[aria-label="補足"] { grid-column:1/-1; order:-1; } }
@@ -39,7 +39,8 @@
 <div class="wrap">
   <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方（ここを押すと開きます）</summary>
     <div style="margin-top:6px;line-height:1.8;">
-    <b>① 会社を選ぶ</b>：調査票は会社ごとに様式が違うので、上の会社のボタンで切り替えます。新しい会社の調査票が届いたら、紙やExcelをClaudeに送ればひな形を足せます。<br>
+    <b>① 会社を選ぶ</b>：調査票は会社ごとに様式が違うので、上の会社のボタンで切り替えます。新しい会社は「＋ 会社を追加」で作れます(同じ様式の会社をまねる・白紙から質問を貼り付ける)。<br>
+    <b>全社の一覧</b>：「📊 全社の一覧・印刷」で、会社ごとの回答の数・最終保存日・前回の提出日がまとめて見られ、印刷できます。今の回答は「今の回答を印刷」、提出した時の回答は「控えを見る・印刷」で印刷します。<br>
     <b>② 答える</b>：質問ごとに答えを選び、補足(根拠・数値・名称)を入れて、画面下の「保存」。<br>
     <span class="tag com">共通の答え</span>…ほかの会社の調査票で同じことを聞かれて答えた内容が、自動で入っています(保存で確定)。一度答えれば、全部の会社の調査票に入ります。<br>
     <span class="tag ok">仮の回答</span>…アプリのデータから仮に入れた回答です(保存で確定)。<br>
@@ -77,12 +78,24 @@
   <label for="sMemo">メモ(任意)</label><input id="sMemo" placeholder="例: メールで提出／現地確認で指摘なし">
   <div class="mBtns"><button class="btn" onclick="closeSubmit()">キャンセル</button><button class="btn pri" onclick="saveSubmit()">記録する</button></div>
 </div></div>
+<div class="bg" id="aBg" onclick="if(event.target===this)closeAddTpl()"><div class="modal" style="max-width:560px;">
+  <h2 id="aTtl">会社を追加</h2>
+  <label for="aName">会社名(ボタンに出ます)</label><input id="aName" placeholder="例: ○○株式会社 ○○工場">
+  <label for="aCopy">調査票の様式</label><select id="aCopy"></select>
+  <div class="note" style="margin-top:2px;">同じ様式(同じ質問)を使う会社なら、その様式を選ぶと質問がそのまま入ります。様式が違うときは「白紙」にして、下に質問を貼り付けます。</div>
+  <label for="aForm">様式の名前(任意)</label><input id="aForm" placeholder="例: 委託先現地確認チェックシート(2026年版)">
+  <label for="aKind">回答の仕方</label><select id="aKind"><option>調査票（書面で回答）</option><option>実地確認（来社）</option><option>立ち会い（来社）</option><option>その他</option></select>
+  <div id="aQsBox"><label for="aQs">質問をまとめて入れる(任意・1行に1つ)</label><textarea id="aQs" rows="5" placeholder="例:&#10;許可証の写しを提出できるか&#10;運搬車両に表示・書面の備え付けがあるか&#10;保管場所に掲示板があるか"></textarea>
+  <label for="aOpts">その質問の答えの選択肢(「・」で区切る。空にすると文章で答える)</label><input id="aOpts" value="適合・不適合・非該当">
+  <div class="note">ExcelやPDFの調査票をClaudeに送ってもらえれば、番号・区分つきの正式なひな形にもできます。</div></div>
+  <div class="mBtns"><button class="btn" onclick="closeAddTpl()">キャンセル</button><button class="btn pri" onclick="saveAddTpl()">保存</button></div>
+</div></div>
 <div id="subView" style="display:none;position:fixed;inset:0;z-index:60;background:#fff;overflow:auto;"></div>
 <style>
 @media print { body > *:not(#subView) { display:none !important; } #subView { position:static !important; display:block !important; overflow:visible !important; } #subView .noPrint { display:none !important; } }
 #subView .pv { max-width:900px; margin:0 auto; padding:16px; }
 #subView table { border-collapse:collapse; width:100%; font-size:13px; } #subView th, #subView td { border:1px solid #cbd5e1; padding:5px 7px; text-align:left; vertical-align:top; }
-#subView th { background:#eef2f7; }
+#subView th { background:#eef2f7; white-space:nowrap; }
 </style>
 <div class="saveBar"><span class="cnt" id="cnt"></span>
   <button class="btn" id="undoBtn" onclick="undoAll()">変更を取り消す</button>
@@ -91,8 +104,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="survey-items.js?v=1013"></script>
-<script src="survey-templates.js?v=1013"></script>
+<script src="survey-templates.js?v=1013b"></script>
 <script>if (typeof SURVEY_TEMPLATES === "undefined") window.addEventListener("DOMContentLoaded", () => { const m = '<div class="empty" style="color:#b91c1c;line-height:1.8;">会社ごとの調査票のファイル(survey-templates.js)が見つかりません。<br>GitHubの iso-kanri に survey-templates.js をアップロードしてください。<br>(アップロード直後なら、1〜2分待ってから再読み込みしてください)</div>'; const l = document.getElementById("list"); if (l) l.innerHTML = m; });</script>
 <script>
 const firebaseConfig = {
@@ -124,19 +136,23 @@ const fdj = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); r
 const todayYmd = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 
 let tpl = (location.hash || "").replace("#","") || "astemo";
-if (!SURVEY_TEMPLATES.some(t => t.id === tpl)) tpl = "astemo";
+let added = [];   // 自分で追加した会社 isoSurveyTemplates/added
+const TPLS = () => SURVEY_TEMPLATES.concat(added.filter(a => !a.deleted).map(a => { const src = SURVEY_TEMPLATES.find(t => t.id === a.copyOf) || {};
+  return { id:a.id, name:a.name, form:a.form || src.form || "（この会社の様式）", kind:a.kind || src.kind || "調査票", base:src.base || "", items:src.items || [], docNote:src.docNote || "", copyOf:a.copyOf || "", added:true, createdMs:a.createdMs }; }));
+let savedAt = {}, totals = {};
 let names = {}, bank = {}, subs = [], customQs = [], ITEMS = [], saved = null, ans = {}, filter = "all", dirty = false, lastSavedAt = null, counts = {};
-const T = () => SURVEY_TEMPLATES.find(t => t.id === tpl);
-const tplName = id => names[id] || (SURVEY_TEMPLATES.find(t => t.id === id) || {}).name || id;
+const T = () => TPLS().find(t => t.id === tpl) || SURVEY_TEMPLATES[0];
+const tplName = id => names[id] || (TPLS().find(t => t.id === id) || {}).name || id;
+const ADDED_REF = db.collection("isoSurveyTemplates").doc("added");
 
 /* この会社の質問の一覧を作る */
 function buildItems(){
-  const t = T(), shared = SURVEY_SHARED_KEYS[tpl] || {};
+  const t = T(), sid = t.copyOf || t.id, shared = SURVEY_SHARED_KEYS[sid] || {};
   let items = [];
-  if (t.base === "SURVEY_ITEMS") items = SURVEY_ITEMS.map(it => ({ ...it, label:it.id, secLabel: it.f === "D1" ? "D1 共通事項" : "D2 収集運搬 ― "+it.sec, key: shared[tpl+":"+it.id] || ("D:"+it.id) }));
+  if (t.base === "SURVEY_ITEMS") items = SURVEY_BASE_ITEMS.map(it => ({ ...it, label:it.id, secLabel: it.f === "D1" ? "D1 共通事項" : "D2 収集運搬 ― "+it.sec, key: shared[sid+":"+it.id] || ("D:"+it.id) }));
   items = items.concat((t.items || []).map(it => ({ ...it, label: it.f === "D3" ? it.id : (it.no+""), secLabel: it.sec, imp:false, unit: it.unit || "" })));
   const extraKeys = { "astemo:X-1":"emani-check", "astemo:X-2":"emani-delay" };
-  customQs.forEach((c, i) => items.push({ id:c.id, label:"追加-"+(i+1), secLabel:"追加の質問（この会社の調査票にある質問）", q:c.q, opts:c.opts || [], text:!(c.opts||[]).length, hint:c.hint || "", link:!!c.link, custom:true, key: c.key || extraKeys[tpl+":"+c.id] || "" }));
+  customQs.forEach((c, i) => items.push({ id:c.id, label:"追加-"+(i+1), secLabel:"追加の質問（この会社の調査票にある質問）", q:c.q, opts:c.opts || [], text:!(c.opts||[]).length, hint:c.hint || "", link:!!c.link, custom:true, key: c.key || extraKeys[sid+":"+c.id] || "" }));
   ITEMS = items;
 }
 const answered = a => !!(a && (a.ans || a.num));
@@ -163,8 +179,9 @@ function initAns(items){
 async function loadAll(){
   try { renderTpls(); } catch(e){}   // 会社のボタンは、データを読む前にまず出す
   try {
-    const [n, b] = await Promise.all([NAMES_REF.get(), BANK_REF.get()]);
-    names = n.exists ? (n.data().map || {}) : {}; bank = b.exists ? (b.data().items || {}) : {};
+    const [n, b, ad] = await Promise.all([NAMES_REF.get(), BANK_REF.get(), ADDED_REF.get().catch(() => null)]);
+    names = n.exists ? (n.data().map || {}) : {}; bank = b.exists ? (b.data().items || {}) : {}; added = ad && ad.exists ? (ad.data().list || []) : [];
+    if (!TPLS().some(t => t.id === tpl)) tpl = "astemo";
     await seedOnce();
   } catch(e){ console.error(e); }
   await openTpl(tpl, true);
@@ -189,7 +206,11 @@ async function seedOnce(){
   if (Object.keys(bank).length) await BANK_REF.set({ items: bank }, { merge:true });
 }
 async function loadCounts(){
-  for (const t of SURVEY_TEMPLATES){ try { const d = await ansRef(t.id).get(); counts[t.id] = d.exists ? Object.values(d.data().items || {}).filter(answered).length : 0; } catch(e){} }
+  for (const t of TPLS()){ try { const [d, c] = await Promise.all([ansRef(t.id).get(), customRef(t.id).get()]);
+    counts[t.id] = d.exists ? Object.values(d.data().items || {}).filter(answered).length : 0;
+    const u = d.exists && d.data().updatedAt; savedAt[t.id] = u && u.toDate ? u.toDate() : null;
+    totals[t.id] = (t.base === "SURVEY_ITEMS" ? SURVEY_BASE_ITEMS.length : 0) + (t.items || []).length + (c.exists ? (c.data().items || []).length : (CUSTOM_SEED[t.id] || []).length);
+  } catch(e){} }
   renderTpls();
 }
 async function openTpl(id, first){
@@ -208,13 +229,16 @@ async function openTpl(id, first){
 
 /* ===== 画面 ===== */
 function renderTpls(){
-  document.getElementById("tpls").innerHTML = SURVEY_TEMPLATES.map(t => { const last = subs.find(s => (s.tpl || "astemo") === t.id);
+  document.getElementById("tpls").innerHTML = TPLS().map(t => { const last = subs.find(s => (s.tpl || "astemo") === t.id);
     return '<button class="tpl'+(t.id === tpl ? ' on' : '')+'" onclick="openTpl(\''+t.id+'\')"><b>'+(t.id === tpl ? '✓ ' : '')+esc(tplName(t.id))+'</b><small>'+esc(t.kind)+'</small>'+
-      '<small>回答 '+(counts[t.id] ?? "…")+'項目'+(last ? '・前回提出 '+esc(fdj(last.date)) : '')+'</small></button>'; }).join("");
+      '<small>回答 '+(counts[t.id] ?? "…")+'項目'+(last ? '・前回提出 '+esc(fdj(last.date)) : '')+'</small></button>'; }).join("")+
+    '<button class="tpl add" onclick="openAddTpl()"><b>＋ 会社を追加</b><small>新しい会社の調査票を作る</small></button>'+
+    '<button class="tpl add" onclick="showOverview()"><b>📊 全社の一覧・印刷</b><small>回答の数・提出日をまとめて見る</small></button>';
 }
 function renderInfo(){
   const t = T();
-  document.getElementById("tplInfo").innerHTML = '<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><b style="flex:1;font-size:16px;color:var(--navy);">'+esc(tplName(tpl))+'</b><button class="btn sm" onclick="renameTpl()">会社名を直す</button></div>'+
+  document.getElementById("tplInfo").innerHTML = '<div class="card"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><b style="flex:1;font-size:16px;color:var(--navy);">'+esc(tplName(tpl))+'</b><button class="btn sm" onclick="printCurrent()">今の回答を印刷</button><button class="btn sm" onclick="renameTpl()">会社名を直す</button>'+
+    (t.added ? '<button class="btn sm" onclick="openAddTpl(true)">様式名を直す</button><button class="btn sm del" onclick="delTpl()">この会社を削除</button>' : '')+'</div>'+
     '<div class="note" style="margin-top:2px;">様式：'+esc(t.form)+(t.docNote ? '<br>'+esc(t.docNote) : '')+'</div></div>';
   const docs = ITEMS.filter(it => it.doc);
   document.getElementById("prepBox").innerHTML = docs.length ? '<details class="card"><summary style="cursor:pointer;font-weight:700;color:var(--navy);">📋 現地確認で準備する資料・見せる物（'+docs.length+'件）</summary>'+
@@ -395,6 +419,78 @@ function printPrep(){
     '<table style="margin-top:10px;"><tr><th style="width:24px;">✓</th><th style="width:70px;">番号</th><th>確認事項</th><th style="width:120px;">準備</th><th style="width:30%;">当社の回答</th></tr>'+
     docs.map(it => '<tr><td>□</td><td>'+esc(it.label)+'</td><td>'+esc(it.q)+'</td><td>'+esc(it.doc)+'</td><td>'+esc((ans[it.id]||{}).ans||"")+'</td></tr>').join("")+'</table></div>';
   v.style.display = "block";
+}
+/* ===== 会社(調査票)を追加・修正・削除 ===== */
+let addEdit = false;
+function openAddTpl(edit){
+  addEdit = !!edit; const t = T();
+  document.getElementById("aTtl").textContent = edit ? "様式名を直す("+tplName(tpl)+")" : "会社を追加";
+  document.getElementById("aName").value = edit ? tplName(tpl) : ""; document.getElementById("aForm").value = edit ? t.form : "";
+  document.getElementById("aKind").value = edit ? t.kind : "調査票（書面で回答）";
+  document.getElementById("aCopy").innerHTML = '<option value="">白紙(質問を自分で入れる)</option>'+SURVEY_TEMPLATES.map(x => '<option value="'+x.id+'">'+esc(tplName(x.id))+' と同じ様式('+esc(x.form)+')</option>').join("");
+  document.getElementById("aCopy").value = edit ? (t.copyOf || "") : "";
+  document.getElementById("aCopy").disabled = !!edit; document.getElementById("aQsBox").style.display = edit ? "none" : "";
+  document.getElementById("aQs").value = ""; document.getElementById("aOpts").value = "適合・不適合・非該当";
+  document.getElementById("aBg").classList.add("show");
+}
+function closeAddTpl(){ document.getElementById("aBg").classList.remove("show"); }
+async function saveAddTpl(){
+  const name = document.getElementById("aName").value.trim(); if (!name){ toast("会社名を入れてください"); return; }
+  const form = document.getElementById("aForm").value.trim(), kind = document.getElementById("aKind").value, copyOf = document.getElementById("aCopy").value;
+  try {
+    if (addEdit){ const a = added.find(x => x.id === tpl); Object.assign(a, { name, form, kind }); names[tpl] = name;
+      await Promise.all([ADDED_REF.set({ list: added }), NAMES_REF.set({ map: names }, { merge:true })]); closeAddTpl(); renderTpls(); renderInfo(); updCnt(); toast("直しました"); return; }
+    if (dirty && !confirm("保存していない回答があります。破棄して新しい会社を開きますか？")) return;
+    const id = "c"+Date.now().toString(36);
+    added.push({ id, name, form, kind, copyOf, createdMs: Date.now() });
+    await ADDED_REF.set({ list: added });
+    // 貼り付けた質問(1行に1つ)を、この会社の質問として入れる
+    const opts = document.getElementById("aOpts").value.split(/[・、,／\/]/).map(x => x.trim()).filter(Boolean);
+    const qs = document.getElementById("aQs").value.split(/\n/).map(x => x.trim()).filter(Boolean).map((q, i) => ({ id:"X-"+(i+1), q, opts, hint:"" }));
+    const cps = copyOf && CUSTOM_SEED[copyOf] ? CUSTOM_SEED[copyOf].map(c => ({ ...c, key: c.key || ({ "X-1":"emani-check", "X-2":"emani-delay" })[c.id] || "" })) : [];
+    let n = cps.length; const all = cps.concat(qs.map(q => ({ ...q, id:"X-"+(++n) })));
+    await customRef(id).set({ items: all });
+    closeAddTpl(); counts[id] = 0; await openTpl(id, true); loadCounts();
+    toast("「"+name+"」を追加しました"+(copyOf || qs.length ? "" : "。「＋ 質問を追加」で質問を入れてください"));
+  } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function delTpl(){
+  const t = T(); if (!t.added) return;
+  const n = subs.filter(s => s.tpl === tpl).length;
+  if (!confirm("「"+tplName(tpl)+"」の調査票を削除しますか？\n(回答も消えます。提出の記録 "+n+"件 は控えとして残ります)")) return;
+  try { const a = added.find(x => x.id === tpl); a.deleted = true; a.deletedMs = Date.now();
+    await ADDED_REF.set({ list: added }); await ansRef(tpl).delete().catch(() => {});
+    dirty = false; await openTpl("astemo", true); toast("削除しました"); } catch(e){ toast("削除できませんでした: "+e.message); }
+}
+/* 今の回答(保存前も含む画面の内容)を印刷 */
+function printCurrent(){
+  let rows = "", last = "";
+  ITEMS.forEach(it => { const a = ans[it.id] || {};
+    if (it.secLabel !== last){ rows += '<tr><th colspan="3">'+esc(it.secLabel)+'</th></tr>'; last = it.secLabel; }
+    rows += '<tr><td style="white-space:nowrap;">'+esc(it.label)+'</td><td>'+esc(it.q)+'</td><td>'+esc(a.ans||"")+(a.num ? '<div style="color:#475569;">'+esc(a.num)+'</div>' : '')+'</td></tr>'; });
+  const v = document.getElementById("subView");
+  v.innerHTML = '<div class="pv"><div class="noPrint" style="display:flex;gap:8px;margin-bottom:12px;"><button class="btn" onclick="document.getElementById(\'subView\').style.display=\'none\'">← 戻る</button><button class="btn pri" onclick="window.print()">印刷・PDF</button></div>'+
+    '<h2 style="font-size:18px;color:#1e3a5f;">'+esc(T().form)+' 回答</h2>'+
+    '<div style="margin:8px 0 12px;line-height:1.8;">提出先：<b>'+esc(tplName(tpl))+'</b>　回答者の会社：株式会社関根商店　'+(lastSavedAt ? '最終保存：'+lastSavedAt.getFullYear()+'/'+(lastSavedAt.getMonth()+1)+'/'+lastSavedAt.getDate() : '')+(dirty ? '　<span style="color:#b91c1c;">(保存していない変更を含みます)</span>' : '')+'</div>'+
+    '<table><tr><th style="width:70px;">番号</th><th>確認項目</th><th style="width:38%;">当社の回答</th></tr>'+rows+'</table></div>';
+  v.style.display = "block"; v.scrollTop = 0;
+}
+/* 全社の一覧 */
+async function showOverview(){
+  await loadCounts();
+  const f = d => d ? d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate() : "-";
+  const rows = TPLS().map(t => { const l = subs.filter(s => (s.tpl || "astemo") === t.id), last = l[0];
+    return '<tr><td><b>'+esc(tplName(t.id))+'</b></td><td>'+esc(t.form)+'<div style="color:#64748b;">'+esc(t.kind)+'</div></td><td style="text-align:right;white-space:nowrap;">'+(counts[t.id] ?? 0)+' / '+(totals[t.id] ?? "-")+'</td>'+
+      '<td style="white-space:nowrap;">'+f(savedAt[t.id])+'</td><td>'+(last ? esc(fdj(last.date))+'<div style="color:#64748b;">'+esc(last.to||"")+(last.by ? '・'+esc(last.by) : '')+'</div>' : '<span style="color:#b91c1c;">まだ</span>')+'</td>'+
+      '<td style="text-align:right;">'+l.length+' 回</td><td class="noPrint"><button class="btn sm" onclick="document.getElementById(\'subView\').style.display=\'none\';openTpl(\''+t.id+'\')">開く</button></td></tr>'; }).join("");
+  const hist = subs.slice().map(s => '<tr><td style="white-space:nowrap;">'+esc(fdj(s.date))+'</td><td>'+esc(s.tplName || tplName(s.tpl || "astemo"))+'</td><td>'+esc(s.to||"")+'</td><td>'+esc(s.by||"")+'</td><td>'+esc(s.memo||"")+'</td></tr>').join("");
+  const v = document.getElementById("subView");
+  v.innerHTML = '<div class="pv"><div class="noPrint" style="display:flex;gap:8px;margin-bottom:12px;position:sticky;top:0;background:#fff;padding:6px 0;"><button class="btn" onclick="document.getElementById(\'subView\').style.display=\'none\'">← 戻る</button><button class="btn pri" onclick="window.print()">印刷・PDF</button></div>'+
+    '<h2 style="font-size:18px;color:#1e3a5f;">委託先調査票 全社の一覧</h2><div class="note">株式会社関根商店　'+esc(fdj(todayYmd()))+' 現在</div>'+
+    '<table style="margin-top:10px;"><tr><th>会社</th><th>様式</th><th>回答済み</th><th>最終保存</th><th>前回の提出</th><th>提出</th><th class="noPrint"></th></tr>'+rows+'</table>'+
+    '<h3 style="font-size:15px;color:#1e3a5f;margin-top:18px;">提出の記録(新しい順)</h3>'+
+    (hist ? '<table><tr><th>提出日</th><th>会社</th><th>提出先</th><th>回答者</th><th>メモ</th></tr>'+hist+'</table>' : '<div class="note">まだ提出の記録はありません</div>')+'</div>';
+  v.style.display = "block"; v.scrollTop = 0;
 }
 function goBack(){
   if (dirty && !confirm("保存していない変更があります。保存せずにISO管理に戻りますか？")) return;
