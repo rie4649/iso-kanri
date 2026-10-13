@@ -65,6 +65,16 @@
     <div class="mBtns"><button class="btn" onclick="closeDoc()">キャンセル</button><button class="btn pri" id="dSave" onclick="saveDoc()">登録</button></div>
   </div>
 </div>
+<div class="bg" id="mvBg" onclick="if(event.target===this)closeMakeVer()"><div class="modal" style="max-width:520px;">
+  <h2>この表で新しい版(PDF)を作る</h2>
+  <div class="note" style="margin-top:0;">今の表の内容で、会社の様式のPDFを作ります。できたPDFは EMS文書管理に新しい版として登録され、見直し・確認の記録に「改訂」が残ります。</div>
+  <label for="mvCode">文書</label><select id="mvCode"></select>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><label for="mvDate">日付(改訂日)</label><input id="mvDate" type="date"></div><div><label for="mvVer">版数</label><input id="mvVer" placeholder="例: 02"></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><label for="mvAuthor">作成者</label><input id="mvAuthor" value="環境管理責任者"></div><div><label for="mvChecker">確認者(任意)</label><input id="mvChecker"></div></div>
+  <label for="mvMemo">改訂内容</label><input id="mvMemo" placeholder="例: 脱炭素社会への移行を追加">
+  <div class="mBtns"><button class="btn" onclick="previewForm(true)">先に見る</button><span style="flex:1"></span><button class="btn" onclick="closeMakeVer()">キャンセル</button><button class="btn pri" id="mvSave" onclick="makeVer()">PDFを作って登録</button></div>
+</div></div>
+<div id="formStage" style="position:fixed;left:-20000px;top:0;"></div>
 <div id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -177,6 +187,8 @@
 <script src="ems-seed.js"></script>
 <script src="ems-docs.js"></script>
 <script src="contract-stats.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -232,7 +244,10 @@ function render(){
     if (!cstats && !cstatsLoading){ cstatsLoading = true; ContractStats.load().then(st => { cstats = st; render(); }).catch(e => { const el = document.getElementById("cstats"); if (el) el.textContent = "読み込めませんでした: "+e.message; }); }
   }
   // 表(1行ずつの入力)。行があるときは開いたまま、0行のときはたたむ
-  const tbl = '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 行を追加</button></div>'+
+  const lds = linkedDocs(reg.key);
+  const tbl = '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 行を追加</button>'+
+      (lds.length && list.length ? '<button class="btn" style="border-color:var(--navy);color:var(--navy);" onclick="openMakeVer()">📄 この表で新しい版(PDF)を作る</button><button class="btn" onclick="previewForm()">様式で見る・印刷</button>' : '')+'</div>'+
+      (lds.length && list.length ? '<div class="note" style="margin:-6px 0 8px;">行を追加・修正したら「この表で新しい版を作る」で、会社の様式('+esc(lds.map(d => "EMS-"+d.id).join("・"))+')のPDFを作って原本の新しい版として登録できます(前の版は改訂履歴に残ります)。</div>' : '')+
     (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
     list.map(r => cardHtml(reg, r)).join("");
   h += '<details class="card" style="padding:10px 14px;"'+(list.length ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">📝 表で入力・修正する（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
@@ -241,6 +256,96 @@ function render(){
 }
 /* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
 let cstats = null, cstatsLoading = false;
+
+/* ===== 表 → 会社の様式のPDF(新しい版) =====
+   様式: 上に文書名の枠、右上に 文書番号・作成者・日付・確認者、下に表。A4横。行が多いときは複数ページに分ける */
+const FORM_COLS = {
+  risks: [["no","No.",4],["issue","課題",11],["content","状況",19],["action","活動計画",21],["risk","リスク",13],["chance","チャンス",13],["freq","チェック頻度",7],["parties","主な利害関係者",12]],
+  objectives: [["kubun","区分",7],["act","活動名",7],["goal","環境目的",13],["plan","実施計画",12],["target","環境目標",9],["sdgs","関連SDGs",10],["method","実施方法",11],["monitor","監視方法",11],["owner","担当者",10],["status","状況",6]],
+  aspects: [["activity","区分",10],["aspect","環境側面",22],["impact","環境影響",20],["cond","状態",6],["lawName","法規制",12],["control","管理事項",22],["sigMark","著しい",6]],
+  parties: null
+};
+function formCols(reg){
+  if (FORM_COLS[reg.key]) return FORM_COLS[reg.key];
+  const fs = reg.fields.filter(f => f.list && !f.score); const w = Math.floor(100 / Math.max(1, fs.length));
+  return fs.map(f => [f.k, f.label, w]);
+}
+function formRowsHtml(reg, rows, cols){
+  return rows.map(r => '<tr>'+cols.map(([k]) => { const f = reg.fields.find(x => x.k === k); let v = f ? regLabel(f, r[k]) : (r[k] || "");
+    if (k === "freq" && reg.key === "risks") v = r[k] || "";
+    return '<td style="border:1px solid #111;padding:3px 4px;vertical-align:top;white-space:pre-wrap;word-break:break-all;line-height:1.45;">'+esc(v)+'</td>'; }).join("")+'</tr>').join("");
+}
+function formPageHtml(reg, meta, cols, rowsHtml, pageNo, pages){
+  return '<div class="fp" style="width:1123px;height:794px;box-sizing:border-box;padding:28px 34px;background:#fff;font-family:\'Yu Gothic\',\'Hiragino Sans\',\'Meiryo\',sans-serif;color:#111;position:relative;">'+
+    '<div style="display:flex;gap:16px;align-items:stretch;margin-bottom:12px;">'+
+      '<div style="flex:1;border:1.5px solid #111;background:#d9d9d9;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;letter-spacing:.1em;">'+esc(meta.title)+'</div>'+
+      '<table style="border-collapse:collapse;font-size:12px;width:330px;">'+[["文書番号",meta.docNo],["作成者",meta.author],["日付",meta.dateTxt],["確認者",meta.checker]].map(([k,v]) => '<tr><td style="border:1px solid #111;padding:3px 6px;width:80px;">'+k+'</td><td style="border:1px solid #111;padding:3px 6px;text-align:center;">'+esc(v||"")+'</td></tr>').join("")+'</table></div>'+
+    '<table class="mt" style="border-collapse:collapse;width:100%;font-size:11px;table-layout:fixed;"><colgroup>'+cols.map(c => '<col style="width:'+c[2]+'%">').join("")+'</colgroup>'+
+      '<tr>'+cols.map(c => '<th style="border:1px solid #111;background:#dbe4f3;padding:4px;font-weight:bold;">'+esc(c[1])+'</th>').join("")+'</tr>'+rowsHtml+'</table>'+
+    '<div style="position:absolute;bottom:14px;right:34px;font-size:11px;color:#444;">株式会社関根商店　'+pageNo+' / '+pages+'</div></div>';
+}
+/* 行を高さで分けて、ページごとのHTMLを作る */
+function buildFormPages(reg, meta){
+  const rows = sorted(reg).filter(r => !r.draft), cols = formCols(reg);
+  const st = document.getElementById("formStage");
+  st.innerHTML = formPageHtml(reg, meta, cols, formRowsHtml(reg, rows, cols), 1, 1);
+  const trs = [...st.querySelectorAll("table.mt tr")].slice(1), headH = st.querySelector("table.mt tr").offsetHeight;
+  const avail = 794 - 28 - 34 - st.querySelector(".fp > div").offsetHeight - 12 - headH - 10;
+  const pages = []; let curP = [], h = 0;
+  trs.forEach((tr, i) => { const rh = tr.offsetHeight; if (curP.length && h + rh > avail){ pages.push(curP); curP = []; h = 0; } curP.push(i); h += rh; });
+  if (curP.length) pages.push(curP);
+  return pages.map((idx, pi) => formPageHtml(reg, meta, cols, formRowsHtml(reg, idx.map(i => rows[i]), cols), pi+1, pages.length));
+}
+function mvMeta(){
+  const reg = regOf(cur), code = document.getElementById("mvCode") && document.getElementById("mvCode").value || (linkedDocs(reg.key)[0] || {}).id;
+  const d = EMS.docs.find(x => x.id === code) || { name:reg.name };
+  const ver = (document.getElementById("mvVer").value || "").trim().replace(/^(\d)$/, "0$1"), date = document.getElementById("mvDate").value;
+  return { code, ver, date, title:d.name, docNo:"EMS-"+code+(ver ? "-"+ver : ""), author:document.getElementById("mvAuthor").value.trim(), checker:document.getElementById("mvChecker").value.trim(),
+    dateTxt: date ? date.replace(/-/g, ".") : "", memo:document.getElementById("mvMemo").value.trim() };
+}
+function openMakeVer(){
+  const lds = linkedDocs(cur); if (!lds.length) return;
+  document.getElementById("mvCode").innerHTML = lds.map(d => '<option value="'+esc(d.id)+'">EMS-'+esc(d.id)+' '+esc(d.name)+'</option>').join("");
+  const setVer = () => { const last = EMS.filesOf(document.getElementById("mvCode").value)[0]; document.getElementById("mvVer").value = last && last.ver ? String(Number(last.ver)+1).padStart(2,"0") : "02";
+    if (last && last.author) document.getElementById("mvAuthor").value = last.author; };
+  document.getElementById("mvCode").onchange = setVer; setVer();
+  document.getElementById("mvDate").value = today(); document.getElementById("mvMemo").value = ""; document.getElementById("mvChecker").value = "";
+  document.getElementById("mvBg").classList.add("show");
+}
+function closeMakeVer(){ document.getElementById("mvBg").classList.remove("show"); }
+/* 様式で見る・印刷(登録はしない) */
+function previewForm(fromModal){
+  const reg = regOf(cur);
+  if (!fromModal){ openMakeVer(); closeMakeVer(); }
+  const pages = buildFormPages(reg, mvMeta());
+  const w = window.open("", "_blank"); if (!w){ toast("ポップアップを許可してください"); return; }
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(mvMeta().docNo)+'</title><style>@page{size:A4 landscape;margin:0;} body{margin:0;background:#888;} .fp{margin:10px auto;page-break-after:always;} @media print{body{background:#fff;} .fp{margin:0;}}</style></head><body>'+pages.join("")+'<script>setTimeout(()=>print(),400)<\/script></body></html>');
+  w.document.close();
+}
+async function makeVer(){
+  const reg = regOf(cur), meta = mvMeta();
+  if (!meta.date){ toast("日付を入れてください"); return; }
+  if (typeof html2canvas === "undefined" || !window.jspdf){ toast("PDFを作る部品を読み込めませんでした(ネットにつながっているか確認してください)"); return; }
+  const btn = document.getElementById("mvSave"); btn.disabled = true; btn.textContent = "PDFを作成中…";
+  try {
+    const pages = buildFormPages(reg, meta), st = document.getElementById("formStage");
+    const pdf = new window.jspdf.jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
+    for (let i = 0; i < pages.length; i++){
+      st.innerHTML = pages[i];
+      const cv = await html2canvas(st.firstChild, { scale:2, backgroundColor:"#ffffff" });
+      if (i) pdf.addPage("a4", "landscape");
+      pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 297, 210);
+    }
+    st.innerHTML = "";
+    const blob = pdf.output("blob");
+    const file = new File([blob], meta.docNo+"_"+meta.title+".pdf", { type:"application/pdf" });
+    btn.textContent = "登録中…";
+    await EMS.upload(meta.code, file, { ver:meta.ver, date:meta.date, author:meta.author, memo:meta.memo || "表から作成" });
+    await db.collection(EMS.REVIEWS).add({ code:meta.code, title:"", date:meta.date, kind:"改訂", by:meta.checker || meta.author, detail:(meta.memo || "表から新しい版を作成")+"("+meta.docNo+")", createdMs:Date.now() });
+    closeMakeVer(); toast(meta.docNo+" を作って登録しました(見直し・確認の記録にも残しました)");
+  } catch(e){ console.error(e); toast("作れませんでした: "+e.message); }
+  btn.disabled = false; btn.textContent = "PDFを作って登録";
+}
 function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey && !d.abolished); }   // 廃止した文書は出さない
 function emsDocsHtml(reg){
   const ds = linkedDocs(reg.key);
@@ -356,8 +461,9 @@ function cardHtml(reg, r){
   return '<div class="card'+(r.draft ? ' draft' : '')+(sc && sc.sig ? ' sig' : '')+'"><div class="top"><div class="ttl">'+tags+esc((regLabel(titleF, r[reg.title]) || "(未入力)")+(reg.key === "review" ? " 実施" : ""))+'</div><div class="acts">'+
     (r.draft ? '<button class="btn sm fix" onclick="confirmRow(\''+r.id+'\')">確定</button>' : '')+
     '<button class="btn sm" onclick="openEdit(\''+r.id+'\')">編集</button><button class="btn sm del" onclick="delRow(\''+r.id+'\')">削除</button></div></div>'+
-    (dl ? '<dl>'+dl+'</dl>' : '')+'</div>';
+    (dl ? '<dl>'+dl+'</dl>' : '')+(r.updatedAt && r.updatedAt.toDate ? '<div class="note" style="text-align:right;margin-top:4px;">最終更新 '+esc(fdTs(r.updatedAt))+'</div>' : '')+'</div>';
 }
+function fdTs(v){ const d = v.toDate ? v.toDate() : new Date(v); return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate(); }
 
 /* ---------- 入力フォーム ---------- */
 function fieldHtml(f, v){

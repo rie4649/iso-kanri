@@ -299,6 +299,20 @@
   .hm-show b { font-size:19px; } .hm-show small { display:block; font-size:13px; opacity:.85; margin-top:2px; }
   .hm-show span.go { border:1px solid rgba(255,255,255,.6); border-radius:6px; padding:7px 12px; font-size:13px; font-weight:700; white-space:nowrap; }
   .hm-grp { margin-bottom:14px; }
+  .hm-find { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:12px 14px; margin-bottom:12px; }
+  .hm-find h3 { font-size:15px; color:#1e3a5f; margin:0 0 8px; }
+  .hm-find input[type=search] { width:100%; padding:11px 12px; font-size:16px; border:2px solid #1e3a5f; border-radius:8px; box-sizing:border-box; }
+  .hm-hits { margin-top:6px; } .hm-hit { display:flex; gap:8px; align-items:center; padding:8px 6px; border-bottom:1px solid #eef2f7; cursor:pointer; }
+  .hm-hit:hover { background:#f1f5f9; } .hm-hit b { flex:1; font-size:14px; } .hm-hit small { color:#6b7280; font-size:12px; }
+  .hm-two { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  @media (max-width:700px){ .hm-two { grid-template-columns:1fr; } }
+  .hm-task { display:flex; gap:8px; align-items:center; padding:6px 4px; border-bottom:1px solid #f1f5f9; cursor:pointer; font-size:14px; }
+  .hm-task:hover { background:#f8fafc; } .hm-task .nm { flex:1; } .hm-task .sub { font-size:11px; color:#6b7280; display:block; }
+  .hm-st { font-size:12px; font-weight:700; border-radius:5px; padding:2px 8px; white-space:nowrap; }
+  .hm-st.ok { background:#dcfce7; color:#15803d; } .hm-st.ng { background:#fee2e2; color:#b91c1c; } .hm-st.na { background:#f3f4f6; color:#6b7280; }
+  .hm-per { font-size:12px; font-weight:700; color:#1e3a5f; margin:8px 0 2px; }
+  .hm-in { display:flex; gap:8px; align-items:center; padding:7px 4px; border-bottom:1px solid #f1f5f9; cursor:pointer; font-size:14px; }
+  .hm-in:hover { background:#f8fafc; } .hm-in .nm { flex:1; } .hm-in .to { font-size:12px; color:#1e3a5f; white-space:nowrap; }
   .hm-grp h3 { font-size:14px; font-weight:700; color:#6b7280; letter-spacing:.04em; margin:0 2px 6px; }
   .hm-list { background:#fff; border:1px solid #d1d5db; border-radius:6px; overflow:hidden; }
   .hm-row { display:flex; align-items:center; gap:10px; padding:15px 16px; cursor:pointer; border-top:1px solid #e5e7eb; }
@@ -4550,12 +4564,116 @@ window.addEventListener("load", () => {
   const m = location.hash.match(/^#sec=(.+)$/);
   if (m) { const k = decodeURIComponent(m[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {} setTimeout(() => openSection(k), 300); }
 });
+/* ===== ホームの「やることから探す」入口 ===== */
+// 書類名・言葉で探す(EMS文書の一覧も一緒に探す)
+const FIND_INDEX = [
+  ["リスク 機会 リスク対応計画書 EMS-A-10", "リスクと機会（リスク対応計画書）", "plan:risks"],
+  ["環境側面 有害 有益 環境影響評価表 著しい EMS-A-06 A-07 A-08", "環境側面（有害・有益な環境影響評価表）", "plan:aspects"],
+  ["環境目標 実施計画 行動計画書 活動計画 EMS-A-22 A-13 A-12", "環境目標と実施計画（環境目標兼活動計画書・行動計画書）", "plan:objectives"],
+  ["利害関係者 要求事項 EMS-A-09", "利害関係者の要求", "plan:parties"],
+  ["組織の課題 外部 内部", "組織の課題", "plan:issues"],
+  ["委託先 外注 処分先 契約 評価 契約件数", "外部委託先の管理（契約件数）", "plan:vendors"],
+  ["苦情 コミュニケーション 問い合わせ 視察 行政 照会 クレーム", "コミュニケーション・苦情", "plan:comms"],
+  ["緊急事態 訓練 テスト 地震 油漏れ", "緊急事態の訓練・テスト", "plan:emergency"],
+  ["校正 測定機器 トラックスケール 台貫 計量器 騒音計", "測定機器の点検・校正", "plan:calib"],
+  ["監視 測定 計画", "監視・測定の計画", "plan:monitoring"],
+  ["マネジメントレビュー 社長", "マネジメントレビュー", "plan:review"],
+  ["水質 pH 計量証明書 分析証 油水分離槽", "水質検査（計量証明書は各検査の添付へ）", "waterTest"],
+  ["騒音 圧縮機 定期点検 EMS-C-21", "騒音チェック・圧縮機定期点検", "noiseCheck"],
+  ["軽油 給油 燃料 CO2", "軽油使用量", "diesel"],
+  ["電気 ガス 水道 ライフライン 検針", "ライフライン", "lifeline"],
+  ["フロン エアコン 簡易点検", "フロン排出抑制法簡易点検", "freon"],
+  ["安全衛生 パトロール 教育訓練 定期テスト 講習 報告書", "安全災害対策（パトロール・教育訓練）", "safety"],
+  ["クリーン度 5S 清掃", "クリーン度チェック", "clean"],
+  ["金属 拾い上げ 拾い出し", "金属拾い上げ", "metal"],
+  ["地域貢献 清掃 寄付 義援金 感謝状", "地域貢献（書類も添付できます）", "donation"],
+  ["SDGs ブリケット 取組レベル 結果レポート", "SDGs", "sdgs"],
+  ["手順書 マニュアル 緊急時対応", "環境手順書", "manual"],
+  ["法規制 法令 順守評価", "法規制一覧・順守評価", "horei"],
+  ["許可証 許可 期限", "許可一覧（登録は共通マスタ管理）", "kyoka"],
+  ["許可の内容 積替え 保管場所 処分業 収集運搬 事業の範囲", "許可の内容（事業の範囲・積替え保管場所）", "permit"],
+  ["消火器 消防 防火", "消火器・防火管理", "shokaki"],
+  ["写真 車両 設備 掲示", "写真の記録", "photos"],
+  ["資格 力量 免許", "力量（資格の一覧）", "skills"],
+  ["沿革 組織図 環境方針 認証", "会社情報（沿革・組織図・環境方針）", "company"],
+  ["内部監査 是正処置 不適合", "内部監査・是正処置の記録", "kiroku"],
+  ["年間サマリー 年間 まとめ", "年間サマリー", "summary"],
+  ["委託先調査票 調査票 アンケート 取引先", "委託先調査票の回答", "survey"],
+  ["EMS 文書 原本 PDF 見直し 廃止 一覧", "EMS文書管理（原本PDF・見直しの記録）", "docs"],
+  ["カレンダー 予定", "カレンダー", "calendar"]
+];
+let findDocs = null;
+function findHits(q) {
+  const t = String(q || "").normalize("NFKC").toLowerCase().trim(); if (!t) return [];
+  const words = t.split(/\s+/);
+  const ok = s => { const x = String(s).normalize("NFKC").toLowerCase(); return words.every(w => x.includes(w)); };
+  const hits = FIND_INDEX.filter(([k, l]) => ok(k + " " + l)).map(([, l, to]) => ({ label: l, sub: "入力する画面", to }));
+  (findDocs || []).filter(d => !d.abolished && ok("ems-" + d.id + " " + d.id + " " + d.name)).forEach(d => hits.push({ label: "EMS-" + d.id + " " + d.name, sub: d.link ? "文書 → 入力する画面" : "文書（原本の保管）", to: d.link || "docs" }));
+  return hits.slice(0, 12);
+}
+window.homeFind = function(q) {
+  const el = document.getElementById("hmHits"); if (!el) return;
+  if (findDocs === null) { findDocs = []; db.collection("emsDocs").get().then(s => { findDocs = s.docs.map(d => ({ id: d.id, ...d.data() })); homeFind(document.getElementById("hmQ").value); }).catch(() => {}); }
+  const hs = findHits(q);
+  el.innerHTML = !String(q).trim() ? "" : hs.length ? hs.map(h => `<div class="hm-hit" onclick="openSection('${h.to}')"><b>${escapeHtml(h.label)}</b><small>${escapeHtml(h.sub)} ›</small></div>`).join("") : '<div style="font-size:13px;color:#6b7280;padding:6px;">見つかりません。別の言葉でも探してみてください（例：リスク、マニフェスト、許可証）</div>';
+};
+// 届いた書類 → 入れる場所
+const INCOMING = [
+  ["計量証明書（水質の分析結果）", "waterTest", "その検査日の記録の ✏️ → 添付"],
+  ["許可証（更新・新規）", "kyoka", "共通マスタ管理の「許可証」から登録"],
+  ["許可の内容が変わった（保管場所など）", "permit", "「＋ 変更を登録」"],
+  ["消防の点検結果報告書・消火器管理票", "shokaki", "書類の種類と点検日を選んでアップ"],
+  ["講習・教育の実施報告書", "safety", "🎓教育訓練 → ＋ → 添付"],
+  ["委託先調査票（取引先から）", "survey", "回答して「提出したことを記録」"],
+  ["計画書・評価表などEMS文書のPDF", "docs", "一括登録、または文書の「原本を登録」"],
+  ["感謝状・寄付の報告と御礼", "donation", "活動のカードの「📎 書類を添付」"],
+  ["SDGs取組レベル結果レポート", "sdgs", "一番下の「取組レベル結果」"],
+  ["現場・車両・設備の写真", "photos", "撮影日は自動で入ります"]
+];
+// 毎月・毎年やること(今の状況を記録から自動で判定)
+async function renderHomeTasks() {
+  const el = document.getElementById("hmTasks"); if (!el) return;
+  const now = new Date(), ym = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  const thisM = ym(now), prevM = ym(new Date(now.getFullYear(), now.getMonth() - 1, 1)), y = String(now.getFullYear());
+  const fyStart = now.getMonth() + 1 >= 8 ? now.getFullYear() + "-08" : (now.getFullYear() - 1) + "-08";
+  const get = c => db.collection(c).get().then(s => s.docs.map(d => d.data())).catch(() => []);
+  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits"].map(get));
+  const has = (l, k, v) => l.some(x => String(x[k] || "").startsWith(v));
+  const last = (l, k) => l.map(x => String(x[k] || "")).filter(Boolean).sort().pop() || "";
+  const fdy = s => { const p = String(s).split("-"); return p.length >= 3 ? Number(p[1]) + "/" + Number(p[2]) : p.length === 2 ? Number(p[1]) + "月分" : s; };
+  const qOf = m => [8,9,10].includes(m) ? 0 : [11,12,1].includes(m) ? 1 : [2,3,4].includes(m) ? 2 : 3;
+  const qNow = qOf(now.getMonth() + 1), qMonths = [[8,9,10],[11,12,1],[2,3,4],[5,6,7]][qNow];
+  const frDone = new Set(fr.filter(x => { const d = String(x.date || ""); return d >= fyStart && qMonths.includes(Number(d.slice(5, 7))); }).map(x => x.equipment)).size;
+  const st = (ok, txt) => `<span class="hm-st ${ok === null ? "na" : ok ? "ok" : "ng"}">${escapeHtml(txt)}</span>`;
+  const T = (name, sub, to, badge) => `<div class="hm-task" onclick="openSection('${to}')"><span class="nm">${name}<span class="sub">${escapeHtml(sub)}</span></span>${badge}</div>`;
+  const cnt = (l, k, v) => l.filter(x => String(x[k] || "").startsWith(v)).length;
+  el.innerHTML =
+    '<div class="hm-per">毎月</div>' +
+    T("クリーン度チェック", "月2回", "clean", st(cnt(cl, "date", thisM) >= 2, `今月 ${cnt(cl, "date", thisM)}回`)) +
+    T("安全衛生パトロール", "月1回", "safety", st(has(sp, "date", thisM), has(sp, "date", thisM) ? "今月 済" : "今月 まだ")) +
+    T("軽油使用量", "前の月の分を入力", "diesel", st(has(dr, "yearMonth", prevM), has(dr, "yearMonth", prevM) ? fdy(prevM) + " 済" : fdy(prevM) + " まだ")) +
+    T("ライフライン（電気・ガス・水道）", "前の月の分を入力", "lifeline", st(has(ll, "yearMonth", prevM), has(ll, "yearMonth", prevM) ? fdy(prevM) + " 済" : fdy(prevM) + " まだ")) +
+    '<div class="hm-per">3か月ごと</div>' +
+    T("フロン排出抑制法簡易点検", qMonths.join("・") + "月の間に全機器", "freon", st(fe.length ? frDone >= fe.length : null, `${frDone} / ${fe.length}台`)) +
+    '<div class="hm-per">年に1回以上（最後に実施した日）</div>' +
+    T("水質検査", "計量証明書も添付", "waterTest", st(has(wt, "date", y), last(wt, "date") ? fdy(last(wt, "date")) + (has(wt, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
+    T("騒音チェック", "", "noiseCheck", st(has(nc, "date", y), last(nc, "date") ? fdy(last(nc, "date")) + (has(nc, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
+    T("法令の順守評価", "法規制一覧から", "horei", st(has(hv, "date", y), last(hv, "date") ? fdy(last(hv, "date")) + (has(hv, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
+    T("内部監査", "", "kiroku", st(has(au, "date", y), last(au, "date") ? fdy(last(au, "date")) + (has(au, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
+    T("マネジメントレビュー", "", "summary", st(has(mr, "date", y), last(mr, "date") ? fdy(last(mr, "date")) + (has(mr, "date", y) ? "" : "（今年まだ）") : "記録なし"));
+}
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
   document.getElementById("homeMenu").innerHTML =
     // 監査・視察・プロジェクター用の「環境への取り組み」(旧 見せるモード。見るだけ)
     `<div class="hm-show" onclick="location.href='show.html'"><div><b>環境への取り組み</b><small>ISO監査・視察・プロジェクター用（閲覧のみ。内容はこの画面で入力）</small></div><span class="go">開く ›</span></div>` +
+    // やることから探す入口
+    `<div class="hm-find"><h3>🔍 書類名・言葉で探す</h3><input type="search" id="hmQ" placeholder="例：リスク、計量証明書、許可証、EMS-A-10" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
+    `<div class="hm-two"><div class="hm-find"><h3>📅 毎月・毎年やること</h3><div id="hmTasks"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
+    `<div class="hm-find"><h3>📥 届いた書類を入れる</h3>${INCOMING.map(([n, to, how]) => `<div class="hm-in" onclick="openSection('${to}')"><span class="nm">${n}<span style="display:block;font-size:11px;color:#6b7280;">${how}</span></span><span class="to">入れる ›</span></div>`).join("")}</div></div>` +
+    `<div style="font-size:13px;font-weight:700;color:#6b7280;margin:4px 2px 8px;">ISOの章ごとのメニュー</div>` +
     SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("");
+  renderHomeTasks().catch(e => console.error(e));
 }
 
 window.openSection = function(sec) {
