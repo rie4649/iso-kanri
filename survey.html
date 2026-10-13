@@ -91,8 +91,8 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="survey-items.js"></script>
-<script src="survey-templates.js"></script>
+<script src="survey-items.js?v=1013"></script>
+<script src="survey-templates.js?v=1013"></script>
 <script>if (typeof SURVEY_TEMPLATES === "undefined") window.addEventListener("DOMContentLoaded", () => { const m = '<div class="empty" style="color:#b91c1c;line-height:1.8;">会社ごとの調査票のファイル(survey-templates.js)が見つかりません。<br>GitHubの iso-kanri に survey-templates.js をアップロードしてください。<br>(アップロード直後なら、1〜2分待ってから再読み込みしてください)</div>'; const l = document.getElementById("list"); if (l) l.innerHTML = m; });</script>
 <script>
 const firebaseConfig = {
@@ -161,6 +161,7 @@ function initAns(items){
 
 /* ===== 読み込み ===== */
 async function loadAll(){
+  try { renderTpls(); } catch(e){}   // 会社のボタンは、データを読む前にまず出す
   try {
     const [n, b] = await Promise.all([NAMES_REF.get(), BANK_REF.get()]);
     names = n.exists ? (n.data().map || {}) : {}; bank = b.exists ? (b.data().items || {}) : {};
@@ -400,7 +401,9 @@ function goBack(){
   dirty = false; location.href = "index.html";
 }
 window.addEventListener("beforeunload", e => { if (dirty){ e.preventDefault(); e.returnValue = ""; } });
-loadAll();
+window.addEventListener("error", e => { const l = document.getElementById("list"); if (l && /読み込み中/.test(l.textContent)) l.innerHTML = '<div class="empty" style="color:#b91c1c;">エラー: '+esc(e.message||"")+'<br>この画面を写真に撮ってClaudeに送ってください</div>'; });
+loadAll().catch(e => { document.getElementById("list").innerHTML = '<div class="empty" style="color:#b91c1c;">読み込みエラー: '+esc(e.message||e)+'<br>この画面を写真に撮ってClaudeに送ってください</div>'; });
+setTimeout(() => { const l = document.getElementById("list"); if (l && /読み込み中/.test(l.textContent)) l.innerHTML = '<div class="empty" style="color:#b91c1c;">データの読み込みに時間がかかっています。ネットの接続を確認して、Ctrl+Shift+R で再読み込みしてください。</div>'; }, 20000);
 </script>
 </body>
 </html>
