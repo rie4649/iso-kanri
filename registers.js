@@ -17,6 +17,19 @@ function aspectScore(r){
 
 const SCORE3 = [["", "未評価"], ["1", "1 小"], ["2", "2 中"], ["3", "3 大"]];
 
+// 取引先チェック表(環境マニュアル 6.1.5): 5項目を0〜2点 → 合計でランク A:8〜10 B:5〜7 C:0〜4
+const VENDOR_PTS = [["", "未評価"], ["0", "0点"], ["1", "1点"], ["2", "2点"]];
+const VENDOR_CHECK_KEYS = ["vcCert", "vcPolicy", "vcCo2", "vcLaw", "vcAccident"];
+function vendorCheck(r){
+  const v = VENDOR_CHECK_KEYS.map(k => r[k]);
+  if (v.some(x => x === "" || x == null)) return { done:false, total:0, rank:"" };
+  const total = v.reduce((a, x) => a + Number(x), 0);
+  return { done:true, total, rank: total >= 8 ? "A" : total >= 5 ? "B" : "C" };
+}
+const VENDOR_RANK_ACTION = { A:"継続", B:"改善を要請する", C:"取引の見直しを検討する" };
+// リスクの優先度(環境マニュアル 6.1.4)
+const RISK_LEVELS = [["", "未評価"], ["低", "低(監視のみ)"], ["中", "中(改善計画に反映)"], ["高", "高(重点管理・マネジメントレビューで必ず確認)"]];
+
 const ISO_REGS = [
   {
     key:"issues", icon:"🌏", name:"組織の課題", clause:"4.1",
@@ -38,20 +51,22 @@ const ISO_REGS = [
   },
   {
     key:"parties", icon:"🤝", name:"利害関係者の要求", clause:"4.2",
-    help:"お客様・行政・地域・従業員など、会社に関わる人たちが何を求めているかと、そのうち必ず守るもの(順守義務)を整理します。",
+    help:"お客様・行政・地域・従業員など、会社に関わる人たちが何を求めているかと、そのうち必ず守るもの(順守義務)を整理します。環境マニュアル4.2の表(〇＝法令や契約に基づく順守義務、△＝社会的期待や自主的取り組み)と同じ内容です。気候変動への対応はリスク対応計画書に記録します。",
     title:"party",
     fields:[
       { k:"party", label:"利害関係者", type:"text", req:true, list:true },
       { k:"needs", label:"求めていること(ニーズ・期待)", type:"textarea", list:true },
-      { k:"obligation", label:"順守義務にするか", type:"select", options:[["する","する(必ず守る)"],["しない","しない(配慮する)"]], list:true },
+      { k:"obligation", label:"順守義務", type:"select", options:[["する","〇 順守義務(法令・契約)"],["しない","△ 社会的期待・自主的取り組み"]], list:true },
       { k:"action", label:"会社の対応", type:"textarea", list:true }
     ],
     examples:[
-      { party:"お客様(排出事業者)", needs:"廃棄物の適正な処理、マニフェストの確実な運用、契約どおりの対応", obligation:"する", action:"契約書・マニフェストの管理、委託先調査への回答" },
-      { party:"行政(長野県・市町村)", needs:"許可条件と法令の順守、報告の提出", obligation:"する", action:"許可一覧で期限を管理し、法規制の順守評価を行う" },
-      { party:"地域住民", needs:"騒音・粉じん・臭いがないこと、車両の安全な通行", obligation:"しない", action:"騒音チェック・清掃・安全運転の徹底" },
-      { party:"従業員", needs:"安全で働きやすい職場", obligation:"しない", action:"安全衛生パトロール・教育訓練" },
-      { party:"処分先・委託先", needs:"契約どおりの搬入、搬入条件の順守", obligation:"する", action:"契約の確認と搬入時の分別" }
+      { party:"行政機関", needs:"法令順守、報告義務、気候変動対応", obligation:"する", action:"許可一覧で期限を管理し、法規制の順守評価を行う。立入検査・指導は行政照会記録に残す" },
+      { party:"顧客", needs:"品質確保、回収日程遵守、CO₂削減目標", obligation:"しない", action:"委託先調査票への回答・現地確認の対応、軽油使用量の削減" },
+      { party:"従業員", needs:"安全衛生、教育訓練、働き方改善", obligation:"する", action:"安全衛生パトロール・教育訓練" },
+      { party:"経営者", needs:"収益確保、環境目標達成、地域協調性", obligation:"しない", action:"環境活動計画とマネジメントレビュー" },
+      { party:"搬入先・処分先", needs:"品質維持、適正処分、認証確認", obligation:"する", action:"契約・許可の確認と取引先チェック表での評価" },
+      { party:"外注先", needs:"コスト適正化、納期遵守、環境方針共有", obligation:"しない", action:"環境方針の共有と取引先チェック表での評価" },
+      { party:"地域住民", needs:"騒音防止、水質保全、災害対応", obligation:"する", action:"騒音チェック・水質検査・緊急事態の訓練" }
     ]
   },
   {
@@ -64,15 +79,18 @@ const ISO_REGS = [
       { k:"duty", label:"責任と権限", type:"textarea", list:true }
     ],
     examples:[
-      { role:"トップマネジメント(代表取締役)", person:"", duty:"環境方針の決定、必要な資源の提供、マネジメントレビューの実施" },
-      { role:"環境管理責任者", person:"", duty:"環境マネジメントシステムの運用と改善、トップへの報告" },
-      { role:"内部監査員", person:"", duty:"年1回の内部監査の実施と報告" },
-      { role:"各部門の責任者", person:"", duty:"部門での手順書の周知と記録の管理" }
+      { role:"トップマネジメント(社長)", person:"関根 健巳", duty:"環境管理責任者・内部監査委員長の任命／環境方針の確立・維持／EMSに必要な経営資源の提供／順守義務の達成の確保／マネジメントレビューの実施" },
+      { role:"環境管理責任者", person:"川村 理絵", duty:"EMSがISO14001に適合することの確保／プロセスが意図した結果を生むことの確保／パフォーマンスと改善機会の社長への報告／最新状態の維持と日常点検・改善／会議の主宰と議事録の作成・管理／問題点の収集・整理・対策立案・評価" },
+      { role:"ISO事務局", person:"", duty:"環境管理責任者の指示に従い、EMS推進のための実務を行う" },
+      { role:"内部環境監査委員長", person:"", duty:"内部監査プログラムの立案／チームリーダー・メンバーの選定／監査の実施と社長への報告／内部監査の適時の実施の確保" },
+      { role:"内部監査委員", person:"", duty:"内部監査の準備／内部監査結果の報告／フォローアップの実施" },
+      { role:"ISO推進委員会", person:"", duty:"環境管理責任者・内部環境監査委員長・ISO推進委員で構成。環境目的・目標の設定の検討など、EMSの重要事項を審議" },
+      { role:"ISO推進委員", person:"", duty:"委員会のメンバーとして環境管理責任者との橋渡し／環境管理責任者の補佐／委員会での議論・検討への参加" }
     ]
   },
   {
     key:"aspects", icon:"🌱", name:"環境側面", clause:"6.1.2",
-    help:"仕事のどの活動が、環境にどんな影響を与えるか(環境側面)を書き出し、規模・頻度・法規制を1〜3で評価します。合計"+ASPECT_SIGNIFICANT_TOTAL+"以上、または法規制が3のものは「著しい環境側面」として重点的に管理します。",
+    help:"受入・運搬・保管・再資源化・出荷の流れで、環境にどんな影響を与えるか(環境側面)を有害(リスク)・有益(機会)の両面から書き出します。環境マニュアル6.1.2: 法令に関わる／漏えい・飛散・火災など重大な汚染リスク／気候変動の影響が大きい／利害関係者の要求が強い／緊急事態に該当（有益は CO₂削減・省資源・再資源化、利害関係者の期待、コスト削減、社員・地域への貢献）のどれかに当たるものを「◎ 著しい環境側面」にします。毎年8月に見直します。規模・頻度・法規制の点数(1〜3)で目安を出すこともできます。",
     title:"aspect",
     fields:[
       { k:"activity", label:"活動・作業", type:"text", req:true, list:true },
@@ -101,7 +119,7 @@ const ISO_REGS = [
   },
   {
     key:"risks", icon:"⚠️", name:"リスクと機会", clause:"6.1.1 / 6.1.4",
-    help:"課題・利害関係者・環境側面から、起こると困ること(リスク)と、良くなるチャンス(機会)を選び、どう取り組むかを決めます。",
+    help:"課題・利害関係者・環境側面から、起こると困ること(リスク)と、良くなるチャンス(機会)を選び、どう取り組むかを決めます(リスク対応計画書)。環境マニュアル6.1.4: 優先度を 低(監視のみ)・中(改善計画に反映)・高(重点管理) で決め、「高」は必ずマネジメントレビューで確認します。気候変動(異常気象・CO₂排出規制・地域災害)もここに記録します。",
     title:"issue", sortNo:true,
     fields:[
       { k:"no", label:"No.", type:"text", list:true },
@@ -111,7 +129,8 @@ const ISO_REGS = [
       { k:"risk", label:"リスク", type:"textarea", list:true },
       { k:"chance", label:"チャンス(機会)", type:"textarea", list:true },
       { k:"freq", label:"チェック頻度", type:"select", options:[["",""],["毎月","毎月(月次レビュー・推進委員会)"],["半期","半期(半期末レビュー・環境管理責任者)"],["年次","年次(年一回・マネジメントレビュー)"],["随時","随時(法改正・災害発生時)"]], list:true },
-      { k:"parties", label:"主な利害関係者", type:"text", list:true }
+      { k:"parties", label:"主な利害関係者", type:"text", list:true },
+      { k:"level", label:"優先度(6.1.4)", type:"select", options:RISK_LEVELS, list:true }
     ],
     examples:[
       { kind:"リスク", content:"車両・重機からの油漏れによる土壌・水質の汚染", source:"環境側面:油漏れ", action:"日常点検と緊急時対応の訓練", status:"実施中" },
@@ -121,7 +140,7 @@ const ISO_REGS = [
   },
   {
     key:"objectives", icon:"🎯", name:"環境目標と実施計画", clause:"6.2",
-    help:"環境目標ごとに、何を・誰が・いつまでに・どうやって評価するかを決めます(SDGsのページの目標と合わせて見せます)。",
+    help:"環境目標ごとに、何を・誰が・いつまでに・どうやって評価するかを決めます(SDGsのページの目標と合わせて見せます)。環境マニュアル6.2: 環境目的の達成期間は原則3年、環境目標は初年度・2年度・最終年度の1年単位。毎年7月に見直します。進捗は「進捗記録兼評価表」に記録し、半期末(1月末)・年度末(7月末)に未達成なら不適合として是正処置を行います。",
     title:"goal",
     fields:[
       { k:"kubun", label:"区分", type:"text", list:true, ph:"例: 社内活動" },
@@ -143,8 +162,23 @@ const ISO_REGS = [
     ]
   },
   {
+    key:"changes", icon:"🔁", name:"変更管理記録", clause:"6.3",
+    help:"環境マネジメントに影響する変更を、前もって評価して記録します(環境マニュアル6.3)。対象: 新規事業の開始／新しい設備の導入・更新／法規制の改正／組織改編・人員の変更／委託先・取引先の変更。環境側面・順守義務・リスクへの影響を評価し、必要なら著しい環境側面特定表・環境活動計画を直し、教育で周知して、マネジメントレビューで有効性を確認します。",
+    title:"content", dated:"date",
+    fields:[
+      { k:"date", label:"日付", type:"date", req:true, list:true },
+      { k:"kind", label:"変更の種類", type:"select", options:[["新規事業","新規事業の開始"],["設備","新設備の導入・更新"],["法改正","法規制の改正"],["組織","組織改編・人員変更"],["委託先","委託先・取引先の変更"],["その他","その他"]], list:true },
+      { k:"content", label:"変更の内容", type:"textarea", req:true, list:true, ph:"例: 積替え保管場所の移転" },
+      { k:"effect", label:"影響の評価(環境側面・順守義務・リスク及び機会)", type:"textarea", list:true },
+      { k:"update", label:"直した書類", type:"textarea", list:true, ph:"例: 著しい環境側面特定表・環境活動計画・許可の内容" },
+      { k:"training", label:"周知・教育", type:"text", list:true, ph:"例: 10/1 朝礼で周知(教育訓練記録)" },
+      { k:"review", label:"マネジメントレビューでの確認", type:"text", list:true },
+      { k:"status", label:"状況", type:"select", options:[["対応中","対応中"],["完了","完了"]], list:true }
+    ]
+  },
+  {
     key:"vendors", icon:"🏭", name:"外部委託先の管理", clause:"8.1",
-    help:"処分を委託している処分先や、運搬を委託している会社などについて、許可・契約の期限と、評価(実地確認など)の結果を記録します。審査では「委託先をどう管理・評価しているか」を見られます。",
+    help:"処分を委託している処分先や、運搬を委託している会社などについて、許可・契約の期限と評価を記録します。環境マニュアル6.1.5の「取引先チェック表」: 認証有無・環境方針・CO₂削減目標・法令遵守状況・事故/不適合履歴の5項目を0〜2点で採点し、合計 8〜10点=A、5〜7点=B、0〜4点=C。Bは改善を要請、Cは取引の見直しを検討します。新規契約のときに初期評価、その後は年1回(8月)見直し、結果はリスク対応計画書とマネジメントレビューに反映します。",
     title:"name",
     fields:[
       { k:"name", label:"委託先", type:"text", req:true, list:true },
@@ -152,7 +186,13 @@ const ISO_REGS = [
       { k:"items", label:"主な品目・業務", type:"text", list:true },
       { k:"permitExp", label:"許可の有効期限", type:"date", list:true },
       { k:"contractExp", label:"契約の期限", type:"date", list:true },
-      { k:"evalDate", label:"評価(実地確認など)をした日", type:"date", list:true },
+      { k:"evalDate", label:"評価(取引先チェック・実地確認など)をした日", type:"date", list:true },
+      { k:"evalKind", label:"評価の種類", type:"select", options:[["",""],["初期","初期評価(新規契約時)"],["定期","定期の見直し(毎年8月)"],["臨時","臨時(事故・変更など)"]], list:true },
+      { k:"vcCert", label:"認証有無(ISO等)", type:"select", options:VENDOR_PTS, pts:true },
+      { k:"vcPolicy", label:"環境方針", type:"select", options:VENDOR_PTS, pts:true },
+      { k:"vcCo2", label:"CO₂削減目標", type:"select", options:VENDOR_PTS, pts:true },
+      { k:"vcLaw", label:"法令遵守状況", type:"select", options:VENDOR_PTS, pts:true },
+      { k:"vcAccident", label:"事故・不適合履歴", type:"select", options:VENDOR_PTS, pts:true },
       { k:"evalResult", label:"評価の結果", type:"select", options:[["",""],["適正","適正"],["条件付き","条件付きで適正"],["不適","不適"]], list:true },
       { k:"memo", label:"メモ", type:"textarea", list:true }
     ]
@@ -181,13 +221,13 @@ const ISO_REGS = [
   },
   {
     key:"comms", icon:"📞", name:"コミュニケーション・苦情", clause:"7.4",
-    help:"お客様・近隣・行政などとの環境に関するやりとりや苦情を記録します。苦情がない年も「なし」と分かるように、問い合わせや報告も残しておくと安心です。",
+    help:"お客様・近隣・行政などとの環境に関するやりとりや苦情を記録します。環境マニュアル7.4.3の区分で記録します。立入検査・指導・問い合わせ・視察(行政対応)はカレンダーの「行政照会記録」、苦情は「クレーム対応報告書」にも残します。社員や社外からの改善提案・要望は「提案情報」で記録します(7.4.2)。",
     title:"content", dated:"date",
     fields:[
       { k:"date", label:"日付", type:"date", req:true, list:true },
       { k:"dir", label:"区分", type:"select", options:[["外部から","外部から"],["外部へ","外部へ"],["社内","社内"]], list:true },
       { k:"party", label:"相手", type:"text", list:true },
-      { k:"kind", label:"種類", type:"select", options:[["問い合わせ","問い合わせ"],["苦情","苦情"],["要望","要望"],["行政","行政への報告・連絡"],["報告","報告"],["その他","その他"]], list:true },
+      { k:"kind", label:"種類(7.4.3の区分)", type:"select", options:[["法令","法令・条例対応(情報収集・報告・火災・事故時)"],["行政","行政対応(立入検査・指導・問い合わせ・視察)"],["顧客","顧客対応(顧客からの要求事項・監査)"],["苦情","苦情対応"],["業界","業界情報"],["技術","技術情報提供"],["是正","是正処置"],["気候","気候変動対応情報"],["提案","提案情報(改善提案・要望)"],["問い合わせ","問い合わせ"],["要望","要望"],["報告","報告"],["その他","その他"]], list:true },
       { k:"content", label:"内容", type:"textarea", req:true, list:true },
       { k:"response", label:"対応", type:"textarea", list:true },
       { k:"status", label:"状況", type:"select", options:[["対応中","対応中"],["完了","完了"]], list:true }
@@ -195,7 +235,7 @@ const ISO_REGS = [
   },
   {
     key:"emergency", icon:"", name:"緊急事態の訓練・テスト", clause:"8.2",
-    help:"油漏れ・火災・地震などの緊急事態を想定して、手順書どおりに動けるか訓練・テストした記録です。審査では「対応手順を定期的にテストし、結果を見て手順を見直しているか」を見られます。年1回以上が目安です。",
+    help:"油漏れ・火災・地震などの緊急事態を想定して、手順書どおりに動けるか訓練・テストした記録です。審査では「対応手順を定期的にテストし、結果を見て手順を見直しているか」を見られます。環境マニュアル8.2: 定期テストのあと内容をレビューして「定期テスト記録」に残し、緊急事態の手順書は年1回11月に見直します。緊急事態が実際に起きたときは不適合として是正処置を行います。",
     title:"scenario", dated:"date",
     fields:[
       { k:"date", label:"実施日", type:"date", req:true, list:true },
@@ -209,15 +249,18 @@ const ISO_REGS = [
   },
   {
     key:"review", icon:"", name:"マネジメントレビュー", clause:"9.3",
-    help:"年1回、環境管理責任者が社長に環境マネジメントの状況を報告し、社長が評価と指示を出した記録です。審査では、報告した内容(インプット)と、社長の評価・指示(アウトプット)がそろっているかを見られます。",
+    help:"社長が主宰し、環境管理責任者とISO推進委員会が参加して、環境マネジメントの適切性・妥当性・有効性を確認した記録です(環境マニュアル9.3)。インプット: 内部監査結果・順守義務・目標の達成度・パフォーマンス・是正処置・利害関係者の意見・気候変動リスク・取引先リスク評価・資源。アウトプット(社長の指示)は環境活動計画・リスク対応計画書に反映します。",
     title:"date", dated:"date",
     fields:[
       { k:"date", label:"実施日", type:"date", req:true, list:true },
       { k:"members", label:"出席者", type:"text", list:true, ph:"例: 代表取締役、環境管理責任者" },
       { k:"prev", label:"前回の指示の実施状況", type:"textarea", list:true },
-      { k:"report", label:"報告した内容", type:"textarea", list:true, ph:"課題・利害関係者・順守義務の変化/環境目標の達成状況/監視測定・順守評価・内部監査の結果/苦情/是正処置/改善の機会 など" },
+      { k:"report", label:"報告した内容(インプット)", type:"textarea", list:true, ph:"内部監査結果／順守義務の状況／環境目標の達成度／環境パフォーマンスの測定結果／是正処置の状況／利害関係者からの意見／資源の適切性 など" },
+      { k:"highRisk", label:"「高」のリスクの確認(6.1.4)", type:"textarea", list:true, ph:"リスク対応計画書で優先度「高」のもの" },
+      { k:"climate", label:"気候変動リスクの評価", type:"textarea", list:true, ph:"異常気象・CO₂排出規制・災害リスク" },
+      { k:"supplier", label:"取引先リスク評価(サプライチェーン)", type:"textarea", list:true, ph:"取引先チェック表のB・Cランクと対応" },
       { k:"evaluation", label:"環境マネジメントシステムの評価", type:"select", options:[["",""],["有効","適切・妥当・有効に機能している"],["一部改善","おおむね有効(一部改善が必要)"],["改善が必要","改善が必要"]], list:true },
-      { k:"decision", label:"社長の指示・決定事項", type:"textarea", list:true, ph:"改善の指示、方針・目標の変更、必要な資源(人・設備・費用) など" }
+      { k:"decision", label:"社長の指示・決定事項(アウトプット)", type:"textarea", list:true, ph:"EMSの改善／環境方針・目標の改訂／気候変動対応の新たな取組み／サプライチェーンの改善要請／資源の提供／教育訓練の強化 など" }
     ]
   },
   {

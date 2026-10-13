@@ -45,7 +45,7 @@
     <span class="tag com">共通の答え</span>…ほかの会社の調査票で同じことを聞かれて答えた内容が、自動で入っています(保存で確定)。一度答えれば、全部の会社の調査票に入ります。<br>
     <span class="tag ok">仮の回答</span>…アプリのデータから仮に入れた回答です(保存で確定)。<br>
     <b>③ 現地確認の準備</b>：実地確認・立会いの様式は「準備する資料」に、当日見せる物・コピーを渡す物が並びます。<br>
-    <b>④ 提出したら</b>：「📤 この内容で提出したことを記録」で、提出日・提出先・回答者と、その時の回答の控えが残ります。控えは印刷・PDFにでき、次の年は「この控えの回答を写す」から始められます。</div></details>
+    <b>④ 提出したら</b>：「この内容で提出したことを記録」で、監査(現地確認)の日・提出先・回答者と、その時の回答の控えが残ります。日付はあとから入力・修正できます。控えは印刷・PDFにでき、次の年は「この控えの回答を写す」から始められます。<br><b>⑤ カレンダー(行政照会記録)</b>：記録するときに、カレンダーにある監査の予定とつなぐか、新しく登録できます(環境マニュアル7.4.3「行政照会記録」)。カレンダーの予定からも「調査票の控え」が開けます。</div></details>
 
   <div class="tpls" id="tpls"></div>
   <div id="tplInfo"></div>
@@ -69,13 +69,14 @@
   <label class="chk" style="display:flex;gap:6px;align-items:center;margin-top:10px;"><input type="checkbox" id="qLink" style="width:auto;"> 根拠として「環境手順書」を開くボタンを付ける</label>
   <div class="mBtns"><button class="btn del" id="qDel" style="margin-right:auto;" onclick="delQ()">この質問を削除</button><button class="btn" onclick="closeQ()">キャンセル</button><button class="btn pri" onclick="saveQ()">保存</button></div>
 </div></div>
-<div class="bg" id="subBg" onclick="if(event.target===this)closeSubmit()"><div class="modal" style="max-width:460px;">
+<div class="bg" id="subBg" onclick="if(event.target===this)closeSubmit()"><div class="modal" style="max-width:560px;">
   <h2 id="subTtl">提出したことを記録</h2>
   <div class="note" style="margin-top:0;" id="subNote">いま保存されている回答が、この日付の控えとして残ります。</div>
-  <label for="sDate">提出日(現地確認の日)</label><input id="sDate" type="date">
+  <label for="sDate">監査・現地確認の日(提出日)　<small style="font-weight:normal;color:var(--muted);">あとから入力するときは、その日の日付に直してください</small></label><input id="sDate" type="date" onchange="renderCalBox()">
   <label for="sTo">提出先(会社名・事業所など)</label><input id="sTo" placeholder="例: ○○株式会社 ○○工場">
   <label for="sBy">回答者</label><input id="sBy" placeholder="例: 環境管理責任者 川村">
   <label for="sMemo">メモ(任意)</label><input id="sMemo" placeholder="例: メールで提出／現地確認で指摘なし">
+  <div id="calBox" style="margin-top:12px;"></div>
   <div class="mBtns"><button class="btn" onclick="closeSubmit()">キャンセル</button><button class="btn pri" onclick="saveSubmit()">記録する</button></div>
 </div></div>
 <div class="bg" id="aBg" onclick="if(event.target===this)closeAddTpl()"><div class="modal" style="max-width:560px;">
@@ -135,7 +136,8 @@ function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;")
 const fdj = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : (s||""); };
 const todayYmd = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 
-let tpl = (location.hash || "").replace("#","") || "astemo";
+let tpl = (location.hash || "").replace("#","").split("/")[0] || "astemo";
+const openSubId = (location.hash || "").split("/")[1] || "";   // カレンダーから「調査票の控え」で来たとき
 let added = [];   // 自分で追加した会社 isoSurveyTemplates/added
 const TPLS = () => SURVEY_TEMPLATES.concat(added.filter(a => !a.deleted).map(a => { const src = SURVEY_TEMPLATES.find(t => t.id === a.copyOf) || {};
   return { id:a.id, name:a.name, form:a.form || src.form || "（この会社の様式）", kind:a.kind || src.kind || "調査票", base:src.base || "", items:src.items || [], docNote:src.docNote || "", copyOf:a.copyOf || "", added:true, createdMs:a.createdMs }; }));
@@ -185,7 +187,8 @@ async function loadAll(){
     await seedOnce();
   } catch(e){ console.error(e); }
   await openTpl(tpl, true);
-  db.collection(SUB_COL).onSnapshot(sn => { subs = sn.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)); renderTpls(); renderSubs(); }, e => console.error(e));
+  db.collection(SUB_COL).onSnapshot(sn => { subs = sn.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)); renderTpls(); renderSubs();
+    if (openSubId && !window._openedSub && subs.some(x => x.id === openSubId)){ window._openedSub = true; const x = subs.find(y => y.id === openSubId); if ((x.tpl||"astemo") !== tpl) openTpl(x.tpl||"astemo", true).then(() => viewSub(openSubId)); else viewSub(openSubId); } }, e => console.error(e));
   loadCounts();
 }
 /* 初回だけ: Astemoの回答表(Excel)とTDKの回答を取り込む(まだ答えがない質問だけ) */
@@ -349,46 +352,112 @@ function renderSubs(){
   const el = document.getElementById("subList"); if (!el) return;
   const l = subsOf();
   el.innerHTML = l.length ? l.map(x => { const n = Object.values(x.items||{}).filter(a => a.ans || a.num).length;
-    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line2);"><span style="flex:1;min-width:220px;"><b>'+esc(fdj(x.date))+'</b>　'+esc(x.to||"(提出先なし)")+'<span class="tag gray" style="margin-left:6px;">回答者 '+esc(x.by||"-")+'</span><span class="tag gray">回答 '+n+'項目</span>'+(x.memo ? '<span class="note" style="margin:0 0 0 4px;">'+esc(x.memo)+'</span>' : '')+'</span>'+
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--line2);"><span style="flex:1;min-width:220px;"><b>'+esc(fdj(x.date))+'</b>　'+esc(x.to||"(提出先なし)")+'<span class="tag gray" style="margin-left:6px;">回答者 '+esc(x.by||"-")+'</span><span class="tag gray">回答 '+n+'項目</span>'+(x.eventId ? '<span class="tag com">📅 カレンダー連動</span>' : '')+(x.memo ? '<span class="note" style="margin:0 0 0 4px;">'+esc(x.memo)+'</span>' : '')+'</span>'+
       '<button class="btn sm" onclick="viewSub(\''+x.id+'\')">控えを見る・印刷</button><button class="btn sm" onclick="editSub(\''+x.id+'\')">修正</button><button class="btn sm del" onclick="delSub(\''+x.id+'\')">削除</button></div>'; }).join("")
     : '<div class="note">'+esc(tplName(tpl))+'への提出の記録はまだありません。調査票を提出したら(現地確認が終わったら)、上のボタンで記録してください。</div>';
 }
 let subEdit = null;
+/* ===== カレンダー(年間の活動記録＝行政照会記録 EMS-C-16)との連動 =====
+   isoEvents: { date, mark, title, notes, surveySubId, surveyTpl } ／ 提出の記録: eventId */
+const EV_COL = "isoEvents";
+let calEvents = null, calMarks = [], calChoice = "";
+async function loadCal(force){
+  if (calEvents && !force) return;
+  try { const [e, m] = await Promise.all([db.collection(EV_COL).get(), db.collection("eventMarks").get()]);
+    calEvents = e.docs.map(d => ({ id:d.id, ...d.data() })); calMarks = m.docs.map(d => d.data()).filter(x => x.name); }
+  catch(e){ calEvents = []; console.error(e); }
+}
+const coreName = n => String(n||"").replace(/株式会社|有限会社|\(株\)|（株）|㈱|\(有\)|㈲|様|さま/g, "").replace(/\s+/g, " ").trim();
+function calCands(date){
+  if (!calEvents || !date) return [];
+  const t = new Date(date).getTime(), words = coreName(document.getElementById("sTo").value || tplName(tpl)).split(/[ 　・/／]/).filter(w => w.length >= 2);
+  return calEvents.filter(ev => ev.date && Math.abs(new Date(ev.date).getTime() - t) <= 45*86400000)
+    .map(ev => { const txt = (ev.title||"")+" "+(ev.notes||"")+" "+(ev.mark||""); const nameHit = words.some(w => txt.includes(w)), kindHit = /監査|視察|立会|立ち会|現地確認|調査/.test(txt);
+      return { ev, score: (ev.surveySubId && (!subEdit || ev.surveySubId !== subEdit.id) ? -9 : 0) + (nameHit ? 2 : 0) + (kindHit ? 1 : 0) + (subEdit && subEdit.eventId === ev.id ? 5 : 0) }; })
+    .filter(x => x.score > 0).sort((a,b) => b.score - a.score || String(a.ev.date).localeCompare(String(b.ev.date))).slice(0, 6).map(x => x.ev);
+}
+function defaultMark(){
+  const pick = re => (calMarks.find(m => re.test(m.name)) || {}).name;
+  return pick(/行政|照会/) || pick(/監査/) || pick(/視察/) || (calMarks[0] || {}).name || "";
+}
+function renderCalBox(){
+  const box = document.getElementById("calBox"); if (!box) return;
+  if (!calEvents){ box.innerHTML = '<div class="note">カレンダーを確認中…</div>'; loadCal().then(renderCalBox); return; }
+  const date = document.getElementById("sDate").value, cands = calCands(date);
+  const linked = subEdit && subEdit.eventId && calEvents.find(e => e.id === subEdit.eventId);
+  if (!calChoice) calChoice = linked ? "ev:"+linked.id : cands.length ? "ev:"+cands[0].id : "new";
+  if (calChoice.startsWith("ev:") && !cands.concat(linked ? [linked] : []).some(e => "ev:"+e.id === calChoice)) calChoice = cands.length ? "ev:"+cands[0].id : "new";
+  const list = (linked && !cands.includes(linked) ? [linked] : []).concat(cands);
+  const opt = (v, html) => '<label style="display:flex;gap:8px;align-items:flex-start;font-weight:normal;margin:4px 0;cursor:pointer;"><input type="radio" name="calc" value="'+esc(v)+'" style="width:auto;margin-top:3px;"'+(calChoice === v ? ' checked' : '')+' onchange="calPick(this.value)"><span>'+html+'</span></label>';
+  const evTxt = ev => '<b>'+esc(fdj(ev.date))+'</b> '+(ev.mark ? '<span class="tag gray">'+esc(ev.mark)+'</span>' : '')+esc(ev.title||"")+(ev.notes ? '<br><small style="color:var(--muted);">'+esc(String(ev.notes).slice(0,60))+'</small>' : '');
+  box.innerHTML = '<div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#f8fafc;">'+
+    '<div style="font-weight:700;color:var(--navy);">📅 カレンダー(年間の活動記録＝行政照会記録 EMS-C-16)</div>'+
+    '<div class="note" style="margin:2px 0 6px;">環境マニュアル7.4.3: 立入検査・視察などの外部対応は「行政照会記録」に残します。取引先の監査もここに残ります。</div>'+
+    (list.length ? '<div style="font-size:13px;font-weight:700;margin-top:4px;">この日の前後のカレンダーの予定</div>'+list.map(ev => opt("ev:"+ev.id, "この予定とつなぐ"+(linked && linked.id === ev.id ? "(今つながっている予定。日付を直すとカレンダーも同じ日に直ります)" : ev.date !== date ? "(日付はカレンダーの "+fdj(ev.date)+" にそろえます)" : "")+"：<br>"+evTxt(ev))).join("") : '<div class="note">この日の前後に、会社名や「監査・視察」の入った予定はありません。</div>')+
+    opt("new", "カレンダーに新しく登録する"+(calChoice === "new" ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;"><select id="cMark" style="width:auto;">'+(calMarks.length ? calMarks.map(m => '<option'+(m.name === defaultMark() ? ' selected' : '')+'>'+esc(m.name)+'</option>').join("") : '<option value="">(マークなし)</option>')+'</select><input id="cTitle" style="flex:1;min-width:200px;" value="'+esc("監査 "+(document.getElementById("sTo").value || tplName(tpl))+"（委託先調査）")+'"></div>' : ''))+
+    opt("none", "カレンダーには入れない")+'</div>';
+}
+function calPick(v){
+  calChoice = v;
+  if (v.startsWith("ev:")){ const ev = calEvents.find(e => "ev:"+e.id === v); if (ev && ev.date && ev.date !== document.getElementById("sDate").value){ document.getElementById("sDate").value = ev.date; toast("日付をカレンダーの予定("+fdj(ev.date)+")に合わせました"); } }
+  renderCalBox();
+}
 function editSub(id){
-  subEdit = subs.find(x => x.id === id); if (!subEdit) return;
+  subEdit = subs.find(x => x.id === id); if (!subEdit) return; calChoice = "";
   document.getElementById("subTtl").textContent = "提出の記録を修正";
-  document.getElementById("subNote").textContent = "提出日・提出先・回答者・メモを直せます。控えの回答の中身は、提出した時のまま変わりません。";
+  document.getElementById("subNote").textContent = "監査の日・提出先・回答者・メモ・カレンダーとのつながりを直せます。控えの回答の中身は、提出した時のまま変わりません。";
   document.getElementById("sDate").value = subEdit.date || ""; document.getElementById("sTo").value = subEdit.to || "";
   document.getElementById("sBy").value = subEdit.by || ""; document.getElementById("sMemo").value = subEdit.memo || "";
-  document.getElementById("subBg").classList.add("show");
+  document.getElementById("subBg").classList.add("show"); loadCal(true).then(renderCalBox); renderCalBox();
 }
 function openSubmit(){
-  subEdit = null;
+  subEdit = null; calChoice = "";
   if (dirty || !saved){ toast("先に「保存」を押してから記録してください"); return; }
   document.getElementById("subTtl").textContent = "提出したことを記録("+tplName(tpl)+")";
   document.getElementById("subNote").textContent = "いま保存されている回答が、この日付の控えとして残ります。";
   document.getElementById("sDate").value = todayYmd(); document.getElementById("sTo").value = tplName(tpl); document.getElementById("sMemo").value = "";
   document.getElementById("sBy").value = (subsOf()[0] && subsOf()[0].by) || (subs[0] && subs[0].by) || "";
-  document.getElementById("subBg").classList.add("show");
+  document.getElementById("subBg").classList.add("show"); loadCal(true).then(renderCalBox); renderCalBox();
 }
 function closeSubmit(){ document.getElementById("subBg").classList.remove("show"); }
 async function saveSubmit(){
   const date = document.getElementById("sDate").value, to = document.getElementById("sTo").value.trim();
-  if (!date || !to){ toast("提出日と提出先を入れてください"); return; }
+  if (!date || !to){ toast("監査の日と提出先を入れてください"); return; }
   const meta = { date, to, by:document.getElementById("sBy").value.trim(), memo:document.getElementById("sMemo").value.trim() };
+  const choice = calChoice || "none", mark = (document.getElementById("cMark") || {}).value || "", title = ((document.getElementById("cTitle") || {}).value || "").trim() || "監査 "+to+"（委託先調査）";
+  const TS = firebase.firestore.FieldValue.serverTimestamp;
   try {
-    if (subEdit){ await db.collection(SUB_COL).doc(subEdit.id).update(meta); toast("修正しました"); }
+    let subId = subEdit && subEdit.id;
+    if (subEdit) await db.collection(SUB_COL).doc(subId).update(meta);
     else {   // 控えには、その時の質問文も一緒に残す(あとで様式が変わっても読めるように)
       const qs = ITEMS.map(it => ({ id:it.id, label:it.label, sec:it.secLabel, q:it.q }));
-      await db.collection(SUB_COL).add({ ...meta, tpl, tplName:tplName(tpl), form:T().form, items: saved, questions: qs, createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      toast("提出の記録を残しました");
+      const ref = await db.collection(SUB_COL).add({ ...meta, tpl, tplName:tplName(tpl), form:T().form, items: saved, questions: qs, createdMs: Date.now(), createdAt: TS() });
+      subId = ref.id;
     }
+    // カレンダー
+    const oldEv = subEdit && subEdit.eventId; let evId = "", calMsg = "";
+    const link = { surveySubId: subId, surveyTpl: tpl };
+    if (choice.startsWith("ev:")){ evId = choice.slice(3);
+      if (evId === oldEv){ await db.collection(EV_COL).doc(evId).update({ ...link, date, updatedAt: TS() }); calMsg = "カレンダーの日付もそろえました"; }   // つながっている予定は、記録の日付に合わせる
+      else { const ev = (calEvents || []).find(e => e.id === evId); await db.collection(EV_COL).doc(evId).update({ ...link, updatedAt: TS() });   // 新しくつなぐときは、カレンダーの日付に合わせる
+        if (ev && ev.date && ev.date !== date) await db.collection(SUB_COL).doc(subId).update({ date: ev.date }); calMsg = "カレンダーの予定とつなぎました"; } }
+    else if (choice === "new"){ const r = await db.collection(EV_COL).add({ date, mark, title, notes: "委託先調査票の回答・提出（"+tplName(tpl)+(meta.by ? "／回答者 "+meta.by : "")+"）", ...link, createdAt: TS(), updatedAt: TS() }); evId = r.id; calMsg = "カレンダーに登録しました"; }
+    if (oldEv && oldEv !== evId) await db.collection(EV_COL).doc(oldEv).update({ surveySubId: firebase.firestore.FieldValue.delete(), surveyTpl: firebase.firestore.FieldValue.delete() }).catch(() => {});
+    await db.collection(SUB_COL).doc(subId).update({ eventId: evId });
+    calEvents = null;
+    toast((subEdit ? "修正しました" : "提出の記録を残しました")+(calMsg ? "・"+calMsg : ""));
     closeSubmit();
   } catch(e){ toast("記録できませんでした: "+e.message); }
 }
 async function delSub(id){
   const x = subs.find(s => s.id === id); if (!x || !confirm(fdj(x.date)+" "+(x.to||"")+" への提出の記録を削除しますか？")) return;
-  try { await db.collection(SUB_COL).doc(id).delete(); toast("削除しました"); } catch(e){ toast("削除に失敗: "+e.message); }
+  try {
+    if (x.eventId){
+      if (confirm("カレンダー(行政照会記録)の予定も一緒に削除しますか？\n「キャンセル」で、カレンダーの予定は残します。")) await db.collection(EV_COL).doc(x.eventId).delete().catch(() => {});
+      else await db.collection(EV_COL).doc(x.eventId).update({ surveySubId: firebase.firestore.FieldValue.delete(), surveyTpl: firebase.firestore.FieldValue.delete() }).catch(() => {});
+    }
+    await db.collection(SUB_COL).doc(id).delete(); calEvents = null; toast("削除しました");
+  } catch(e){ toast("削除に失敗: "+e.message); }
 }
 function viewSub(id){
   const x = subs.find(s => s.id === id); if (!x) return;

@@ -815,11 +815,13 @@ async function renderReg(p){
     if (R.key === "calib" && f.k === "next" && r.next && r.next < t) v += ' <span class="badge b-ng">期限切れ</span>';
     if (R.key === "vendors" && (f.k === "permitExp" || f.k === "contractExp") && r[f.k]){ const dl = daysLeft(r[f.k]); if (dl < 0) v += ' <span class="badge b-ng">期限切れ</span>'; else if (dl <= 90) v += ' <span class="badge b-wn">あと'+dl+'日</span>'; }
     if (f.k === "evalResult" && v) v = '<span class="badge '+(v === "適正" ? 'b-ok' : v === "不適" ? 'b-ng' : 'b-wn')+'">'+v+'</span>';
-    if (f.k === "obligation" && r.obligation === "する") v = '<span class="badge b-ng">順守義務</span>';
+    if (f.k === "obligation") v = r.obligation === "する" ? '<span class="badge b-ng">〇 順守義務</span>' : r.obligation ? '△' : '';
+    if (R.key === "risks" && f.k === "level" && r.level) v = '<span class="badge '+(r.level === "高" ? 'b-ng' : r.level === "中" ? 'b-wn' : 'b-ok')+'">'+esc(r.level)+'</span>';
     return '<td'+(f.type === "date" || f.type === "select" ? ' class="c nw"' : '')+' style="white-space:pre-wrap;">'+v+'</td>';
   };
-  const extraH = R.key === "aspects" ? '<th style="width:150px">評価</th>' : "";
-  const extra = r => { if (R.key !== "aspects") return ""; const s = aspectScore(r);
+  const extraH = R.key === "aspects" ? '<th style="width:150px">評価</th>' : R.key === "vendors" ? '<th>取引先チェック(6.1.5)</th>' : "";
+  const extra = r => { if (R.key === "vendors"){ const c = vendorCheck(r); return '<td class="c nw">'+(c.done ? '<span class="badge '+(c.rank === "A" ? 'b-ok' : c.rank === "B" ? 'b-wn' : 'b-ng')+'">'+c.rank+'ランク</span> '+c.total+'点' : '<span class="note">未評価</span>')+'</td>'; }
+    if (R.key !== "aspects") return ""; const s = aspectScore(r);
     if (s.byMark && s.sig !== null) return '<td class="c">'+(s.sig ? '<span class="badge b-ng">著しい ◎</span>' : '<span class="note">—</span>')+'</td>';
     return '<td class="c">'+(s.sig === null ? '<span class="note">未評価</span>' : (s.sig ? '<span class="badge b-ng">著しい</span><br>' : '')+'<span class="note">規模'+r.scale+'・頻度'+r.freq+'・法'+r.law+' = <b>'+s.total+'</b></span>')+'</td>'; };
   return await head(p, sub) + pdb + top + '<div class="tw"><table class="t"><tr>'+cols.map(f => '<th>'+esc(f.label)+'</th>').join("")+extraH+'</tr>'+

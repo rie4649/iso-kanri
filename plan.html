@@ -260,7 +260,7 @@ let cstats = null, cstatsLoading = false;
 /* ===== 表 → 会社の様式のPDF(新しい版) =====
    様式: 上に文書名の枠、右上に 文書番号・作成者・日付・確認者、下に表。A4横。行が多いときは複数ページに分ける */
 const FORM_COLS = {
-  risks: [["no","No.",4],["issue","課題",11],["content","状況",19],["action","活動計画",21],["risk","リスク",13],["chance","チャンス",13],["freq","チェック頻度",7],["parties","主な利害関係者",12]],
+  risks: [["no","No.",4],["issue","課題",10],["content","状況",17],["action","活動計画",19],["risk","リスク",13],["chance","チャンス",13],["freq","チェック頻度",7],["parties","主な利害関係者",11],["level","優先度",6]],
   objectives: [["kubun","区分",7],["act","活動名",7],["goal","環境目的",13],["plan","実施計画",12],["target","環境目標",9],["sdgs","関連SDGs",10],["method","実施方法",11],["monitor","監視方法",11],["owner","担当者",10],["status","状況",6]],
   aspects: [["activity","区分",10],["aspect","環境側面",22],["impact","環境影響",20],["cond","状態",6],["lawName","法規制",12],["control","管理事項",22],["sigMark","著しい",6]],
   parties: null
@@ -272,7 +272,7 @@ function formCols(reg){
 }
 function formRowsHtml(reg, rows, cols){
   return rows.map(r => '<tr>'+cols.map(([k]) => { const f = reg.fields.find(x => x.k === k); let v = f ? regLabel(f, r[k]) : (r[k] || "");
-    if (k === "freq" && reg.key === "risks") v = r[k] || "";
+    if ((k === "freq" || k === "level") && reg.key === "risks") v = r[k] || "";
     return '<td style="border:1px solid #111;padding:3px 4px;vertical-align:top;white-space:pre-wrap;word-break:break-all;line-height:1.45;">'+esc(v)+'</td>'; }).join("")+'</tr>').join("");
 }
 function formPageHtml(reg, meta, cols, rowsHtml, pageNo, pages){
@@ -451,12 +451,14 @@ async function viewDoc(id){
 }
 
 function cardHtml(reg, r){
-  const sc = reg.key === "aspects" ? aspectScore(r) : null;
+  const sc = reg.key === "aspects" ? aspectScore(r) : null, vc = reg.key === "vendors" ? vendorCheck(r) : null;
   const tags = (r.draft ? '<span class="tag draft">下書き</span>' : '') +
     (sc ? (sc.sig === null ? '<span class="tag gray">未評価</span>' : sc.sig ? '<span class="tag sig">著しい環境側面 '+sc.total+'点</span>' : '<span class="tag ok">'+sc.total+'点</span>') : '') +
-    (expired(reg, r) ? '<span class="tag sig">期限切れ</span>' : '');
+    (expired(reg, r) ? '<span class="tag sig">期限切れ</span>' : '') + (vc && vc.done ? '<span class="tag '+(vc.rank === "A" ? "ok" : "sig")+'">取引先チェック '+vc.rank+'ランク '+vc.total+'点</span>' : '') +
+    (reg.key === "risks" && r.level === "高" ? '<span class="tag sig">優先度 高 → マネジメントレビューで確認</span>' : reg.key === "risks" && r.level ? '<span class="tag gray">優先度 '+esc(r.level)+'</span>' : '');
   const titleF = reg.fields.find(f => f.k === reg.title);
-  const dl = reg.fields.filter(f => f.k !== reg.title && !(reg.title === reg.dated && f.k === reg.dated) && !f.score && r[f.k]).map(f => '<dt>'+esc(f.label)+'</dt><dd>'+esc(regLabel(f, r[f.k]))+'</dd>').join("") +
+  const dl = reg.fields.filter(f => f.k !== reg.title && !(reg.title === reg.dated && f.k === reg.dated) && !f.score && !f.pts && r[f.k]).map(f => '<dt>'+esc(f.label)+'</dt><dd>'+esc(regLabel(f, r[f.k]))+'</dd>').join("") +
+    (vc && vc.done ? '<dt>取引先チェック</dt><dd>'+reg.fields.filter(f => f.pts).map(f => esc(f.label)+' '+r[f.k]).join("・")+' ＝ '+vc.total+'点 '+vc.rank+'ランク('+VENDOR_RANK_ACTION[vc.rank]+')</dd>' : '') +
     (sc && sc.sig !== null ? '<dt>評価</dt><dd>規模 '+r.scale+'・頻度 '+r.freq+'・法規制 '+r.law+' ＝ '+sc.total+'点</dd>' : '');
   return '<div class="card'+(r.draft ? ' draft' : '')+(sc && sc.sig ? ' sig' : '')+'"><div class="top"><div class="ttl">'+tags+esc((regLabel(titleF, r[reg.title]) || "(未入力)")+(reg.key === "review" ? " 実施" : ""))+'</div><div class="acts">'+
     (r.draft ? '<button class="btn sm fix" onclick="confirmRow(\''+r.id+'\')">確定</button>' : '')+
@@ -477,9 +479,10 @@ function openEdit(id){
   const reg = regOf(cur), r = id ? rows.find(x => x.id === id) : null;
   editId = r ? id : null;
   document.getElementById("editTtl").textContent = reg.name+(r ? "　編集" : "　新規追加");
-  const normal = reg.fields.filter(f => !f.score), score = reg.fields.filter(f => f.score);
+  const normal = reg.fields.filter(f => !f.score && !f.pts), score = reg.fields.filter(f => f.score), pts = reg.fields.filter(f => f.pts);
   let h = normal.map(f => '<label for="f_'+f.k+'">'+esc(f.label)+(f.req ? ' <span style="color:var(--danger)">*</span>' : '')+'</label>'+fieldHtml(f, r ? r[f.k] : (f.type === "date" && reg.dated === f.k ? today() : ""))).join("");
   if (score.length) h += '<label>評価(1〜3)</label><div class="scoreRow">'+score.map(f => '<div><div class="lb">'+esc(f.label)+'</div>'+fieldHtml(f, r ? r[f.k] : "")+'</div>').join("")+'</div><div class="scoreBox" id="scoreBox"></div>';
+  if (pts.length) h += '<label>取引先チェック表(環境マニュアル6.1.5) 各0〜2点</label><div class="scoreRow" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));">'+pts.map(f => '<div><div class="lb">'+esc(f.label)+'</div>'+fieldHtml(f, r ? r[f.k] : "")+'</div>').join("")+'</div><div class="scoreBox" id="vcBox"></div>';
   document.getElementById("editForm").innerHTML = h;
   document.getElementById("editDraft").checked = r ? !!r.draft : false;
   document.getElementById("editDelBtn").style.display = r ? "" : "none";
@@ -488,6 +491,9 @@ function openEdit(id){
   const first = document.querySelector("#editForm input, #editForm select, #editForm textarea"); if (first) first.focus();
 }
 function updScore(){
+  const vb = document.getElementById("vcBox");
+  if (vb){ const o = {}; VENDOR_CHECK_KEYS.forEach(k => o[k] = (document.getElementById("f_"+k) || {}).value || ""); const c = vendorCheck(o);
+    vb.innerHTML = c.done ? '合計 <b>'+c.total+'点</b> ― <b style="color:'+(c.rank === "A" ? "#15803d" : c.rank === "B" ? "#b45309" : "#b91c1c")+'">'+c.rank+'ランク</b>（'+VENDOR_RANK_ACTION[c.rank]+'）' : "5項目すべてに点数を入れると、合計とランク(A:8〜10点 B:5〜7点 C:0〜4点)が出ます"; }
   const box = document.getElementById("scoreBox"); if (!box) return;
   const v = k => (document.getElementById("f_"+k) || {}).value || "";
   const sc = aspectScore({ scale:v("scale"), freq:v("freq"), law:v("law") });

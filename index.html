@@ -1882,6 +1882,7 @@ function renderDayEventsList() {
         ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
         <div class="title">${escapeHtml(ev.title)}</div>
         ${ev.notes ? `<div class="notes">${escapeHtml(ev.notes)}</div>` : ""}
+        ${ev.surveySubId ? `<button style="margin-top:4px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;" onclick="location.href='survey.html#${escapeHtml(ev.surveyTpl || "astemo")}/${escapeHtml(ev.surveySubId)}'">📋 委託先調査票の控えを見る</button>` : ""}
       </div>
       <div class="day-event-item-actions">
         <button style="background:#eef0ff;color:#4338ca;" onclick="openEditFromDay('${ev.id}')">編集</button>
@@ -1964,7 +1965,7 @@ function renderEventList() {
         ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
         <div class="event-title">${escapeHtml(ev.title)}</div>
         ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
-        <div class="event-actions">
+        <div class="event-actions">${ev.surveySubId ? `<button class="btn-edit" onclick="location.href='survey.html#${escapeHtml(ev.surveyTpl || "astemo")}/${escapeHtml(ev.surveySubId)}'">📋 調査票の控え</button>` : ""}
           <button class="btn-edit" onclick="openEditEvent('${ev.id}')">編集</button>
           <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
         </div>
@@ -4523,6 +4524,7 @@ const SECTION_DEFS = [
   { key: "horei", grp: "plan", cl: "6.1.3", name: "法規制一覧" },
   { key: "kyoka", grp: "plan", cl: "6.1.3", name: "許可一覧" },
   { key: "permit", grp: "plan", cl: "6.1.3", name: "許可の内容（事業の範囲・積替え保管場所・処理施設）" },
+  { key: "plan:changes", grp: "plan", cl: "6.3", name: "変更管理記録（設備・法改正・人員・委託先の変更）" },
   { key: "sdgs", grp: "plan", cl: "6.2", name: "SDGs" },
   { key: "metal", grp: "plan", cl: "6.2", name: "進捗記録金属拾い上げ" },
   { key: "clean", grp: "plan", cl: "6.2", name: "進捗記録クリーン度チェック" },
@@ -4572,7 +4574,10 @@ const FIND_INDEX = [
   ["環境目標 実施計画 行動計画書 活動計画 EMS-A-22 A-13 A-12", "環境目標と実施計画（環境目標兼活動計画書・行動計画書）", "plan:objectives"],
   ["利害関係者 要求事項 EMS-A-09", "利害関係者の要求", "plan:parties"],
   ["組織の課題 外部 内部", "組織の課題", "plan:issues"],
-  ["委託先 外注 処分先 契約 評価 契約件数", "外部委託先の管理（契約件数）", "plan:vendors"],
+  ["委託先 外注 処分先 契約 評価 契約件数 取引先チェック表 ランク 6.1.5", "外部委託先の管理（取引先チェック表・契約件数）", "plan:vendors"],
+  ["変更管理 変更 新設備 法改正 人員 組織 移転 6.3", "変更管理記録", "plan:changes"],
+  ["提案 提案情報 改善提案 要望 EMS-C-13", "コミュニケーション（提案情報）", "plan:comms"],
+  ["行政照会 照会 立入検査 視察 監査 EMS-C-16", "カレンダー（行政照会記録）", "calendar"],
   ["苦情 コミュニケーション 問い合わせ 視察 行政 照会 クレーム", "コミュニケーション・苦情", "plan:comms"],
   ["緊急事態 訓練 テスト 地震 油漏れ", "緊急事態の訓練・テスト", "plan:emergency"],
   ["校正 測定機器 トラックスケール 台貫 計量器 騒音計", "測定機器の点検・校正", "plan:calib"],
@@ -4637,7 +4642,7 @@ async function renderHomeTasks() {
   const thisM = ym(now), prevM = ym(new Date(now.getFullYear(), now.getMonth() - 1, 1)), y = String(now.getFullYear());
   const fyStart = now.getMonth() + 1 >= 8 ? now.getFullYear() + "-08" : (now.getFullYear() - 1) + "-08";
   const get = c => db.collection(c).get().then(s => s.docs.map(d => d.data())).catch(() => []);
-  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits"].map(get));
+  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au, tr, rg, rv, ev] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits","trainingRecords","isoRegisters","emsDocReviews","isoEvents"].map(get));
   const has = (l, k, v) => l.some(x => String(x[k] || "").startsWith(v));
   const last = (l, k) => l.map(x => String(x[k] || "")).filter(Boolean).sort().pop() || "";
   const fdy = s => { const p = String(s).split("-"); return p.length >= 3 ? Number(p[1]) + "/" + Number(p[2]) : p.length === 2 ? Number(p[1]) + "月分" : s; };
@@ -4655,12 +4660,46 @@ async function renderHomeTasks() {
     T("ライフライン（電気・ガス・水道）", "前の月の分を入力", "lifeline", st(has(ll, "yearMonth", prevM), has(ll, "yearMonth", prevM) ? fdy(prevM) + " 済" : fdy(prevM) + " まだ")) +
     '<div class="hm-per">3か月ごと</div>' +
     T("フロン排出抑制法簡易点検", qMonths.join("・") + "月の間に全機器", "freon", st(fe.length ? frDone >= fe.length : null, `${frDone} / ${fe.length}台`)) +
-    '<div class="hm-per">年に1回以上（最後に実施した日）</div>' +
-    T("水質検査", "計量証明書も添付", "waterTest", st(has(wt, "date", y), last(wt, "date") ? fdy(last(wt, "date")) + (has(wt, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
-    T("騒音チェック", "", "noiseCheck", st(has(nc, "date", y), last(nc, "date") ? fdy(last(nc, "date")) + (has(nc, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
-    T("法令の順守評価", "法規制一覧から", "horei", st(has(hv, "date", y), last(hv, "date") ? fdy(last(hv, "date")) + (has(hv, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
-    T("内部監査", "", "kiroku", st(has(au, "date", y), last(au, "date") ? fdy(last(au, "date")) + (has(au, "date", y) ? "" : "（今年まだ）") : "記録なし")) +
-    T("マネジメントレビュー", "", "summary", st(has(mr, "date", y), last(mr, "date") ? fdy(last(mr, "date")) + (has(mr, "date", y) ? "" : "（今年まだ）") : "記録なし"));
+    '';
+    homeYearPlan({ now, fyStart, wt, nc, hv, mr, au, tr, rg, rv, ev, st, fdy });
+}
+/* 環境マニュアル(EMS-A-01 第10版)で決まっている「年度(8月〜翌7月)」の予定と実施状況 */
+function homeYearPlan(o) {
+  const { now, fyStart, st, fdy } = o;
+  const fy = Number(fyStart.slice(0, 4)), from = fy + "-08-01", to = (fy + 1) + "-07-31";
+  const inFy = (l, k) => l.filter(x => { const d = String(x[k] || ""); return d >= from && d <= to; });
+  const lastD = l => l.map(x => String(x.date || x.evalDate || "")).filter(Boolean).sort().pop() || "";
+  const m = now.getMonth() + 1, monthsFromAug = (m + 12 - 8) % 12;   // 8月=0 … 7月=11
+  const due = mon => ((mon + 12 - 8) % 12) <= monthsFromAug;            // その月を過ぎたか(今年度の中で)
+  const done = (l, label) => l.length ? st(true, fdy(lastD(l)) + (label || "")) : null;
+  const notYet = mon => st(due(mon) ? false : null, due(mon) ? "まだ" : mon + "月に実施");
+  const Y = (when, name, sub, to, badge) => `<div class="hm-task" onclick="openSection('${to}')"><span class="nm"><span style="display:inline-block;min-width:64px;color:#1e3a5f;font-weight:700;">${when}</span>${name}<span class="sub">${escapeHtml(sub)}</span></span>${badge}</div>`;
+  // データ
+  const aware = inFy(o.tr, "date").filter(x => /自覚|環境方針|全社員|全員/.test((x.theme || "") + " " + (x.participants || "")) && x.kind !== "test");
+  const vendors = o.rg.filter(x => x.reg === "vendors" && !x.draft), vEval = inFy(vendors, "evalDate");
+  const aspects = o.rg.filter(x => x.reg === "aspects"), aspRev = inFy(o.rv, "date").filter(x => /A-0[678]|A-17|C-20/.test(x.code || ""));
+  const docRev = inFy(o.rv, "date"), planRev = docRev.filter(x => /A-1[023]|A-22/.test(x.code || ""));
+  const test = inFy(o.tr, "date").filter(x => x.kind === "test").concat(inFy(o.rg.filter(x => x.reg === "emergency"), "date"));
+  const manRev = docRev.filter(x => /手順/.test((x.title || "") + (x.detail || "")));
+  const audit = inFy(o.au, "date"), mrv = inFy(o.mr, "date").concat(inFy(o.rg.filter(x => x.reg === "review"), "date"));
+  const meet = inFy(o.ev, "date").filter(x => /環境管理会議|推進委員会|ISO会議|ISO推進/.test((x.title || "") + " " + (x.notes || "")));
+  const highRisk = o.rg.filter(x => x.reg === "risks" && x.level === "高").length;
+  const water = inFy(o.wt, "date"), noise = inFy(o.nc, "date"), hv = inFy(o.hv, "date");
+  const auditDue = monthsFromAug >= 6;   // 2月(10月〜翌2月の最後)を過ぎた
+  return document.getElementById("hmTasks").insertAdjacentHTML("beforeend",
+    `<div class="hm-per">今年度 ${fy}年8月〜${fy + 1}年7月（環境マニュアルで決まっている時期）</div>` +
+    Y("8月", "自覚教育（全社員）", "7.3 環境方針・環境側面・気候変動など", "safety", done(aware) || notYet(8)) +
+    Y("8月", "環境側面の見直し", "6.1.2 著しい環境側面特定表", "plan:aspects", done(aspRev, " 見直し") || (aspects.length ? notYet(8) : st(false, "未登録"))) +
+    Y("8月", "取引先チェック表", "6.1.5 5項目×0〜2点・A/B/Cランク", "plan:vendors", vendors.length ? st(vEval.length >= vendors.length ? true : due(8) ? false : null, `${vEval.length} / ${vendors.length}社`) : st(null, "未登録")) +
+    Y("10〜2月", "内部監査", "9.2 年1回", "kiroku", done(audit) || st(auditDue ? false : null, auditDue ? "まだ" : "10月〜2月に実施")) +
+    Y("11月", "緊急事態の手順書の見直し・定期テスト", "8.2 定期テスト記録", "safety", done(test) || notYet(11)) +
+    Y("1月末", "半期末の目標の評価", "6.2 進捗記録兼評価表（未達は是正処置）", "plan:objectives", st(null, "1月末")) +
+    Y("年7〜8回", "環境管理会議", "7.4.2 カレンダーに「環境管理会議」で記録", "calendar", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
+    Y("年1回", "法令の順守評価", "9.1.2", "horei", done(hv) || st(null, "まだ")) +
+    Y("年1回", "水質検査", "計量証明書も添付", "waterTest", done(water) || st(null, "まだ")) +
+    Y("年1回", "騒音チェック", "", "noiseCheck", done(noise) || st(null, "まだ")) +
+    Y("年1回", "マネジメントレビュー", "9.3 " + (highRisk ? `優先度「高」のリスク ${highRisk}件を確認` : "気候変動・取引先リスクも"), "plan:review", done(mrv) || notYet(7)) +
+    Y("7月", "文書の見直し・環境活動計画の見直し", "7.5.3 文書見直し記録／6.2", "docs", done(planRev.length ? planRev : docRev, docRev.length ? ` ほか${docRev.length}件` : "") || notYet(7)));
 }
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
