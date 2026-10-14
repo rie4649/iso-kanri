@@ -31,6 +31,8 @@
   #tabs .chipT.on { background:var(--navy); color:#fff; border-color:var(--navy); } #tabs .chipT:hover:not(.on) { border-color:var(--navy); color:var(--navy); }
   #tabs .chipT .dr { font-size:10px; margin-left:4px; color:#b45309; } #tabs .chipT.on .dr { color:#fde68a; }
   .help details.hmore summary { cursor:pointer; color:var(--navy); font-size:12px; font-weight:700; margin-top:2px; } .help details.hmore[open] summary { margin-bottom:2px; }
+  .flow { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px 12px; margin-bottom:12px; font-size:13.5px; color:#1e3a5f; font-weight:600; }
+  .flow b { background:var(--navy); color:#fff; border-radius:4px; padding:1px 8px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -577,8 +579,12 @@ function render(){
   const reg = regOf(cur), list = sorted(reg);
   const hp = String(reg.help || ""), cut = hp.indexOf("。") + 1, h1 = cut > 0 && cut < hp.length ? hp.slice(0, cut) : hp, h2 = cut > 0 && cut < hp.length ? hp.slice(cut) : "";
   let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(h1)+(h2 ? '<details class="hmore"><summary>説明をもっと見る</summary>'+esc(h2)+'</details>' : '')+'</div>';
+  const ldsTop = linkedDocs(reg.key);
+  const dn = esc(ldsTop.map(d => "EMS-"+d.id).join("・"));
+  if (ldsTop.length) h += reg.yearCheck
+    ? '<div class="flow"><b>使い方</b><span>① 「📋 チェックシートを開く」で中身を確認（文字はそのまま書き換え・行の追加もここ）</span><span>→ ② 右端の「今年の点検」を付けて 💾保存</span><span>→ ③ 「この表で新しい版(PDF)を作る」で '+dn+' がEMS文書管理に残ります</span></div>'
+    : '<div class="flow"><b>使い方</b><span>① 下の表で中身を確認・追加・訂正</span><span>→ ② 「📄 この表でPDFを作る」で新しい版に</span><span>→ ③ '+dn+' としてEMS文書管理に自動で残ります（前の版も残ります）</span></div>';
   if (reg.key === "objectives") h += custStepsCard();
-  h += emsDocsHtml(reg);
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
     const a26 = EMS.docs.find(d => d.id === "A-26"), a26f = EMS.filesOf("A-26")[0];
@@ -592,12 +598,19 @@ function render(){
   // 表(1行ずつの入力)。行があるときは開いたまま、0行のときはたたむ
   const lds = linkedDocs(reg.key);
   const tbl = '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 行を追加</button>'+
-      (lds.length && list.length ? '<button class="btn" style="border-color:var(--navy);color:var(--navy);" onclick="openMakeVer()">📄 この表で新しい版(PDF)を作る</button><button class="btn" onclick="previewForm()">様式で見る・印刷</button>' : '')+'</div>'+
-      (lds.length && list.length ? '<div class="note" style="margin:-6px 0 8px;">行を追加・修正したら「この表で新しい版を作る」で、会社の様式('+esc(lds.map(d => "EMS-"+d.id).join("・"))+')のPDFを作って原本の新しい版として登録できます(前の版は改訂履歴に残ります)。</div>' : '')+
+      (lds.length && list.length ? '<button class="btn" style="border-color:var(--navy);color:var(--navy);" onclick="openMakeVer()">📄 この表でPDFを作る（新しい版）</button><button class="btn" onclick="previewForm()">様式で見る・印刷</button>' : '')+'</div>'+
+      '<div class="note" style="margin:-6px 0 8px;">直したい行の「修正」を押すと書き換えられます。いらない行は「修正」→「削除」。'+(lds.length && list.length ? '直し終わったら「📄 この表でPDFを作る」で、会社の様式('+esc(lds.map(d => "EMS-"+d.id).join("・"))+')のPDFが新しい版として残ります。' : '')+'</div>'+
     (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
     list.map(r => cardHtml(reg, r)).join("");
-  h += '<details class="card" style="padding:10px 14px;"'+(list.length && !reg.yearCheck ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">'+(reg.yearCheck ? '📝 1行ずつ見る・くわしく入力する(今までの画面)' : '📝 表で入力・修正する')+'（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
+  if (!reg.yearCheck){
+    h += '<div class="card" style="padding:12px 14px;border-left:4px solid var(--navy);"><div style="font-weight:700;color:var(--navy);font-size:16px;margin-bottom:6px;">📝 '+esc(reg.name)+'の中身（表）　'+(list.length ? list.length+'行' : 'まだ行がありません')+'</div>'+
+      (list.some(r => r.fromDoc) ? '<div class="note" style="margin:0 0 8px;">受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・")||"去年のPDF")+')から書き写した内容が入っています。</div>' : '')+tbl+'</div>';
+    h += emsDocsHtml(reg);
+    document.getElementById("body").innerHTML = h; return;
+  }
+  h += '<details class="card" style="padding:10px 14px;"'+(list.length && !reg.yearCheck ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">'+(reg.yearCheck ? '📝 1行ずつの画面（長い文をくわしく入力したいとき・PDFを作る）' : '📝 表で入力・修正する')+'（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
     '<div class="note" style="margin:4px 0 8px;">計画書の中身を1行ずつ入力すると、環境への取り組みで表として見せられ、1行ずつ直せます。'+(list.some(r => r.fromDoc) ? '受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・"))+')から書き写した内容が入っています。' : '')+'</div>'+tbl+'</details>';
+  h += emsDocsHtml(reg);
   document.getElementById("body").innerHTML = h;
 }
 /* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
@@ -847,9 +860,9 @@ async function makeVer(){
 function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey && !d.abolished); }   // 廃止した文書は出さない
 function emsDocsHtml(reg){
   const ds = linkedDocs(reg.key);
-  return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 計画書の原本(PDF)</b>'+
-    (ds.length ? '<button class="btn sm pri" onclick="EMS.openForm({codes:'+esc(JSON.stringify(ds.map(d => d.id)))+'})">＋ 原本を登録</button>' : '')+'<button class="btn sm" onclick="location.href=\'docs.html\'">EMS文書管理へ</button></div>'+
-    (ds.length ? ds.map(d => '<div style="margin-top:8px;"><div style="font-weight:700;">EMS-'+esc(d.id)+'　'+esc(d.name)+'</div>'+EMS.versionsHtml(d.id)+'</div>').join("")
+  return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 作ったPDF（版の記録）</b>'+
+    (ds.length ? '<button class="btn sm" onclick="EMS.openForm({codes:'+esc(JSON.stringify(ds.map(d => d.id)))+'})">＋ 手元のPDFを登録</button>' : '')+'<button class="btn sm" onclick="location.href=\'docs.html\'">EMS文書管理へ</button></div>'+
+    (ds.length ? ds.map(d => '<div style="margin-top:8px;"><div style="font-weight:700;">EMS-'+esc(d.id)+'　'+esc(d.name)+'</div>'+EMS.versionsHtml(d.id).replace("原本(PDF)はまだありません", "まだPDFはありません。上の表の「📄 この表でPDFを作る」で作れます")+'</div>').join("")
       : '<div class="note">この台帳に入れる計画書はまだ決まっていません。EMS文書管理で文書の「入力する場所」をこの台帳にすると、ここに出ます。</div>')+'</div>';
 }
 EMS.subscribe(() => render());
