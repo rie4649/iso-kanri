@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顧客対応の進捗記録</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  table.ct { border-collapse:collapse; width:100%; font-size:13px; background:#fff; }
+  table.ct th, table.ct td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
+  table.ct th { background:#eef2f7; white-space:nowrap; font-size:12px; }
+  table.ct td.n { text-align:right; white-space:nowrap; }
+  table.ct td.c { text-align:center; white-space:nowrap; }
+  table.ct tr.fut td { color:#94a3b8; background:#f8fafc; }
+  .ok { color:#15803d; font-weight:700; } .ng { color:#b91c1c; font-weight:700; }
+  .memo { min-height:20px; outline:none; white-space:pre-wrap; } .memo:empty:before { content:"＋ 気づき・原因・対策"; color:#cbd5e1; }
+  .memo:focus { background:#fef9c3; }
+  .man { width:56px; font-size:12px; padding:2px 4px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin:8px 0; }
+  .kpi { background:#fff; border:1px solid var(--line); border-left:4px solid var(--navy); border-radius:8px; padding:8px 12px; } .kpi .k { font-size:12px; color:var(--muted); } .kpi .v { font-size:22px; font-weight:700; color:var(--navy); }
+  @media print { header, .noPrint, details.help { display:none !important; } body { background:#fff; } .wrap { padding:0; } }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>顧客対応の進捗記録</h1>
+  <div class="sub">環境目標「お客様のニーズ(依頼)に早く確実に応える」の月ごとの記録(進捗記録兼評価表)。電話依頼アプリ・委託先調査票から自動で数えます</div></div>
+</header>
+<div class="wrap">
+  <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方（ここを押すと開きます）<span class="cl">6.2 環境目標・7.4.3 顧客対応</span></summary>
+    <div style="margin-top:6px;line-height:1.8;">
+    <b>■ 何を数えているか</b>：電話依頼アプリで受けたお客様の依頼(引取・見積・現場確認など)を、受けた月ごとに数えます。<br>
+    ・<b>完了率</b>＝対応済み ÷ 受けた件数(目標 100%)　・<b>24時間以上</b>＝受けてから「対応済み」まで24時間以上かかった件数(目標 0件)<br>
+    ・<b>調査票・現地確認</b>＝委託先調査票アプリで「提出したことを記録」した件数(期限内回答100%が目標)<br>
+    <b>■ 自動でやってくれること</b>：件数・完了率・評価(○達成/×未達)のほか、「同じ会社から何度も」「見積依頼が多い」「24時間以上かかった」などの<b>気づきを自動で書き出します</b>(緑の字)。「↓ 書き写す」で記録に残せます。下の「会社ごとの件数と対応内容」で、どの会社から何の依頼が来て、どう対応したかが月ごとにまとまります。<br>
+    <b>■ 人がやること</b>：月に1回、先月の行の緑の気づきを見て「↓ 書き写す」→ 必要なら対策を書き足す(環境マニュアル6.2：未達成のときは原因と翌月以降の対応策を記入)。忘れていると、ISO管理のホームに赤で出ます。<br>
+    <b>■ 記録が始まった日</b>：電話依頼アプリは、対応済みの依頼を2日後に自動で消すので、<b>この記録を始める前の月の数字は残っていません</b>。分かる月は「手入力」の欄に数字を入れると、そちらを使います。<br>
+    <b>■ 印刷</b>：「印刷」で、この年度の進捗記録兼評価表として印刷・PDFにできます。</div></details>
+  <div class="bar noPrint" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;" id="fyTabs"></div>
+  <div id="body"><div class="empty">読み込み中…</div></div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* 保存場所
+   phoneRequests   … 電話依頼アプリの依頼(今あるもの。対応済みは2日後に消える)
+   phoneRequestLog … 電話依頼アプリが「対応済み」にしたとき・消す前に残す控え(この記録のもと)
+   isoSurveySubmits… 委託先調査票の提出の記録
+   isoCustMonthly/{YYYY-MM} … 月ごとの原因・対策、手入力の数字 */
+let toastTimer;
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600); }
+function esc(t){ return String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const ms = v => !v ? 0 : typeof v.toMillis === "function" ? v.toMillis() : typeof v === "number" ? v : (Date.parse(v) || 0);
+const ymOf = t => { const d = new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); };
+const fyNow = (() => { const d = new Date(); return d.getMonth()+1 >= 8 ? d.getFullYear() : d.getFullYear() - 1; })();
+let fy = fyNow, reqs = [], subs = [], monthly = {}, firstLog = 0;
+
+async function load(){
+  try {
+    const [live, log, sb, mo] = await Promise.all([db.collection("phoneRequests").get(), db.collection("phoneRequestLog").get().catch(() => ({ docs:[] })), db.collection("isoSurveySubmits").get().catch(() => ({ docs:[] })), db.collection("isoCustMonthly").get().catch(() => ({ docs:[] }))]);
+    const by = {};
+    const info = x => ({ client:(x.client || "").trim(), contents:x.contents || [], free:x.contentsFree || "", resp:[x.responseText, x.doneMemo].filter(Boolean).join("／"), pickup:x.pickupDate || "" });
+    log.docs.forEach(d => { const x = d.data(); by[d.id] = { id:d.id, created:x.createdMs || 0, responded:x.respondedMs || 0, done:true, ...info(x) }; });
+    live.docs.forEach(d => { const x = d.data(); const created = ms(x.createdAt) || ms(x.createdAtText); const done = x.status === "対応済み";
+      by[d.id] = { id:d.id, created, responded: done ? (ms(x.respondedAt) || (by[d.id] || {}).responded || 0) : 0, done, ...info(x) }; });
+    reqs = Object.values(by).filter(r => r.created);
+    firstLog = log.docs.length ? Math.min(...log.docs.map(d => d.data().createdMs || Infinity)) : 0;
+    subs = sb.docs.map(d => d.data());
+    monthly = {}; mo.docs.forEach(d => monthly[d.id] = d.data());
+  } catch(e){ document.getElementById("body").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; return; }
+  render();
+}
+function monthsOf(y){ return Array.from({ length:12 }, (_, i) => { const m = (7 + i) % 12 + 1, yy = m >= 8 ? y : y + 1; return yy+"-"+String(m).padStart(2,"0"); }); }
+function stat(ym){
+  const l = reqs.filter(r => ymOf(r.created) === ym), man = monthly[ym] || {};
+  const auto = { n:l.length, done:l.filter(r => r.done).length, late:l.filter(r => r.done ? (r.responded - r.created) >= 86400000 : (Date.now() - r.created) >= 86400000).length,
+    pending:l.filter(r => !r.done).length, avgH: (() => { const d = l.filter(r => r.done && r.responded); return d.length ? d.reduce((a, r) => a + (r.responded - r.created), 0) / d.length / 3600000 : null; })() };
+  const useMan = man.n !== undefined && man.n !== "" && man.n !== null;
+  const n = useMan ? Number(man.n) : auto.n, done = useMan ? Number(man.done || 0) : auto.done, late = useMan ? Number(man.late || 0) : auto.late;
+  const sv = subs.filter(s => String(s.date || "").startsWith(ym)).length;
+  return { ...auto, n, done, late, useMan, sv, rate: n ? Math.round(done / n * 1000) / 10 : null, memo: man.memo || "" };
+}
+/* 自動の気づき: 同じ会社から何度も/見積が多い/24時間以上かかった、をその月の記録から書き出す */
+function insights(ym){
+  const l = reqs.filter(r => ymOf(r.created) === ym), out = [];
+  const co = {}; l.forEach(r => { const k = r.client || "(会社名なし)"; (co[k] = co[k] || []).push(r); });
+  Object.entries(co).sort((a, b) => b[1].length - a[1].length).forEach(([k, rs]) => {
+    const pick = rs.filter(r => r.contents.some(c => /引き?取/.test(c))).length, est = rs.filter(r => r.contents.some(c => /見積/.test(c))).length;
+    if (pick >= 3) out.push(k+"：引き取り希望が月"+pick+"回 → 定期回収の提案を検討");
+    else if (rs.length >= 3) out.push(k+"：依頼が月"+rs.length+"回 → 依頼の理由を確認し、まとめて対応できないか検討");
+    if (est >= 2) out.push(k+"：見積依頼が月"+est+"回 → 単価表を先にお渡しできないか検討");
+  });
+  l.filter(r => r.done ? r.responded - r.created >= 86400000 : Date.now() - r.created >= 86400000).forEach(r => {
+    const h = Math.round(((r.done ? r.responded : Date.now()) - r.created) / 3600000);
+    out.push((r.client || "(会社名なし)")+"："+(r.done ? "対応まで約"+h+"時間" : "受けてから約"+h+"時間、まだ未対応")+" → 原因を確認");
+  });
+  return out;
+}
+function render(){
+  const cur = ymOf(Date.now());
+  document.getElementById("fyTabs").innerHTML = [fyNow - 1, fyNow].map(y => '<button class="btn sm'+(y === fy ? ' pri' : '')+'" onclick="fy='+y+';render()">'+y+'年度（'+y+'年8月〜'+(y+1)+'年7月）</button>').join("")+
+    '<span style="flex:1"></span><button class="btn sm" onclick="window.print()">印刷</button>';
+  const ms12 = monthsOf(fy), st = ms12.map(m => [m, stat(m)]);
+  const past = st.filter(([m]) => m <= cur), tot = past.reduce((a, [, s]) => ({ n:a.n + s.n, done:a.done + s.done, late:a.late + s.late, sv:a.sv + s.sv }), { n:0, done:0, late:0, sv:0 });
+  const pendingNow = reqs.filter(r => !r.done).length;
+  let h = '<h2 style="font-size:17px;color:var(--navy);margin:6px 0;">進捗記録兼評価表（顧客対応）　'+fy+'年度　株式会社関根商店</h2>'+
+    '<div class="note" style="margin:0 0 6px;">環境目標：①電話依頼の対応完了率100%(24時間以上の放置ゼロ)　②調査票・現地確認の期限内回答100%</div>'+
+    '<div class="kpis"><div class="kpi"><div class="k">今年度の依頼</div><div class="v">'+tot.n+'<small>件</small></div></div>'+
+    '<div class="kpi"><div class="k">対応完了率</div><div class="v">'+(tot.n ? Math.round(tot.done / tot.n * 1000) / 10 : "-")+'<small>%</small></div></div>'+
+    '<div class="kpi"><div class="k">24時間以上かかった</div><div class="v" style="color:'+(tot.late ? '#b91c1c' : '#15803d')+'">'+tot.late+'<small>件</small></div></div>'+
+    '<div class="kpi"><div class="k">いま未対応</div><div class="v" style="color:'+(pendingNow ? '#b45309' : '#15803d')+'">'+pendingNow+'<small>件</small></div></div>'+
+    '<div class="kpi"><div class="k">調査票・現地確認の提出</div><div class="v">'+tot.sv+'<small>件</small></div></div></div>'+
+    '<div style="overflow-x:auto;"><table class="ct"><tr><th>月</th><th>依頼を受けた</th><th>対応済み</th><th>完了率</th><th>24時間以上</th><th>平均対応時間</th><th>調査票・現地確認</th><th>評価</th><th style="min-width:260px;">気づき・原因・対策</th><th class="noPrint">手入力(記録がない月)</th></tr>';
+  st.forEach(([m, s]) => {
+    const fut = m > cur, noData = !fut && !s.useMan && !s.n && (!firstLog || m < ymOf(firstLog));
+    const ok = s.n ? (s.rate >= 100 && !s.late) : null;
+    h += '<tr class="'+(fut ? 'fut' : '')+'"><td class="c"><b>'+Number(m.slice(5))+'月</b><div style="font-size:11px;color:#64748b;">'+m.slice(0,4)+'</div></td>'+
+      (noData ? '<td colspan="5" class="c" style="color:#94a3b8;">記録なし（この記録を始める前の月）</td>' :
+      '<td class="n">'+(fut ? '' : s.n+' 件')+(s.useMan ? '<div style="font-size:10px;color:#b45309;">手入力</div>' : '')+'</td><td class="n">'+(fut ? '' : s.done+' 件')+(s.pending && !s.useMan ? '<div style="font-size:10px;color:#b45309;">未対応 '+s.pending+'</div>' : '')+'</td>'+
+      '<td class="n">'+(s.rate == null ? (fut ? '' : '-') : s.rate+'%')+'</td><td class="n">'+(fut ? '' : '<span class="'+(s.late ? 'ng' : '')+'">'+s.late+' 件</span>')+'</td><td class="n">'+(s.avgH == null || s.useMan ? '' : (s.avgH < 1 ? Math.round(s.avgH * 60)+' 分' : (Math.round(s.avgH * 10) / 10)+' 時間'))+'</td>')+
+      '<td class="n">'+(fut ? '' : s.sv+' 件')+'</td>'+
+      '<td class="c">'+(fut || ok === null ? '' : m === cur ? '<span style="color:#64748b;">今月(集計中)</span>' : ok ? '<span class="ok">○ 達成</span>' : '<span class="ng">× 未達</span>')+'</td>'+
+      '<td>'+(() => { const ins = fut ? [] : insights(m); return ins.length ? '<div style="font-size:11.5px;color:#0f766e;line-height:1.5;margin-bottom:4px;">'+ins.map(x => '・'+esc(x)).join("<br>")+
+        '<div class="noPrint"><button class="btn sm" style="font-size:11px;padding:1px 8px;margin-top:2px;" onclick="adopt(\''+m+'\')">↓ 書き写す</button></div></div>' : ''; })()+
+      '<div class="memo" contenteditable="plaintext-only" onblur="saveMemo(\''+m+'\',this.textContent.trim())">'+esc(s.memo)+'</div></td>'+
+      '<td class="noPrint" style="white-space:nowrap;">'+(fut ? '' : '<input class="man" placeholder="件数" value="'+esc((monthly[m] || {}).n ?? "")+'" onchange="saveMan(\''+m+'\',\'n\',this.value)"> <input class="man" placeholder="済み" value="'+esc((monthly[m] || {}).done ?? "")+'" onchange="saveMan(\''+m+'\',\'done\',this.value)"> <input class="man" placeholder="24h超" value="'+esc((monthly[m] || {}).late ?? "")+'" onchange="saveMan(\''+m+'\',\'late\',this.value)">')+'</td></tr>';
+  });
+  h += '</table></div><div class="note" style="margin-top:6px;">集計元：電話依頼アプリ(受けた日の月で数える)、委託先調査票の提出の記録。'+(firstLog ? '自動の記録は '+new Date(firstLog).toLocaleDateString("ja-JP")+' から。' : '自動の記録は、電話依頼アプリを新しくした日から始まります。')+'手入力の数字があれば、そちらを使います。根拠：環境マニュアル 6.2(進捗記録兼評価表)・7.4.3(顧客対応)。</div>';
+  // 会社ごとの件数と対応内容(月を選ぶ)
+  const okMonths = ms12.filter(m => m <= cur);
+  if (!okMonths.includes(coMonth)) { const has = okMonths.filter(m => reqs.some(r => ymOf(r.created) === m)); coMonth = has.includes(cur) ? cur : has[has.length - 1] || (okMonths.includes(cur) ? cur : okMonths[okMonths.length - 1] || cur); }
+  const l = reqs.filter(r => ymOf(r.created) === coMonth), co = {};
+  l.forEach(r => { const k = r.client || "(会社名なし)"; const o = co[k] = co[k] || { n:0, kinds:{}, resp:[] }; o.n++; r.contents.concat(r.free ? [r.free] : []).forEach(c => o.kinds[c] = (o.kinds[c] || 0) + 1);
+    o.resp.push((new Date(r.created).getMonth()+1)+"/"+new Date(r.created).getDate()+" "+(r.done ? (r.resp || "対応済み") : "未対応")); });
+  const rows = Object.entries(co).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0], "ja"));
+  h += '<h3 style="font-size:15px;color:var(--navy);margin:18px 0 6px;">会社ごとの件数と対応内容　<select onchange="coMonth=this.value;render()" style="width:auto;">'+okMonths.map(m => '<option value="'+m+'"'+(m === coMonth ? ' selected' : '')+'>'+m.slice(0,4)+'年'+Number(m.slice(5))+'月</option>').join("")+'</select></h3>'+
+    (rows.length ? '<div style="overflow-x:auto;"><table class="ct"><tr><th>会社</th><th>件数</th><th>依頼の内容</th><th>受けた日と対応内容</th></tr>'+rows.map(([k, o]) =>
+      '<tr><td><b>'+esc(k)+'</b></td><td class="n">'+o.n+' 件</td><td style="font-size:12px;">'+Object.keys(o.kinds).map(x => esc(x)+(o.kinds[x] > 1 ? "×"+o.kinds[x] : "")).join("・")+'</td><td style="font-size:12px;white-space:pre-wrap;">'+o.resp.map(esc).join("\n")+'</td></tr>').join("")+'</table></div>'
+      : '<div class="empty">この月の依頼の記録はありません</div>')+
+    '<div class="note">対応内容は、電話依頼アプリの「対応内容」に書いたものです。</div>';
+  document.getElementById("body").innerHTML = h;
+}
+let coMonth = "";
+async function adopt(m){
+  const add = insights(m).join("\n"), cur = (monthly[m] || {}).memo || "";
+  await saveMemo(m, (cur ? cur + "\n" : "") + add); render();
+}
+async function saveMemo(m, v){ if ((monthly[m] || {}).memo === v) return; try { await db.collection("isoCustMonthly").doc(m).set({ memo:v }, { merge:true }); (monthly[m] = monthly[m] || {}).memo = v; toast("保存しました"); } catch(e){ toast("保存できませんでした: "+e.message); } }
+async function saveMan(m, k, v){ v = String(v).trim(); try { await db.collection("isoCustMonthly").doc(m).set({ [k]: v === "" ? firebase.firestore.FieldValue.delete() : Number(v) }, { merge:true }); const o = monthly[m] = monthly[m] || {}; if (v === "") delete o[k]; else o[k] = Number(v); render(); toast("保存しました"); } catch(e){ toast("保存できませんでした: "+e.message); } }
+load();
+</script>
+</body>
+</html>

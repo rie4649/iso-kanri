@@ -4695,6 +4695,7 @@ const SECTION_DEFS = [
   { key: "plan:changes", grp: "plan", cl: "6.3", name: "変更管理記録（設備・法改正・人員・委託先の変更）" },
   { key: "sdgs", grp: "plan", cl: "6.2", name: "SDGs" },
   { key: "metal", grp: "plan", cl: "6.2", name: "進捗記録金属拾い上げ" },
+  { key: "custlog", grp: "plan", cl: "6.2 / 7.4.3", name: "進捗記録顧客対応（電話依頼・調査票）" },
   { key: "clean", grp: "plan", cl: "6.2", name: "進捗記録クリーン度チェック" },
   // 支援(7章)
   { key: "skills", grp: "sup", cl: "7.2", name: "力量（資格の一覧）" },
@@ -4774,6 +4775,7 @@ const FIND_INDEX = [
   ["内部監査 是正処置 不適合", "内部監査・是正処置の記録", "kiroku"],
   ["年間サマリー 年間 まとめ", "年間サマリー", "summary"],
   ["委託先調査票 調査票 アンケート 取引先", "委託先調査票の回答", "survey"],
+  ["顧客対応 お客様 ニーズ 電話依頼 完了率 進捗記録", "進捗記録顧客対応（電話依頼・調査票）", "custlog"],
   ["EMS 文書 原本 PDF 見直し 廃止 一覧", "EMS文書管理（原本PDF・見直しの記録）", "docs"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
@@ -4811,8 +4813,8 @@ async function renderHomeTasks() {
   const now = new Date(), ym = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
   const thisM = ym(now), prevM = ym(new Date(now.getFullYear(), now.getMonth() - 1, 1)), y = String(now.getFullYear());
   const fyStart = now.getMonth() + 1 >= 8 ? now.getFullYear() + "-08" : (now.getFullYear() - 1) + "-08";
-  const get = c => db.collection(c).get().then(s => s.docs.map(d => d.data())).catch(() => []);
-  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au, tr, rg, rv, ev] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits","trainingRecords","isoRegisters","emsDocReviews","isoEvents"].map(get));
+  const get = c => db.collection(c).get().then(s => s.docs.map(d => ({ _id: d.id, ...d.data() }))).catch(() => []);
+  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au, tr, rg, rv, ev, plog, plive, cmo] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits","trainingRecords","isoRegisters","emsDocReviews","isoEvents","phoneRequestLog","phoneRequests","isoCustMonthly"].map(get));
   const has = (l, k, v) => l.some(x => String(x[k] || "").startsWith(v));
   const last = (l, k) => l.map(x => String(x[k] || "")).filter(Boolean).sort().pop() || "";
   const fdy = s => { const p = String(s).split("-"); return p.length >= 3 ? Number(p[1]) + "/" + Number(p[2]) : p.length === 2 ? Number(p[1]) + "月分" : s; };
@@ -4827,6 +4829,13 @@ async function renderHomeTasks() {
     T("クリーン度チェック", "月2回", "clean", st(cnt(cl, "date", thisM) >= 2, `今月 ${cnt(cl, "date", thisM)}回`)) +
     T("安全衛生パトロール", "月1回", "safety", st(has(sp, "date", thisM), has(sp, "date", thisM) ? "今月 済" : "今月 まだ")) +
     T("軽油使用量", "前の月の分を入力", "diesel", st(has(dr, "yearMonth", prevM), has(dr, "yearMonth", prevM) ? fdy(prevM) + " 済" : fdy(prevM) + " まだ")) +
+    T("顧客対応の進捗（電話依頼）", "数は自動。先月の行の気づきを「書き写す」だけ", "custlog", (() => {
+      // 先月の依頼(電話依頼アプリの控え＋今ある依頼)を数え、気づき・原因・対策が書いてあるかを見る
+      const msOf = v => !v ? 0 : typeof v.toMillis === "function" ? v.toMillis() : (typeof v === "number" ? v : (Date.parse(v) || 0));
+      const n = plog.filter(x => String(new Date(x.createdMs || 0).toISOString()).length && ym(new Date(x.createdMs || 0)) === prevM).length + plive.filter(x => x.status !== "対応済み" || true).filter(x => ym(new Date(msOf(x.createdAt) || msOf(x.createdAtText) || 0)) === prevM).length;
+      const memo = (cmo.find(x => x.memo !== undefined && x._id === prevM) || {}).memo;
+      return st(n ? !!memo : null, n ? (memo ? fdy(prevM) + " 記入済み" : fdy(prevM) + " 気づき まだ") : "月1回");
+    })()) +
     T("ライフライン（電気・ガス・水道）", "前の月の分を入力", "lifeline", st(has(ll, "yearMonth", prevM), has(ll, "yearMonth", prevM) ? fdy(prevM) + " 済" : fdy(prevM) + " まだ")) +
     '<div class="hm-per">3か月ごと</div>' +
     T("フロン排出抑制法簡易点検", qMonths.join("・") + "月の間に全機器", "freon", st(fe.length ? frDone >= fe.length : null, `${frDone} / ${fe.length}台`)) +
@@ -4895,6 +4904,7 @@ window.openSection = function(sec) {
   if (sec === "plan") { location.href = "plan.html"; return; }
   if (String(sec).startsWith("plan:")) { location.href = "plan.html#" + sec.slice(5); return; }
   if (sec === "survey") { location.href = "survey.html"; return; }
+  if (sec === "custlog") { location.href = "custlog.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
   if (sec === "kiroku") { location.href = "kiroku.html"; return; }
