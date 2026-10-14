@@ -18,6 +18,11 @@
   .st { display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:2px 7px; margin-left:4px; }
   .st.ok { background:var(--okBg); color:var(--ok); } .st.no { background:#f3f4f6; color:var(--muted); }
   .st.abo { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+  .st.app { background:#dcfce7; color:#166534; border:1px solid #86efac; } .st.app0 { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+  .st.ask { background:#fff7ed; color:#c2410c; border:1px solid #fdba74; } .st.need { background:#fee2e2; color:#b91c1c; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 4px; } .chips button { border:1px solid var(--line); background:#fff; border-radius:16px; padding:5px 12px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .chips button.on { background:var(--navy); color:#fff; border-color:var(--navy); } .chips b { margin-left:4px; }
+  .askBtns { display:inline-flex; gap:4px; margin-left:6px; vertical-align:middle; }
   .doc.abolished { background:#f3f4f6; border-style:dashed; }
   .doc.abolished .no, .doc.abolished .nm > b { color:#9ca3af; text-decoration:line-through; }
   .grpH.abo { color:#b91c1c; border-bottom-color:#b91c1c; }
@@ -36,6 +41,7 @@
 <div class="wrap">
   <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方(ここを押すと開きます)<span class="cl">7.5 文書化した情報</span></summary>
     <div style="margin-top:6px;"><b>■ 文書の一覧</b>：EMS-C-22 の文書が全部並んでいます。文書を押すと、原本(PDF)の版と見直しの記録が開きます。<br>
+    <b>■ 文書の状態</b>：上の「文書の状態」のボタンで絞り込めます。<span class="st app">アプリで記録</span>…記録はアプリの入力画面に入っています(原本PDFはなくてOK)。<span class="st ask">使っているか確認</span>…原本もアプリの入力もない書類。今も使っていれば「使っている」、使っていなければ「使っていない(廃止)」。<span class="st need">原本を登録してください</span>…使っている書類なのでPDFを入れます。<span class="st app0">アプリ入力なし</span>…原本はあるけれどアプリで記録できない書類(原本のPDFをClaudeに送ると入力画面を作れます)。<br>
     <b>■ 今までの書類</b>：「一括登録」タブで、PDFをまとめて選びます。ファイル名の番号(例 EMS-A-10、EMS-A-09-02 → A-09 の第2版)で自動で振り分けます。違うときはその場で直せます。<br>
     <b>■ これからの書類</b>：「入力する場所 ›」のボタンで、アプリの入力画面へ移ります。入力した内容が台帳や記録になります。紙の様式でも残すときは、印刷・PDFにした物を「新しい版」で登録します。<br>
     <b>■ 見直し・確認</b>：文書を見直したら「見直しを記録」。全部の記録は「見直し・確認の記録」タブで一覧・印刷できます(EMS-C-01・C-17 の代わり)。<br>
@@ -123,16 +129,84 @@ function render(){
   const withFile = live.filter(d => EMS.filesOf(d.id).length).length;
   let h = '<div class="search"><input id="q" placeholder="文書番号・文書名で探す" value="'+esc(q)+'" oninput="q=this.value;renderListOnly()"><button class="btn noPrint" onclick="window.print()">一覧を印刷</button></div>'+
     '<div class="note" style="margin:-4px 0 8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;"><span>使用中 '+live.length+' 文書(原本PDFあり '+withFile+')</span>'+
-      (abo ? '<label style="display:flex;gap:4px;align-items:center;margin:0;font-weight:normal;cursor:pointer;" class="noPrint"><input type="checkbox" style="width:auto;" '+(showAbo ? 'checked' : '')+' onchange="showAbo=this.checked;renderListOnly()"> 廃止文書も表示('+abo+')</label>' : '')+'</div><div id="list"></div>'+
+      (abo ? '<label style="display:flex;gap:4px;align-items:center;margin:0;font-weight:normal;cursor:pointer;" class="noPrint"><input type="checkbox" style="width:auto;" '+(showAbo ? 'checked' : '')+' onchange="showAbo=this.checked;renderListOnly()"> 廃止文書も表示('+abo+')</label>' : '')+'</div><div id="sumBox"></div><div id="list"></div>'+
     '<div class="bar noPrint" style="margin-top:12px;"><button class="btn" onclick="openDocInfo()">＋ 文書を追加</button></div>';
-  b.innerHTML = h; renderListOnly();
+  b.innerHTML = h; renderSummary(); renderListOnly();
+  if (!linkStats && !window._lsLoading){ window._lsLoading = true; loadLinkStats().catch(e => console.error(e)); }
 }
 function lastReview(code){ return reviews.find(r => r.code === code); }
+
+/* ===== 文書の状態(どう管理しているか) =====
+   app  … アプリの入力画面で記録している(記録の件数と最終日を出す)。原本PDFはなくてよい
+   file … 原本PDFあり(アプリに入力画面はない)
+   need … 使っている(確認済み)のに原本もアプリの入力もない → 原本を登録する
+   ask  … 原本もアプリの入力もない → 使っているか確認(使っている／廃止) */
+const SELF_LINK = { "C-17":"reviews", "C-01":"reviews", "C-22":"self" };   // この画面で記録しているもの
+const LINK_SRC = { clean:[["cleanlinessChecks","date"]], noiseCheck:[["noiseChecks","date"],["compressorInspections","date"]], safety:[["safetyPatrols","date"],["trainingRecords","date"]],
+  metal:[["metalRecords","date"]], freon:[["freonRecords","date"]], lifeline:[["lifelineRecords","yearMonth"]], diesel:[["dieselRecords","yearMonth"]], waterTest:[["waterTests","date"]],
+  horei:[["isoHoreiEval","date"]], kiroku:[["isoAudits","date"],["isoCorrectives","date"]], summary:[["isoMgmtReviews","date"]], calendar:[["isoEvents","date"]], shokaki:[["isoShokakiDocs","date"]],
+  manual:[["envManuals",""]], kyoka:[["isoKyokaDocs",""]], sdgs:[["sdgsGoals",""]], photos:[["isoPhotos","shotDate"]] };
+let linkStats = null, flt = "all";
+async function loadLinkStats(){
+  const cols = new Set(["isoRegisters"]); Object.values(LINK_SRC).forEach(l => l.forEach(([c]) => cols.add(c)));
+  const data = {};
+  await Promise.all([...cols].map(c => db.collection(c).get().then(s => data[c] = s.docs.map(d => d.data())).catch(() => data[c] = null)));
+  const dOf = (x, f) => { const v = f ? x[f] : ""; if (v) return String(v); const u = x.updatedAt || x.createdAt; const t = u && u.toDate ? u.toDate() : typeof x.createdMs === "number" ? new Date(x.createdMs) : null; return t ? t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0") : ""; };
+  const st = {};
+  Object.entries(LINK_SRC).forEach(([k, srcs]) => { let n = 0, last = "", ok = false;
+    srcs.forEach(([c, f]) => { const l = data[c]; if (!l) return; ok = true; n += l.length; l.forEach(x => { const d = dOf(x, f); if (d > last) last = d; }); });
+    if (ok) st[k] = { n, last }; });
+  const rg = data.isoRegisters || [];
+  (typeof ISO_REG_KEYS !== "undefined" ? ISO_REG_KEYS : [...new Set(rg.map(x => x.reg))]).forEach(k => { const l = rg.filter(x => x.reg === k && !x.draft); let last = "";
+    l.forEach(x => { const d = dOf(x, x.date ? "date" : x.last ? "last" : x.evalDate ? "evalDate" : ""); if (d > last) last = d; }); st["plan:"+k] = { n:l.length, last }; });
+  linkStats = st; renderListOnly(); renderSummary();
+}
+const linkOf = d => d.link || "";
+function stateOf(d){
+  if (d.abolished) return "abo";
+  if (linkOf(d) || SELF_LINK[d.id]) return "app";
+  if (EMS.filesOf(d.id).length) return "file";
+  return d.inUse ? "need" : "ask";
+}
+function appBadge(d){
+  if (SELF_LINK[d.id] === "self") return '<span class="st app">この画面が一覧表</span>';
+  if (SELF_LINK[d.id] === "reviews"){ const n = reviews.length; return '<span class="st app">アプリで記録 '+n+'件'+(reviews[0] ? '・最終 '+esc(fdj(reviews[0].date)) : '')+'</span>'; }
+  const s = linkStats && linkStats[linkOf(d)];
+  if (!linkStats) return '<span class="st app">アプリで記録</span>';
+  if (!s) return '<span class="st app">アプリで管理</span>';
+  if (!s.n) return '<span class="st app0">アプリで記録(まだ入力なし)</span>';
+  const ld = String(s.last); return '<span class="st app">アプリで記録 '+s.n+'件'+(ld ? '・最終 '+esc(ld.length === 7 ? Number(ld.slice(5))+"月分" : fdj(ld.slice(0,10))) : '')+'</span>';
+}
+function stateBadge(d){
+  const fl = EMS.filesOf(d.id), st = stateOf(d);
+  const file = fl.length ? '<span class="st ok">原本 '+esc(fdj(fl[0].date))+(fl[0].ver ? ' 第'+Number(fl[0].ver)+'版' : '')+'</span>' : '';
+  if (st === "abo") return '<span class="st abo">廃止 '+esc(fdj(d.abolishedDate))+'</span>';
+  if (st === "app") return appBadge(d)+file;
+  if (st === "file") return file+'<span class="st app0" title="この書類はアプリに入力画面がありません">アプリ入力なし</span>';
+  if (st === "need") return '<span class="st need">原本を登録してください</span>';
+  return '<span class="st ask">使っているか確認</span><span class="askBtns noPrint"><button class="btn sm" onclick="event.stopPropagation();markInUse(\''+d.id+'\')">使っている</button><button class="btn sm del" onclick="event.stopPropagation();openAbo(\''+d.id+'\')">使っていない(廃止)</button></span>';
+}
+async function markInUse(code, v){
+  try { await db.collection(EMS.DOCS).doc(code).update({ inUse: v === false ? false : true }); toast(v === false ? "「使っているか確認」に戻しました" : "使っている書類にしました。原本(PDF)を登録してください"); }
+  catch(e){ toast("保存できませんでした: "+e.message); }
+}
+const FLT = [["all","すべて","" ],["ask","使っているか確認","原本もアプリの入力もない書類です。今も使っているか確認して「使っている」か「使っていない(廃止)」を押します"],
+  ["need","原本を登録","使っている書類です。PDFを「原本を登録」か「一括登録」で入れます"],["file","原本あり・アプリ入力なし","この書類もアプリで記録したいときは、原本のPDFをClaudeに送ると入力画面を作れます"],
+  ["app","アプリで記録","毎回の記録はアプリの入力画面に入っています。原本PDFはなくても大丈夫です"]];
+function renderSummary(){
+  const el = document.getElementById("sumBox"); if (!el) return;
+  const live = EMS.docs.filter(d => !d.abolished), cnt = k => k === "all" ? live.length : live.filter(d => stateOf(d) === k).length;
+  const cur = FLT.find(f => f[0] === flt) || FLT[0];
+  el.innerHTML = '<div class="card" style="border-left:4px solid var(--navy);padding:10px 14px;"><b style="color:var(--navy);">文書の状態</b>'+
+    (cnt("ask") ? '<span class="note" style="margin-left:8px;">まず「使っているか確認」の '+cnt("ask")+'件 から片付けると、やることが減ります</span>' : cnt("need") ? '<span class="note" style="margin-left:8px;">あとは「原本を登録」の '+cnt("need")+'件 です</span>' : '<span class="note" style="margin-left:8px;">確認が必要な書類はありません</span>')+
+    '<div class="chips noPrint">'+FLT.map(([k, l]) => '<button class="'+(flt === k ? 'on' : '')+'" onclick="flt=\''+k+'\';renderSummary();renderListOnly()">'+l+'<b>'+cnt(k)+'</b></button>').join("")+'</div>'+
+    (cur[2] ? '<div class="note" style="margin:2px 0 0;">'+esc(cur[2])+'</div>' : '')+'</div>';
+}
 function renderListOnly(){
   const el = document.getElementById("list"); if (!el) return;
   const kw = q.trim().toLowerCase();
   const hit = d => !kw || (d.id+" "+d.name).toLowerCase().includes(kw) || ("ems-"+d.id).toLowerCase().includes(kw);
-  const docs = EMS.docs.filter(d => hit(d) && !d.abolished).concat(showAbo || kw ? EMS.docs.filter(d => hit(d) && d.abolished).sort((a,b) => String(b.abolishedDate||"").localeCompare(String(a.abolishedDate||""))) : []);
+  const docs = EMS.docs.filter(d => hit(d) && !d.abolished && (flt === "all" || stateOf(d) === flt)).concat(flt !== "all" ? [] : showAbo || kw ? EMS.docs.filter(d => hit(d) && d.abolished).sort((a,b) => String(b.abolishedDate||"").localeCompare(String(a.abolishedDate||""))) : []);
   const grp = d => d.abolished ? "廃止文書" : /^A-/.test(d.id) ? "A 計画・評価の文書" : /^B-/.test(d.id) ? "B 一覧・社内資料" : /^C-/.test(d.id) ? "C 記録" : "その他";
   let h = "", last = "";
   docs.forEach(d => {
@@ -142,7 +216,7 @@ function renderListOnly(){
     const ab = d.abolished ? '<span class="st abo">廃止 '+esc(fdj(d.abolishedDate))+'</span>' : '';
     h += '<div class="doc'+(op ? ' open' : '')+(d.abolished ? ' abolished' : '')+'"><div class="top">'+
       '<span class="no">'+(/^Z-/.test(d.id) ? '—' : 'EMS-'+esc(d.id))+'</span>'+
-      '<span class="nm" style="cursor:pointer;" onclick="toggle(\''+d.id+'\')"><b>'+esc(d.name)+'</b>'+ab+(d.abolished ? '' : fl.length ? '<span class="st ok">原本 '+esc(fdj(fl[0].date))+(fl[0].ver ? ' 第'+Number(fl[0].ver)+'版' : '')+'</span>' : '<span class="st no">原本なし</span>')+
+      '<span class="nm" style="cursor:pointer;" onclick="toggle(\''+d.id+'\')"><b>'+esc(d.name)+'</b>'+(d.abolished ? ab : stateBadge(d))+
         '<div class="meta">'+(d.abolished ? ["廃止の理由："+(d.abolishedReason || "—"), d.replacedBy && "代わり："+d.replacedBy, d.place, d.keep && "保管 "+d.keep] : [d.place, d.keep && "保管 "+d.keep, d.approver && "承認 "+d.approver, lr && "最終見直し "+fdj(lr.date)+"("+lr.kind+")"]).filter(Boolean).map(esc).join("　")+'</div></span>'+
       '<span class="acts">'+(d.link && !d.abolished ? '<button class="btn sm pri" onclick="goLink(\''+d.link+'\')">入力する場所 ›</button>' : '')+
         (fl.length ? '<button class="btn sm" onclick="EMS.view(\''+fl[0].id+'\')">原本を開く</button>' : '')+
@@ -152,6 +226,7 @@ function renderListOnly(){
         '<div class="bar" style="margin:6px 0;"><button class="btn sm" onclick="EMS.openForm({code:\''+d.id+'\'})">＋ '+(fl.length ? '新しい版を登録' : '原本を登録')+'</button><button class="btn sm" onclick="openRev(null,\''+d.id+'\')">見直しを記録</button><button class="btn sm" onclick="openDocInfo(\''+d.id+'\')">文書の情報を修正</button>'+
           (d.abolished ? '<button class="btn sm" onclick="openAbo(\''+d.id+'\')">廃止の内容を修正</button><button class="btn sm" onclick="restoreDoc(\''+d.id+'\')">使用を再開</button>' : '<button class="btn sm del" onclick="openAbo(\''+d.id+'\')">廃止にする</button>')+
           '<button class="btn sm del" onclick="deleteDoc(\''+d.id+'\')">削除</button>'+
+          (!d.abolished && d.inUse && stateOf(d) !== "app" ? '<button class="btn sm" onclick="markInUse(\''+d.id+'\',false)">「使っているか確認」に戻す</button>' : '')+
           (d.link ? '<span class="note" style="margin:0;align-self:center;">入力する場所：'+esc(linkName(d.link))+'</span>' : '')+'</div>'+
         (revs.length ? '<div style="font-weight:700;font-size:13px;margin:6px 0 2px;">見直し・確認の記録</div>'+revs.map(r => '<div style="font-size:13px;padding:2px 0;'+(r.kind === "廃止" ? 'color:#b91c1c;font-weight:bold;' : '')+'">'+esc(fdj(r.date))+'　'+esc(r.kind)+(r.by ? '　'+esc(r.by) : '')+(r.detail ? '　<span style="color:var(--muted);">'+esc(r.detail)+'</span>' : '')+' <button class="btn sm" onclick="openRev(\''+r.id+'\')">修正</button></div>').join("") : '')+
       '</div></div>';
