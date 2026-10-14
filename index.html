@@ -4864,6 +4864,7 @@ function homeYearPlan(o) {
     Y("8月", "自覚教育（全社員）", "7.3 環境方針・環境側面・気候変動など", "safety", done(aware) || notYet(8)) +
     Y("8月", "環境側面の見直し", "6.1.2 著しい環境側面特定表", "plan:aspects", done(aspRev, " 見直し") || (aspects.length ? notYet(8) : st(false, "未登録"))) +
     Y("8月", "取引先チェック表", "6.1.5 5項目×0〜2点・A/B/Cランク", "plan:vendors", vendors.length ? st(vEval.length >= vendors.length ? true : due(8) ? false : null, `${vEval.length} / ${vendors.length}社`) : st(null, "未登録")) +
+    Y("8月", "委託契約状況集計表", "8.1 / 6.1.5 EMS-A-26（外部委託先の管理から作る）", "plan:vendors", done(docRev.filter(x => x.code === "A-26")) || notYet(8)) +
     Y("10〜2月", "内部監査", "9.2 年1回", "kiroku", done(audit) || st(auditDue ? false : null, auditDue ? "まだ" : "10月〜2月に実施")) +
     Y("11月", "緊急事態の手順書の見直し・定期テスト", "8.2 定期テスト記録", "safety", done(test) || notYet(11)) +
     Y("1月末", "半期末の目標の評価", "6.2 進捗記録兼評価表（未達は是正処置）", "plan:objectives", st(null, "1月末")) +

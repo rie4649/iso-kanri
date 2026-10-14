@@ -76,6 +76,14 @@
 </div></div>
 <div id="formStage" style="position:fixed;left:-20000px;top:0;"></div>
 <div id="toast"></div>
+<div class="bg" id="a26Bg" style="z-index:86;" onclick="if(event.target===this)closeA26()"><div class="modal" style="max-width:620px;">
+  <h2>委託契約状況集計表（EMS-A-26）を作る</h2>
+  <div class="note" style="margin-top:0;">共通マスタ管理の契約と、取引先チェック表(A-18)から自動で集計します。処分先の名前の書き方の違い(「(株)」の有無・「・」など)は、同じ会社としてまとめます。</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><label for="a26Date">集計日(確認日)</label><input type="date" id="a26Date"></div><div><label for="a26Ver">版</label><input id="a26Ver"></div>
+    <div><label for="a26Author">作成者</label><input id="a26Author" value="環境管理責任者"></div><div><label for="a26Checker">確認者</label><input id="a26Checker" placeholder="例: 社長"></div></div>
+  <label for="a26Note">所見・対応(集計して気づいたこと)</label><textarea id="a26Note" rows="6"></textarea>
+  <div class="mBtns"><button class="btn" onclick="previewA26()">先に見る</button><span style="flex:1"></span><button class="btn" onclick="closeA26()">キャンセル</button><button class="btn pri" id="a26Save" onclick="makeA26()">PDFを作って登録</button></div>
+</div></div>
 <div id="ycView" style="display:none;position:fixed;inset:0;z-index:70;background:#f1f5f9;overflow:auto;"></div>
 <style>
   .ycRow { background:#fff; border:1px solid var(--line); border-left:4px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:6px; }
@@ -492,6 +500,11 @@ function render(){
   h += emsDocsHtml(reg);
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
+    const a26 = EMS.docs.find(d => d.id === "A-26"), a26f = EMS.filesOf("A-26")[0];
+    h += '<div class="card" style="border-left:4px solid #0d9488;"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 委託契約状況集計表（EMS-A-26）　年1回・8月</b>'+
+      (a26f ? '<button class="btn sm" onclick="EMS.view(\''+a26f.id+'\')">最新の集計表を見る（'+esc(fdj(a26f.date))+'）</button>' : '')+
+      '<button class="btn pri sm" onclick="openA26()">今年の集計表を作る</button></div>'+
+      '<div class="note" style="margin:4px 0 0;">下の契約件数(共通マスタ管理)と、取引先チェック表(A-18)のランクをまとめた年1回の記録です。環境マニュアル 8.1(外部委託の管理)・6.1.5(取引先チェック、毎年8月)・9.1.1(監視・測定)と、廃棄物処理法の委託基準(書面での契約・5年保存)の確認に使います。'+(a26 ? '' : '<br>はじめて作ると、EMS文書管理に「EMS-A-26 委託契約状況集計表」が自動で登録されます。')+'</div></div>';
     h += '<div class="card" style="border-left:4px solid var(--navy);"><b style="color:var(--navy);">📑 契約件数(共通マスタ管理と連動)</b><div id="cstats" style="margin-top:8px;">'+(cstats ? ContractStats.html(cstats, { tableClass:"cs" }) : '<div class="note">読み込み中…</div>')+'</div></div>';
     if (!cstats && !cstatsLoading){ cstatsLoading = true; ContractStats.load().then(st => { cstats = st; render(); }).catch(e => { const el = document.getElementById("cstats"); if (el) el.textContent = "読み込めませんでした: "+e.message; }); }
   }
@@ -607,6 +620,91 @@ function mvMeta(){
   const ver = (document.getElementById("mvVer").value || "").trim().replace(/^(\d)$/, "0$1"), date = document.getElementById("mvDate").value;
   return { code, ver, date, title:d.name, docNo:"EMS-"+code+(ver ? "-"+ver : ""), author:document.getElementById("mvAuthor").value.trim(), checker:document.getElementById("mvChecker").value.trim(),
     dateTxt: date ? date.replace(/-/g, ".") : "", memo:document.getElementById("mvMemo").value.trim() };
+}
+/* ===== 委託契約状況集計表(EMS-A-26) ===== */
+const normCo = v => String(v || "").normalize("NFKC").replace(/株式会社|有限会社|\(株\)|\(有\)|㈱|㈲|[\s・･\.]/g, "");
+async function a26Data(){
+  const [cs, meta] = await Promise.all([db.collection("master_contracts").get(), db.collection("master_meta").doc("contracts").get().catch(() => null)]);
+  const list = cs.docs.map(d => d.data()).filter(c => !c.isMemo);
+  const dispOf = c => String(c.disposer || "").trim() || String(c.route || "").split("／")[0].trim() || "(処分先なし)";
+  const vendors = rows.filter(r => r.reg === "vendors" && !r.draft);
+  const g = {};
+  list.forEach(c => { const raw = dispOf(c), k = normCo(raw) || raw; const x = g[k] = g[k] || { names:{}, n:0, co:new Set(), items:new Set() };
+    x.names[raw] = (x.names[raw] || 0) + 1; x.n++; x.co.add(c.company); if (c.sheet) x.items.add(c.sheet); });
+  const disp = Object.entries(g).map(([k, x]) => { const v = vendors.find(r => normCo(r.name) === k); const vc = v ? vendorCheck(v) : null;
+    const names = Object.keys(x.names).sort((a, b) => x.names[b] - x.names[a]);
+    return { name: v ? v.name : names[0], alias: names.length > 1 ? names.join("／") : "", n:x.n, co:x.co.size, items:[...x.items], rank: vc && vc.done ? vc.rank+"（"+vc.total+"点）" : (v ? "未評価" : "A-18に未登録"), permitExp: v && v.permitExp || "", contractExp: v && v.contractExp || "" }; })
+    .sort((a, b) => b.n - a.n);
+  const bySheet = {}; list.forEach(c => { const k = c.sheet || "(品目なし)"; bySheet[k] = (bySheet[k] || 0) + 1; });
+  const companies = new Set(list.map(c => c.company)).size;
+  const pv = await db.collection("isoSettings").doc("a26Last").get().catch(() => null);   // 前回の集計の数字
+  return { companies, contracts:list.length, disp, bySheet, lastMaster: meta && meta.exists && meta.data().updatedAt && meta.data().updatedAt.toDate ? meta.data().updatedAt.toDate() : null, prev: pv && pv.exists ? pv.data() : null };
+}
+let a26 = null;
+async function openA26(){
+  toast("集計しています…");
+  try { a26 = await a26Data(); } catch(e){ toast("集計できませんでした: "+e.message); return; }
+  const last = EMS.filesOf("A-26")[0];
+  document.getElementById("a26Date").value = today(); document.getElementById("a26Ver").value = last && last.ver ? String(Number(last.ver) + 1).padStart(2, "0") : "01";
+  document.getElementById("a26Checker").value = shBy || "";
+  const noRank = a26.disp.filter(d => d.rank === "A-18に未登録" || d.rank === "未評価"), bc = a26.disp.filter(d => /^[BC]/.test(d.rank)), alias = a26.disp.filter(d => d.alias);
+  document.getElementById("a26Note").value = [
+    "・委託契約は共通マスタ管理で管理し、書面で締結している(廃棄物処理法の委託基準)。契約書は契約終了後5年間保存する。",
+    bc.length ? "・取引先チェック表でB・Cの処分先："+bc.map(d => d.name+" "+d.rank).join("、")+"。A-18の「対応」に従い改善要請・見直しを行う。" : "・取引先チェック表で、契約のある処分先はすべてAランク。",
+    noRank.length ? "・取引先チェック表(A-18)で未評価・未登録の処分先："+noRank.map(d => d.name).join("、")+"。A-18に追加して、8月の見直しで評価する。" : "",
+    alias.length ? "・処分先の名前の書き方が違うものがある("+alias.map(d => d.alias).join("、")+")。共通マスタ管理で名前をそろえる。" : ""
+  ].filter(Boolean).join("\n");
+  document.getElementById("a26Bg").classList.add("show");
+}
+function closeA26(){ document.getElementById("a26Bg").classList.remove("show"); }
+function a26Pages(){
+  const d = a26, date = document.getElementById("a26Date").value, ver = document.getElementById("a26Ver").value.trim().replace(/^(\d)$/, "0$1");
+  const meta = { title:"委託契約状況集計表", docNo:"EMS-A-26"+(ver ? "-"+ver : ""), author:document.getElementById("a26Author").value.trim(), checker:document.getElementById("a26Checker").value.trim(), dateTxt: date.replace(/-/g, ".") };
+  const td = (v, c) => '<td style="border:1px solid #111;padding:3px 5px;'+(c ? 'text-align:'+c+';' : '')+'vertical-align:top;">'+esc(v)+'</td>', th = (v, w) => '<th style="border:1px solid #111;background:#dbe4f3;padding:4px;'+(w ? 'width:'+w+';' : '')+'">'+esc(v)+'</th>';
+  const diff = (a, b) => b == null ? "" : " （前回 "+b+"、"+(a - b >= 0 ? "+" : "")+(a - b)+"）";
+  const fdx = s => s ? String(s).replace(/-/g, "/") : "";
+  const sum = '<table style="border-collapse:collapse;width:100%;font-size:12px;margin-bottom:10px;"><tr>'+th("集計日","14%")+th("契約している会社(排出事業者)")+th("委託契約の件数")+th("処分先の数")+th("共通マスタ管理の最終更新")+'</tr><tr>'+
+    td(fdx(date),"center")+td(d.companies+" 社"+diff(d.companies, d.prev && d.prev.companies),"center")+td(d.contracts+" 件"+diff(d.contracts, d.prev && d.prev.contracts),"center")+td(d.disp.length+" 社","center")+
+    td(d.lastMaster ? d.lastMaster.getFullYear()+"/"+(d.lastMaster.getMonth()+1)+"/"+d.lastMaster.getDate() : "-","center")+'</tr></table>';
+  const dispT = rs => '<table style="border-collapse:collapse;width:100%;font-size:11px;"><tr>'+th("No.","4%")+th("処分先","20%")+th("契約件数","8%")+th("契約している会社","9%")+th("主な品目")+th("取引先チェック(A-18)","11%")+th("許可の有効期限","9%")+th("契約の期限","9%")+'</tr>'+
+    rs.map(([x, i]) => '<tr>'+td(i+1,"center")+td(x.name+(x.alias ? "\n(表記："+x.alias+")" : ""))+td(x.n+" 件","right")+td(x.co+" 社","right")+td(x.items.slice(0, 6).join("・")+(x.items.length > 6 ? " ほか" : ""))+td(x.rank,"center")+td(fdx(x.permitExp),"center")+td(fdx(x.contractExp),"center")+'</tr>').join("")+'</table>';
+  const sheets = Object.keys(d.bySheet).sort((a, b) => d.bySheet[b] - d.bySheet[a]);
+  const itemT = '<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;">2. 品目ごとの契約件数</div><table style="border-collapse:collapse;width:100%;font-size:11px;table-layout:fixed;"><tr>'+[0,1,2,3].map(() => th("品目")+th("件数","7%")).join("")+'</tr>'+
+    Array.from({ length: Math.ceil(sheets.length / 4) }, (_, r) => '<tr>'+[0,1,2,3].map(c => { const k = sheets[r * 4 + c]; return k ? td(k)+td(d.bySheet[k]+" 件","right") : td("")+td(""); }).join("")+'</tr>').join("")+'</table>';
+  const note = '<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;">3. 所見・対応</div><div style="border:1px solid #111;padding:6px 8px;font-size:12px;white-space:pre-wrap;line-height:1.6;min-height:60px;">'+esc(document.getElementById("a26Note").value)+'</div>'+
+    '<div style="font-size:10.5px;color:#333;margin-top:6px;line-height:1.5;">根拠：環境マニュアル 8.1(運用の計画及び管理・外部委託)、6.1.5(取引先・委託先の環境リスク評価、年1回8月)、9.1.1(監視・測定)、9.3(マネジメントレビューのインプット)／廃棄物処理法 第12条 委託基準(書面による委託契約・契約書の5年保存)。集計元：共通マスタ管理の「契約」、取引先チェック表(EMS-A-18)。</div>';
+  const page = (body, i, n) => '<div class="fp" style="width:1123px;height:794px;box-sizing:border-box;padding:24px 30px;background:#fff;font-family:\'Yu Gothic\',\'Hiragino Sans\',\'Meiryo\',sans-serif;color:#111;position:relative;white-space:normal;">'+
+    '<div style="display:flex;gap:16px;align-items:stretch;margin-bottom:10px;"><div style="flex:1;border:1.5px solid #111;background:#d9d9d9;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;letter-spacing:.1em;">'+esc(meta.title)+'</div>'+
+    '<table style="border-collapse:collapse;font-size:12px;width:330px;">'+[["文書番号",meta.docNo],["作成者",meta.author],["日付",meta.dateTxt],["確認者",meta.checker]].map(([k,v]) => '<tr><td style="border:1px solid #111;padding:3px 6px;width:80px;background:#f3f4f6;">'+k+'</td><td style="border:1px solid #111;padding:3px 6px;">'+esc(v)+'</td></tr>').join("")+'</table></div>'+
+    body+'<div style="position:absolute;bottom:12px;right:30px;font-size:11px;color:#444;">株式会社関根商店　'+i+' / '+n+'</div></div>';
+  const rows2 = d.disp.map((x, i) => [x, i]), first = rows2.slice(0, 14), rest = rows2.slice(14);
+  const pages = [sum+'<div style="font-weight:bold;font-size:13px;margin:4px 0 4px;">1. 処分先ごとの契約件数</div>'+dispT(first)];
+  for (let i = 0; i < rest.length; i += 20) pages.push('<div style="font-weight:bold;font-size:13px;margin:4px 0 4px;">1. 処分先ごとの契約件数(つづき)</div>'+dispT(rest.slice(i, i + 20)));
+  pages.push(itemT+note);
+  return { meta, ver, date, pages: pages.map((b, i) => page(b, i+1, pages.length)) };
+}
+function previewA26(){
+  const { meta, pages } = a26Pages(); const w = window.open("", "_blank"); if (!w){ toast("ポップアップを許可してください"); return; }
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(meta.docNo)+'</title><style>@page{size:A4 landscape;margin:0;} body{margin:0;background:#888;} .fp{margin:10px auto;page-break-after:always;} @media print{body{background:#fff;} .fp{margin:0;}}</style></head><body>'+pages.join("")+'</body></html>'); w.document.close();
+}
+async function makeA26(){
+  const { meta, ver, date, pages } = a26Pages();
+  if (!date){ toast("集計日を入れてください"); return; }
+  if (typeof html2canvas === "undefined" || !window.jspdf){ toast("PDFを作る部品を読み込めませんでした"); return; }
+  const btn = document.getElementById("a26Save"); btn.disabled = true; btn.textContent = "PDFを作成中…";
+  try {
+    if (!EMS.docs.some(x => x.id === "A-26")) await db.collection(EMS.DOCS).doc("A-26").set({ name:"委託契約状況集計表", place:"2階事務所", keep:"5年間", approver:"環境管理責任者", link:"plan:vendors", order:26.5, createdMs:Date.now() }, { merge:true });
+    const st = document.getElementById("formStage"), pdf = new window.jspdf.jsPDF({ orientation:"landscape", unit:"mm", format:"a4" });
+    for (let i = 0; i < pages.length; i++){ st.innerHTML = pages[i]; const cv = await html2canvas(st.firstChild, { scale:2, backgroundColor:"#ffffff" }); if (i) pdf.addPage("a4", "landscape"); pdf.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 297, 210); }
+    st.innerHTML = "";
+    const file = new File([pdf.output("blob")], meta.docNo+"_委託契約状況集計表.pdf", { type:"application/pdf" });
+    btn.textContent = "登録中…";
+    await EMS.upload("A-26", file, { ver, date, author:meta.author, memo:"年1回の集計(会社 "+a26.companies+"社・契約 "+a26.contracts+"件)" });
+    await db.collection("isoSettings").doc("a26Last").set({ companies:a26.companies, contracts:a26.contracts, date });
+    await db.collection(EMS.REVIEWS).add({ code:"A-26", title:"", date, kind:"作成", by:meta.checker || meta.author, detail:"委託契約状況集計表を作成("+meta.docNo+"：会社 "+a26.companies+"社・契約 "+a26.contracts+"件)", createdMs:Date.now() });
+    closeA26(); toast(meta.docNo+" を作って登録しました"); render();
+  } catch(e){ console.error(e); toast("作れませんでした: "+e.message); }
+  btn.disabled = false; btn.textContent = "PDFを作って登録";
 }
 function openMakeVer(){
   const lds = linkedDocs(cur); if (!lds.length) return;
