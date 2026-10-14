@@ -481,6 +481,7 @@ async function custPlanOnce(){
     goal:"お客様のニーズ(依頼・要望)に早く確実に応え、信頼される関係と業務の改善につなげる",
     plan:"①お客様からの依頼(引取・見積・現場確認)は電話依頼アプリに記録し、対応が終わるまで追いかける\n②委託先調査票・現地確認には期限内に回答する",
     target:"①電話依頼の対応完了率100%(24時間以上の放置ゼロ)\n②調査票・現地確認の期限内回答100%",
+    target2:"①電話依頼の対応完了率100%(24時間以上の放置ゼロ)\n②調査票・現地確認の期限内回答100%",
     method:"電話依頼アプリで依頼を受け付け、対応・回収予定日まで記録する／委託先調査票アプリで回答を準備し、提出を記録する",
     monitor:"月1回、電話依頼アプリの件数・未対応件数と、委託先調査票の提出記録を確認し、進捗記録兼評価表に記入",
     updatedAt:TS() });
@@ -488,6 +489,56 @@ async function custPlanOnce(){
     effect:"声かけ・物品預書のチェックだけでは、お客様のニーズにどう応えたかが残らなかった。今ある電話依頼アプリ・委託先調査票アプリの記録で、依頼から完了までを確認できるようにする(環境マニュアル4.2・7.4.3・6.2.1)",
     update:"環境目標兼活動計画書(EMS-A-22)・行動計画書(EMS-A-13)", status:"対応中", createdMs:Date.now(), updatedAt:TS() });
   toast("顧客対応の行を書き換え、変更管理記録に残しました。「この表で新しい版(PDF)を作る」で計画書を作り直せます");
+}
+/* 顧客対応の計画変更(2026/10)の残りの作業。①環境目的の書き換え ②令和8〜11年の目標をそろえる ③A-22・A-13を新しい版にする
+   全部終わると緑になり「閉じる」で消える(isoSettings/seeds.custSteps1) */
+const CUST_GOAL = "お客様のニーズ(依頼・要望)に早く確実に応え、信頼される関係と業務の改善につなげる";
+const CUST_TARGET = "①電話依頼の対応完了率100%(24時間以上の放置ゼロ)\n②調査票・現地確認の期限内回答100%";
+const CUST_MEMO = "顧客対応の環境目的・目標を、電話依頼の対応完了率・調査票の期限内回答に変更";
+const CUST_FROM = "2026-10-01";   // この日以降に作った版なら「作成済み」
+let custSeeds = null;
+db.collection("isoSettings").doc("seeds").onSnapshot(s => { custSeeds = s.exists ? s.data() : {}; if (cur === "objectives") render(); }, () => { custSeeds = {}; });
+function custRow(){ return rows.find(x => x.reg === "objectives" && x.kubun === "顧客対応"); }
+function custSteps(){
+  const r = custRow() || {}, okGoal = String(r.goal || "").startsWith("お客様のニーズ");
+  const okT2 = !!r.target2 && r.target2 === r.target, docOk = c => { const f = EMS.filesOf(c)[0]; return !!f && String(f.date || "") >= CUST_FROM; };
+  return { r, okGoal, okT2, a22:docOk("A-22"), a13:docOk("A-13") };
+}
+function custStepsCard(){
+  if (!custSeeds || custSeeds.custSteps1 || !custRow()) return "";
+  const s = custSteps(), all = s.okGoal && s.okT2 && s.a22 && s.a13;
+  const li = (ok, t, btn) => '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px dashed #e2e8f0;"><span style="font-size:18px;">'+(ok ? '✅' : '⬜')+'</span><span style="flex:1;min-width:220px;'+(ok ? 'color:#64748b;' : '')+'">'+t+'</span>'+(ok ? '<span style="color:#15803d;font-weight:700;">済み</span>' : btn)+'</div>';
+  return '<div class="card" style="border-left:4px solid '+(all ? '#16a34a' : '#d97706')+';"><b style="color:var(--navy);">📝 顧客対応の計画を変えたあとの作業（'+(all ? '全部終わりました' : 'あと '+[s.okGoal, s.okT2, s.a22, s.a13].filter(x => !x).length+' つ')+'）</b>'+
+    '<div class="note" style="margin:4px 0 6px;">顧客対応の環境目的・目標を「電話依頼の対応完了率」に変えたので、表と計画書(PDF)をそろえます。上から順にボタンを押してください。</div>'+
+    li(s.okGoal, '① 環境目的・環境目標を新しい文に書き換える', '<button class="btn sm pri" onclick="custFix(\'goal\')">書き換える</button>')+
+    li(s.okT2, '② 「環境目標(令和8年〜令和11年)」も同じ文にそろえる', '<button class="btn sm pri" onclick="custFix(\'t2\')"'+(s.okGoal ? '' : ' disabled')+'>そろえる</button>')+
+    li(s.a22, '③ 環境目標兼活動計画書(EMS-A-22)を新しい版で作る', '<button class="btn sm pri" onclick="openMakeVer(\'A-22\', CUST_MEMO)"'+(s.okGoal && s.okT2 ? '' : ' disabled')+'>作る</button>')+
+    li(s.a13, '④ 行動計画書(EMS-A-13)を新しい版で作る', '<button class="btn sm pri" onclick="openMakeVer(\'A-13\', CUST_MEMO)"'+(s.okGoal && s.okT2 ? '' : ' disabled')+'>作る</button>')+
+    (all ? '<div style="margin-top:6px;display:flex;gap:8px;align-items:center;"><span class="note" style="flex:1;margin:0;">変更管理記録も「完了」にしました。このお知らせは閉じて大丈夫です。</span><button class="btn sm" onclick="custClose()">閉じる</button></div>' : '')+'</div>';
+}
+async function custFix(k){
+  const r = custRow(); if (!r) return; const TS = firebase.firestore.FieldValue.serverTimestamp;
+  try {
+    if (k === "goal"){
+      await db.collection(ISO_REG_COL).doc(r.id).update({ goal:CUST_GOAL, plan:"①お客様からの依頼(引取・見積・現場確認)は電話依頼アプリに記録し、対応が終わるまで追いかける\n②委託先調査票・現地確認には期限内に回答する",
+        target:CUST_TARGET, target2:CUST_TARGET, method:"電話依頼アプリで依頼を受け付け、対応・回収予定日まで記録する／委託先調査票アプリで回答を準備し、提出を記録する",
+        monitor:"月1回、電話依頼アプリの件数・未対応件数と、委託先調査票の提出記録を確認し、進捗記録兼評価表に記入", updatedAt:TS() });
+      if (!rows.some(x => x.reg === "changes" && /顧客対応/.test(x.content || "")))
+        await db.collection(ISO_REG_COL).add({ reg:"changes", draft:false, date:today(), kind:"その他", content:"環境目標(顧客対応)を「週2回以上の声かけ」から「電話依頼の対応完了率・調査票の期限内回答」に変更",
+          effect:"声かけ・物品預書のチェックだけでは、お客様のニーズにどう応えたかが残らなかった。今ある電話依頼アプリ・委託先調査票アプリの記録で、依頼から完了までを確認できるようにする(環境マニュアル4.2・7.4.3・6.2.1)",
+          update:"環境目標兼活動計画書(EMS-A-22)・行動計画書(EMS-A-13)", status:"対応中", createdMs:Date.now(), updatedAt:TS() });
+      toast("顧客対応の行を書き換えました(変更管理記録にも残しています)");
+    } else {
+      await db.collection(ISO_REG_COL).doc(r.id).update({ target2:r.target || CUST_TARGET, updatedAt:TS() }); toast("令和8年〜令和11年の目標もそろえました");
+    }
+  } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function custClose(){
+  try {
+    const ch = rows.find(x => x.reg === "changes" && /顧客対応/.test(x.content || "") && x.status !== "完了");
+    if (ch) await db.collection(ISO_REG_COL).doc(ch.id).update({ status:"完了", updatedAt:firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection("isoSettings").doc("seeds").set({ custSteps1:true }, { merge:true });
+  } catch(e){ toast("保存できませんでした: "+e.message); }
 }
 function setTab(k){ if (k === "objectives") setTimeout(() => custPlanOnce().catch(e => console.error(e)), 400); if (k === "vendors") setTimeout(() => vendorSeedOnce().catch(e => console.error(e)), 300); cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
 
@@ -516,6 +567,7 @@ function render(){
   }).join("");
   const reg = regOf(cur), list = sorted(reg);
   let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>';
+  if (reg.key === "objectives") h += custStepsCard();
   h += emsDocsHtml(reg);
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
@@ -738,13 +790,14 @@ async function makeA26(){
   } catch(e){ console.error(e); toast("作れませんでした: "+e.message); }
   btn.disabled = false; btn.textContent = "PDFを作って登録";
 }
-function openMakeVer(){
+function openMakeVer(code, memo){
   const lds = linkedDocs(cur); if (!lds.length) return;
   document.getElementById("mvCode").innerHTML = lds.map(d => '<option value="'+esc(d.id)+'">EMS-'+esc(d.id)+' '+esc(d.name)+'</option>').join("");
   const setVer = () => { const last = EMS.filesOf(document.getElementById("mvCode").value)[0]; document.getElementById("mvVer").value = last && last.ver ? String(Number(last.ver)+1).padStart(2,"0") : "02";
     if (last && last.author) document.getElementById("mvAuthor").value = last.author; };
+  if (code && lds.some(d => d.id === code)) document.getElementById("mvCode").value = code;
   document.getElementById("mvCode").onchange = setVer; setVer();
-  document.getElementById("mvDate").value = today(); document.getElementById("mvMemo").value = ""; document.getElementById("mvChecker").value = "";
+  document.getElementById("mvDate").value = today(); document.getElementById("mvMemo").value = memo || ""; document.getElementById("mvChecker").value = "";
   document.getElementById("mvBg").classList.add("show");
 }
 function closeMakeVer(){ document.getElementById("mvBg").classList.remove("show"); }
