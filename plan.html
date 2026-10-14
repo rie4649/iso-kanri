@@ -235,6 +235,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let rows = [], cur = (location.hash || "").replace("#", ""), editId = null;
+setTimeout(() => { if (cur === "vendors") vendorSeedOnce().catch(e => console.error(e)); }, 2500);
 if (!ISO_REGS.some(r => r.key === cur)) cur = ISO_REGS[0].key;
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
@@ -351,6 +352,7 @@ function shCell(reg, col, ci, r, span, def){
   if (col.v) return '<td'+rs+' class="ro">'+esc(col.v(r))+'</td>';
   const f = reg.fields.find(x => x.k === col.k); if (!f) return '<td'+rs+' class="ro">'+esc(r[col.k] || "")+'</td>';
   if (f.type === "select") return '<td'+rs+' class="sl"><select onchange="shSet(\''+id+'\',\''+f.k+'\',this.value,'+(col.m ? 1 : 0)+')">'+f.options.map(o => '<option value="'+esc(o[0])+'"'+(String(r[f.k] || "") === o[0] ? ' selected' : '')+'>'+esc(o[0] || "―")+'</option>').join("")+'</select></td>';
+  if (f.type === "date") return '<td'+rs+' class="sl"><input type="date" value="'+esc(r[f.k] || "")+'" onchange="shSet(\''+id+'\',\''+f.k+'\',this.value,'+(col.m ? 1 : 0)+')" style="width:100%;border:none;background:transparent;font-size:12px;padding:3px 0;"></td>';
   return '<td'+rs+' class="tx"><div contenteditable="plaintext-only" data-old="'+esc(r[f.k] || "")+'" onblur="shText(\''+id+'\',\''+f.k+'\',this,'+(col.m ? 1 : 0)+')">'+esc(r[f.k] || "")+'</div></td>';
 }
 function renderSheet(top){
@@ -460,7 +462,7 @@ async function shAdd(){
     toast("いちばん下に黄色い行を足しました。「＋入力」のマスを押して書くか、左の ✏️ で入力画面を開けます"); }
   catch(e){ toast("追加できませんでした: "+e.message); }
 }
-function setTab(k){ cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
+function setTab(k){ if (k === "vendors") setTimeout(() => vendorSeedOnce().catch(e => console.error(e)), 300); cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
 
 function sorted(reg){
   const list = rows.filter(r => r.reg === reg.key);
@@ -538,6 +540,11 @@ const FORM_DEFS = {
       {k:"impact",l:"主な環境改善効果",w:13},
       ...ASPECT_CONTRIB.slice(1).map(n => ({ v:mk("contrib", n), l:n, w:3.2, c:1 })),
       {k:"sigMark",l:"重要管理事項",w:4,c:1},{v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:3.5,c:1},{k:"control",l:"著しい環境側面とした理由",w:13}] },
+  "A-18": { font:9.5, foot: m => "評価：5項目を0〜2点(2＝あり・良好／1＝一部／0＝なし)。合計 8〜10点＝A、5〜7点＝B、0〜4点＝C。Bは改善を要請、Cは取引の見直しを検討(環境マニュアル6.1.5)。新規契約時に初期評価、毎年8月に見直し。",
+    cols:[{k:"name",l:"取引先・委託先",w:13},{k:"kind",l:"委託の内容",w:6,c:1},{k:"certName",l:"認証の種類",w:9},
+      {k:"vcCert",l:"認証有無",w:4.2,c:1},{k:"vcPolicy",l:"環境方針",w:4.2,c:1},{k:"vcCo2",l:"CO₂削減目標",w:4.2,c:1},{k:"vcLaw",l:"法令遵守状況",w:4.2,c:1},{k:"vcAccident",l:"事故・不適合履歴",w:4.2,c:1},
+      {v:r => { const c = vendorCheck(r); return c.done ? String(c.total) : ""; },l:"合計",w:3.8,c:1},{v:r => vendorCheck(r).rank,l:"ランク",w:3.8,c:1},
+      {k:"evalDate",l:"評価日",w:7,c:1},{k:"evalKind",l:"評価の種類",w:5.5,c:1},{k:"checkHow",l:"確認の方法",w:9},{k:"followup",l:"対応(B改善要請・C見直し)",w:17}] },
   "A-08": { group:"group", font:9.5, foot: m => "更新日："+m.dateTxt+"　　次回更新：年1度（"+(m.date ? Number(m.date.slice(0,4))+1 : "")+"年11月予定）",
     cols:[{k:"group",l:"環境影響",w:8,m:1},{k:"impact",l:null,w:10},{k:"life",l:"ライフサイクル区分",w:7},{k:"manNo",l:"手順書No.",w:4.5,c:1},{k:"manName",l:"手順書内容",w:19},
       {k:"kind",l:"区分",w:4.5,c:1},{k:"action",l:"対応方法",w:11},{k:"sig",l:"著しい環境側面",w:5,c:1},{k:"reason",l:"著しい理由",w:25},{v:Object.assign(r => { const c = (r.checks || {})[ycFy()]; return c ? (c.r === "OK" ? "✓" : "見直し") : (r.check || ""); }, { yc:1 }),l:"確認",w:4,c:1}] }
@@ -550,7 +557,7 @@ function formDef(reg, code){
 function cellVal(reg, col, r){
   if (col.v) return col.v(r);
   const f = reg.fields.find(x => x.k === col.k); let v = f ? regLabel(f, r[col.k]) : (r[col.k] || "");
-  if (f && f.type === "select" && ["eval","esg","sig","sigMark","kind","freq","level"].includes(col.k)) v = r[col.k] || "";
+  if (f && f.type === "select" && ["eval","esg","sig","sigMark","kind","freq","level","evalKind","vcCert","vcPolicy","vcCo2","vcLaw","vcAccident"].includes(col.k)) v = r[col.k] || "";
   return v;
 }
 /* rows を表の行に。def.group があれば、同じまとまりの m:1 の列を1つのセル(rowspan)にする。measure=true は高さを測る用(まとめずに先頭行だけ書く) */
@@ -682,6 +689,34 @@ async function planSeedOnce(){
   if (nl || ns || np) toast("去年の表を入れました(法的要求事項 "+nl+"行・著しい環境側面 "+ns+"行・環境側面の○印 "+np+"件)");
 }
 setTimeout(() => planSeedOnce().catch(e => console.error(e)), 1500);
+/* 最初の1回だけ: 取引先環境配慮チェック体制(2025.12.09)の10社を外部委託先の管理に入れる(同じ名前の会社があれば入れない)。
+   法令遵守状況は「廃棄物処理体制 全社適正」なので2点、事故・不適合履歴は「なし」で2点 */
+const VENDOR_SEED = [["(株)サイトー","エコアクション21",2,2,2],["(株)ウェルサイクル","エコアクション21",2,2,2],["(有)ゼンユー","ISO14001",2,2,0],["(株)フロンティアスピリット","ISO14001",2,2,2],
+  ["(株)佐藤商会","なし",0,0,0],["(株)トライル","エコアクション21",2,2,0],["石井商事(株)","なし",0,2,0],["(株)花村産業","ISO14001",2,2,2],["(株)信越軽金属","なし",0,2,0],["(株)恒成","なし",0,2,0]];
+async function vendorSeedOnce(){
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get(), done = f.exists ? f.data() : {};
+  if (!done.vendorSeed1){
+    await fr.set({ vendorSeed1:true }, { merge:true });
+    const norm = v => String(v || "").normalize("NFKC").replace(/株式会社|有限会社|\(株\)|\(有\)|㈱|㈲|\s/g, "");
+    const have = new Set(rows.filter(r => r.reg === "vendors").map(r => norm(r.name)));
+    const b = db.batch(); let n = 0, t = Date.now();
+    VENDOR_SEED.forEach(([name, cert, c, p, co], i) => { if (have.has(norm(name))) return;
+      b.set(db.collection(ISO_REG_COL).doc(), { reg:"vendors", draft:false, name, certName:cert, vcCert:String(c), vcPolicy:String(p), vcCo2:String(co), vcLaw:"2", vcAccident:"2", evalDate:"2025-12-09", evalKind:"定期",
+        checkHow:"取引先環境配慮チェック体制(2025.12.09)より", createdMs:t+i, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }); n++; });
+    if (n){ await b.commit(); toast("取引先チェック表(2025.12.09)の "+n+"社 を入れました"); }
+  }
+  // B-07(郵送書類)は A-18 に統合して廃止するか、1回だけ聞く
+  if (!done.b07Ask1){
+    const d = await db.collection(EMS.DOCS).doc("B-07").get().catch(() => null);
+    await fr.set({ b07Ask1:true }, { merge:true });
+    if (d && d.exists && !d.data().abolished && confirm("EMS-B-07「外部業者委託確認書 郵送書類」を廃止にしますか？\n(取引先チェック表 EMS-A-18 に統合。廃止日は今日、見直し・確認の記録にも残ります。あとでEMS文書管理の「使用を再開」で戻せます)")){
+      const by = "環境管理責任者", date = today(), reason = "取引先チェック表に統合", rep = "EMS-A-18 外部業者委託記録表(取引先チェック表)";
+      const ref = await db.collection(EMS.REVIEWS).add({ code:"B-07", title:"", date, kind:"廃止", by, detail:reason+"(代わり："+rep+")", createdMs:Date.now() });
+      await db.collection(EMS.DOCS).doc("B-07").update({ abolished:true, abolishedDate:date, abolishedReason:reason, abolishedBy:by, replacedBy:rep, abolishReviewId:ref.id });
+      toast("EMS-B-07を廃止にしました");
+    }
+  }
+}
 loadShSaved().then(() => render());
 
 /* ===== 計画書の原本(PDF)。台帳ごとに文書番号で版を管理(いちばん新しい日付が現在の版、ほかは改訂履歴)
