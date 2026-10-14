@@ -171,12 +171,16 @@
     margin-top: 2px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .cal-cell .more { font-size: 9px; color: #4338ca; margin-top: 1px; }
-  /* 就業カレンダー(マスター管理で登録):全休=休日、それ以外=稼働日 */
-  .cal-cell.kyujitsu { background: #fff1f2; }
-  .cal-cell .work-tag { font-size: 9px; font-weight: 700; line-height: 1.2; border-radius: 3px; padding: 0 3px; margin-top: 1px; }
-  .cal-cell .work-tag.kyu { background: #dc2626; color: #fff; }
-  .cal-cell .work-tag.kado { color: #059669; }
-  .cal-work-sum { text-align: center; font-size: 12px; color: #4b4b63; margin: -4px 0 8px; }
+  /* 就業カレンダー(マスター管理で登録)。色は紙の就業カレンダー・マスター管理と同じ:全休=ピンク / A班=黄緑 / B班=水色 */
+  .cal-cell.wk-zen { background: #fce4ec; border: 2px solid #e57399; }
+  .cal-cell.wk-a   { background: #e6f4c8; border: 2px solid #8bc34a; }
+  .cal-cell.wk-b   { background: #dbeafe; border: 2px solid #5b9bd5; }
+  .cal-cell.today  { border: 2px solid #4338ca; }
+  .cal-cell .work-tag { font-size: 9px; font-weight: 700; line-height: 1.2; margin-top: 1px; }
+  .cal-cell .work-tag.zen { color: #c2185b; }
+  .cal-cell .work-tag.a   { color: #4d7c0f; }
+  .cal-cell .work-tag.b   { color: #1d4ed8; }
+  .cal-work-sum { display: none; }
 
   /* 一覧 */
   .toolbar-row { display: flex; gap: 8px; margin: 12px 0; align-items: center; }
@@ -1776,7 +1780,7 @@ document.querySelectorAll("#section-donation .master-sub-tab").forEach(tab => {
 
 // ================= カレンダー =================
 /* 就業カレンダー(workCalendars/sekine_開始日 に1年分)。days = 登録した内容、overrides = 手で直した日(優先)
-   ISOでは 全休 = 休日、出勤・A班休み・B班休み = 稼働日。どの期間にも入らない日は何も出さない(未登録) */
+   全休・A班休み・B班休みを色で出す。出勤の日・どの期間にも入らない日(未登録)は何も出さない */
 let workCals = [];
 db.collection("workCalendars").where("owner", "==", "sekine").onSnapshot(snap => {
   workCals = snap.docs.map(d => d.data());
@@ -1788,7 +1792,7 @@ function workDayOf(ds) {
   if (o) return o === "出勤" ? "" : o;
   return (c.days || {})[ds] || "";
 }
-function isoWorkKind(ds) { const w = workDayOf(ds); return w === null ? null : (w === "全休" ? "休日" : "稼働日"); }
+const ISO_WORK = { "全休": { cls: "wk-zen", tag: "zen", label: "全休" }, A: { cls: "wk-a", tag: "a", label: "A班休" }, B: { cls: "wk-b", tag: "b", label: "B班休" } };
 function renderCalendar() {
   document.getElementById("calTitle").textContent = `${viewYear}年 ${viewMonth+1}月`;
   const grid = document.getElementById("calGrid");
@@ -1828,12 +1832,7 @@ function renderCalendar() {
 
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
-  // この月の稼働日・休日の数
-  let kado = 0, kyu = 0, mitouroku = 0;
-  cells.filter(c => !c.otherMonth).forEach(c => { const k = isoWorkKind(c.key); if (k === "稼働日") kado++; else if (k === "休日") kyu++; else mitouroku++; });
-  document.getElementById("calWorkSum").textContent = (kado || kyu)
-    ? `稼働日 ${kado}日 ・ 休日 ${kyu}日` + (mitouroku ? ` ・ 未登録 ${mitouroku}日` : "")
-    : "就業カレンダー未登録(マスター管理で登録すると稼働日・休日が出ます)";
+  document.getElementById("calWorkSum").textContent = "";
 
   grid.innerHTML = cells.map(c => {
     const events = eventsByDate[c.key] || [];
@@ -1842,9 +1841,10 @@ function renderCalendar() {
     if (c.otherMonth) classes.push("other-month");
     if (isToday) classes.push("today");
     if (events.length) classes.push("has-events");
-    const wk = c.otherMonth ? null : isoWorkKind(c.key);
-    if (wk === "休日") classes.push("kyujitsu");
-    const workTag = wk ? `<div class="work-tag ${wk === "休日" ? "kyu" : "kado"}">${wk === "休日" ? "休日" : "稼働"}</div>` : "";
+    const wk = c.otherMonth ? null : ISO_WORK[workDayOf(c.key)];
+    if (wk) classes.push(wk.cls);
+    if (isToday) classes.push("today");
+    const workTag = wk ? `<div class="work-tag ${wk.tag}">${wk.label}</div>` : "";
     const titleLines = events.slice(0,2).map(ev => {
       const mark = findMark(ev.mark);
       const color = mark ? mark.color : "#4338ca";
