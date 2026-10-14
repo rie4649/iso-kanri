@@ -14,10 +14,13 @@ button { font-family:inherit; cursor:pointer; }
 
 /* ===== 上のバー ===== */
 #bar { position:fixed; top:0; left:0; right:0; height:58px; z-index:50; background:#1e3a5f; color:#fff; display:flex; align-items:center; gap:8px; padding:0 12px; box-shadow:0 2px 10px rgba(0,0,0,.25); }
-#bar .bt { border:1px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:6px; padding:9px 14px; font-size:15px; font-weight:bold; white-space:nowrap; }
+#bar .bt { border:1px solid rgba(255,255,255,.35); background:transparent; color:#fff; border-radius:6px; padding:9px 14px; font-size:15px; font-weight:bold; white-space:nowrap; flex-shrink:0; cursor:pointer; touch-action:manipulation; }
+#bar .bt:disabled { opacity:.35; cursor:default; }
+#stage.busy .slide { opacity:.45; pointer-events:none; transition:opacity .1s; }
+button, .openBtn, .tile { touch-action:manipulation; }
 #bar .bt:hover { background:rgba(255,255,255,.22); }
 #bar .nav { font-size:20px; padding:6px 16px; }
-#bar .ttl { flex:1; text-align:center; font-size:18px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#bar .ttl { flex:1; min-width:0; text-align:center; font-size:18px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #bar .pg { font-size:13px; opacity:.75; white-space:nowrap; }
 
 /* ===== スライド ===== */
@@ -217,7 +220,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <div id="bar">
   <button class="bt" onclick="location.href='index.html'">← ISO管理</button>
   <button class="bt" onclick="go(0)">目次</button>
-  <button class="bt" id="backBt" onclick="goBackPage()" style="display:none;">← 戻る</button>
+  <button class="bt" id="backBt" onclick="goBackPage()" disabled title="1つ前に見たページへ">← 戻る</button>
   <button class="bt nav" onclick="step(-1)">◀</button>
   <div class="ttl" id="barTtl">環境への取り組み</div>
   <span class="pg" id="barPg"></span>
@@ -1537,24 +1540,29 @@ async function show(i){
   if (lastKey && lastKey !== p.key && !goingBack && backStack[backStack.length-1] !== lastKey){ backStack.push(lastKey); if (backStack.length > 30) backStack.shift(); }
   goingBack = false; lastKey = p.key;
   document.getElementById("barTtl").textContent = p.name;
-  document.getElementById("backBt").style.display = backStack.length ? "" : "none";
+  document.getElementById("backBt").disabled = !backStack.length;   // いつも同じ場所に出しておく(ボタンの位置がずれないように)
+  document.getElementById("stage").classList.add("busy"); setTimeout(() => document.getElementById("stage").classList.remove("busy"), 8000);
   document.getElementById("barPg").textContent = COURSES[course].name+"　"+(cur+1)+" / "+cp.length;
   try { history.replaceState(null, "", "#"+p.key); } catch(e){}
   touched = new Set();
   const html = await renderFull(p);
   if (coursePages()[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
+  document.getElementById("stage").classList.remove("busy");
   document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>'+
     (p.key !== "cover" ? '<div class="noPrintBar" style="text-align:center;margin:14px 0 30px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'+
       (backStack.length ? '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="goBackPage()">← 戻る</button>' : '')+
       '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="go(0)">目次へ</button><button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="printCurrent()">このページを印刷</button></div>' : '');
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
+// 上のバーが2段・3段になっても、ページの中身がバーの下に隠れないようにする
+function fitBar(){ const b = document.getElementById("bar"), st = document.getElementById("stage"); if (b && st) st.style.paddingTop = (b.offsetHeight + 16)+"px"; }
+window.addEventListener("resize", fitBar); window.addEventListener("load", fitBar); setTimeout(fitBar, 300);
 /* 読み込んだデータは開いている間とっておくので、ISO管理で入力してからこの画面に戻ったら、読み直して今のページを描き直す */
 let hiddenAt = 0;
-function refreshData(){ Object.keys(cache).forEach(k => delete cache[k]); purposes = null; if (typeof ContractStats !== "undefined") ContractStats.reset(); if (!document.getElementById("fileViewer")) show(cur); }
-document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 3000) refreshData(); });
-window.addEventListener("focus", () => { if (hiddenAt && Date.now() - hiddenAt > 3000){ hiddenAt = 0; refreshData(); } });
-window.addEventListener("blur", () => { hiddenAt = Date.now(); });
+function refreshData(){ Object.keys(cache).forEach(k => delete cache[k]); purposes = null; if (typeof ContractStats !== "undefined") ContractStats.reset();
+  if (!document.getElementById("fileViewer")){ const y = window.scrollY; show(cur).then(() => window.scrollTo({ top:y })); } }
+// 別のタブ(ISO管理など)に行って30秒以上たってから戻ったときだけ読み直す(押した瞬間に描き直されてボタンがずれないように)
+document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30000){ hiddenAt = 0; refreshData(); } });
 function step(d){ go(cur + d); }
 document.addEventListener("keydown", e => {
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;

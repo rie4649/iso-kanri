@@ -4861,19 +4861,19 @@ function homeYearPlan(o) {
   const auditDue = monthsFromAug >= 6;   // 2月(10月〜翌2月の最後)を過ぎた
   return document.getElementById("hmTasks").insertAdjacentHTML("beforeend",
     `<div class="hm-per">今年度 ${fy}年8月〜${fy + 1}年7月（環境マニュアルで決まっている時期）</div>` +
-    Y("8月", "自覚教育（全社員）", "7.3 環境方針・環境側面・気候変動など", "safety", done(aware) || notYet(8)) +
-    Y("8月", "環境側面の見直し", "6.1.2 著しい環境側面特定表", "plan:aspects", done(aspRev, " 見直し") || (aspects.length ? notYet(8) : st(false, "未登録"))) +
-    Y("8月", "取引先チェック表", "6.1.5 5項目×0〜2点・A/B/Cランク", "plan:vendors", vendors.length ? st(vEval.length >= vendors.length ? true : due(8) ? false : null, `${vEval.length} / ${vendors.length}社`) : st(null, "未登録")) +
-    Y("8月", "委託契約状況集計表", "8.1 / 6.1.5 EMS-A-26（外部委託先の管理から作る）", "plan:vendors", done(docRev.filter(x => x.code === "A-26")) || notYet(8)) +
-    Y("10〜2月", "内部監査", "9.2 年1回", "kiroku", done(audit) || st(auditDue ? false : null, auditDue ? "まだ" : "10月〜2月に実施")) +
-    Y("11月", "緊急事態の手順書の見直し・定期テスト", "8.2 定期テスト記録", "safety", done(test) || notYet(11)) +
-    Y("1月末", "半期末の目標の評価", "6.2 進捗記録兼評価表（未達は是正処置）", "plan:objectives", st(null, "1月末")) +
-    Y("年7〜8回", "環境管理会議", "7.4.2 カレンダーに「環境管理会議」で記録", "calendar", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
-    Y("年1回", "法令の順守評価", "9.1.2 法的要求事項特定書(A-05)", "plan:legal", done(hv) || st(null, "まだ")) +
-    Y("年1回", "水質検査", "計量証明書も添付", "waterTest", done(water) || st(null, "まだ")) +
-    Y("年1回", "騒音チェック", "", "noiseCheck", done(noise) || st(null, "まだ")) +
-    Y("年1回", "マネジメントレビュー", "9.3 " + (highRisk ? `優先度「高」のリスク ${highRisk}件を確認` : "気候変動・取引先リスクも"), "plan:review", done(mrv) || notYet(7)) +
-    Y("7月", "文書の見直し・環境活動計画の見直し", "7.5.3 文書見直し記録／6.2", "docs", done(planRev.length ? planRev : docRev, docRev.length ? ` ほか${docRev.length}件` : "") || notYet(7)));
+    Y("8月", "自覚教育（全社員）", "全社員に ①環境方針 ②自分の仕事の環境への影響 ③環境に良いことの効果 ④決まりを守らないとどうなるか ⑤気候変動への備え を伝える教育。教育訓練にテーマ「自覚教育」で記録（7.3）", "safety", done(aware) || notYet(8)) +
+    Y("8月", "環境側面の見直し", "仕事が環境に与える影響の一覧（A-06〜A-08）を見直す。ISOの計画のチェックシートで点検（6.1.2）", "plan:aspects", done(aspRev, " 見直し") || (aspects.length ? notYet(8) : st(false, "未登録"))) +
+    Y("8月", "取引先チェック表", "処分先・委託先を5項目（0〜2点）で採点してA/B/Cを付ける。B・Cは対応を記録（6.1.5）", "plan:vendors", vendors.length ? st(vEval.length >= vendors.length ? true : due(8) ? false : null, `${vEval.length} / ${vendors.length}社`) : st(null, "未登録")) +
+    Y("8月", "委託契約状況集計表", "契約件数・処分先ごとの件数を集計して記録する。外部委託先の管理から作る（8.1・EMS-A-26）", "plan:vendors", done(docRev.filter(x => x.code === "A-26")) || notYet(8)) +
+    Y("10〜2月", "内部監査", "社内の監査員が、ルールどおりにできているかを確認する（9.2）", "kiroku", done(audit) || st(auditDue ? false : null, auditDue ? "まだ" : "10月〜2月に実施")) +
+    Y("11月", "緊急事態の手順書の見直し・定期テスト", "油漏れ・火災・地震などの訓練をして、緊急時の手順書を見直す（8.2）", "safety", done(test) || notYet(11)) +
+    Y("1月末", "半期末の目標の評価", "環境目標が半分まで進んでいるか確認。足りなければ是正処置（6.2）", "plan:objectives", st(null, "1月末")) +
+    Y("年7〜8回", "環境管理会議", "環境管理責任者とISO推進委員の会議。カレンダーにタイトル「環境管理会議」で記録（7.4.2）", "calendar", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
+    Y("年1回", "法令の順守評価", "法律や条例を守れているかを確認する。法的要求事項特定書（A-05）のチェックシートで点検（9.1.2）", "plan:legal", done(hv) || st(null, "まだ")) +
+    Y("年1回", "水質検査", "油水分離槽の水を検査し、計量証明書を添付する（9.1.1）", "waterTest", done(water) || st(null, "まだ")) +
+    Y("年1回", "騒音チェック", "敷地境界の騒音を測って記録する（9.1.1）", "noiseCheck", done(noise) || st(null, "まだ")) +
+    Y("年1回", "マネジメントレビュー", "社長に1年の結果を報告して、指示をもらう（9.3）" + (highRisk ? `。優先度「高」のリスク ${highRisk}件も確認` : ""), "plan:review", done(mrv) || notYet(7)) +
+    Y("7月", "文書の見直し・環境活動計画の見直し", "書類が今のやり方に合っているか見直し、来年度の環境目標・活動計画を決める（7.5.3・6.2）", "docs", done(planRev.length ? planRev : docRev, docRev.length ? ` ほか${docRev.length}件` : "") || notYet(7)));
 }
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;

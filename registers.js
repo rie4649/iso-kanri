@@ -154,7 +154,8 @@ const ISO_REGS = [
   {
     key:"objectives", icon:"🎯", name:"環境目標と実施計画", clause:"6.2",
     help:"環境目標ごとに、何を・誰が・いつまでに・どうやって評価するかを決めます(SDGsのページの目標と合わせて見せます)。環境マニュアル6.2: 環境目的の達成期間は原則3年、環境目標は初年度・2年度・最終年度の1年単位。毎年7月に見直します。進捗は「進捗記録兼評価表」に記録し、半期末(1月末)・年度末(7月末)に未達成なら不適合として是正処置を行います。",
-    title:"goal",
+    title:"goal", group:"kubun", groupFields:[],
+    yearCheck:{ opts:[["OK","✓ 変更なし"],["見直し","見直しが必要"]], all:"OK" },
     fields:[
       { k:"kubun", label:"区分", type:"text", list:true, ph:"例: 社内活動" },
       { k:"act", label:"活動名", type:"text", list:true, ph:"例: 5S活動" },

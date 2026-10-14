@@ -243,7 +243,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let rows = [], cur = (location.hash || "").replace("#", ""), editId = null;
-setTimeout(() => { if (cur === "vendors") vendorSeedOnce().catch(e => console.error(e)); }, 2500);
+setTimeout(() => { if (cur === "vendors") vendorSeedOnce().catch(e => console.error(e)); if (cur === "objectives") custPlanOnce().catch(e => console.error(e)); }, 2500);
 if (!ISO_REGS.some(r => r.key === cur)) cur = ISO_REGS[0].key;
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
@@ -470,7 +470,26 @@ async function shAdd(){
     toast("いちばん下に黄色い行を足しました。「＋入力」のマスを押して書くか、左の ✏️ で入力画面を開けます"); }
   catch(e){ toast("追加できませんでした: "+e.message); }
 }
-function setTab(k){ if (k === "vendors") setTimeout(() => vendorSeedOnce().catch(e => console.error(e)), 300); cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
+/* 1回だけ: 顧客対応の行を「お客様のニーズ(依頼)への対応」に変えるか聞く(2026-10 相談で決めた案)。変えたら変更管理記録にも残す */
+async function custPlanOnce(){
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get(); if (f.exists && f.data().custPlan1) return;
+  const r = rows.find(x => x.reg === "objectives" && x.kubun === "顧客対応"); if (!r) return;
+  await fr.set({ custPlan1:true }, { merge:true });
+  if (!confirm("環境目標と実施計画の「顧客対応」の行を、相談で決めた案に書き換えますか？\n\n実施計画：お客様からの依頼(引取・見積・現場確認)は電話依頼アプリに記録し、対応が終わるまで追いかける／委託先調査票・現地確認に期限内に回答する\n環境目標：電話依頼の対応完了率100%(24時間以上の放置ゼロ)／調査票・現地確認の期限内回答100%\n\n(変更管理記録にも残します。あとで表から直せます)")) return;
+  const TS = firebase.firestore.FieldValue.serverTimestamp;
+  await db.collection(ISO_REG_COL).doc(r.id).update({
+    goal:"お客様のニーズ(依頼・要望)に早く確実に応え、信頼される関係と業務の改善につなげる",
+    plan:"①お客様からの依頼(引取・見積・現場確認)は電話依頼アプリに記録し、対応が終わるまで追いかける\n②委託先調査票・現地確認には期限内に回答する",
+    target:"①電話依頼の対応完了率100%(24時間以上の放置ゼロ)\n②調査票・現地確認の期限内回答100%",
+    method:"電話依頼アプリで依頼を受け付け、対応・回収予定日まで記録する／委託先調査票アプリで回答を準備し、提出を記録する",
+    monitor:"月1回、電話依頼アプリの件数・未対応件数と、委託先調査票の提出記録を確認し、進捗記録兼評価表に記入",
+    updatedAt:TS() });
+  await db.collection(ISO_REG_COL).add({ reg:"changes", draft:false, date:today(), kind:"その他", content:"環境目標(顧客対応)を「週2回以上の声かけ」から「電話依頼の対応完了率・調査票の期限内回答」に変更",
+    effect:"声かけ・物品預書のチェックだけでは、お客様のニーズにどう応えたかが残らなかった。今ある電話依頼アプリ・委託先調査票アプリの記録で、依頼から完了までを確認できるようにする(環境マニュアル4.2・7.4.3・6.2.1)",
+    update:"環境目標兼活動計画書(EMS-A-22)・行動計画書(EMS-A-13)", status:"対応中", createdMs:Date.now(), updatedAt:TS() });
+  toast("顧客対応の行を書き換え、変更管理記録に残しました。「この表で新しい版(PDF)を作る」で計画書を作り直せます");
+}
+function setTab(k){ if (k === "objectives") setTimeout(() => custPlanOnce().catch(e => console.error(e)), 400); if (k === "vendors") setTimeout(() => vendorSeedOnce().catch(e => console.error(e)), 300); cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
 
 function sorted(reg){
   const list = rows.filter(r => r.reg === reg.key);
@@ -533,6 +552,10 @@ const FORM_COLS = {
 /* 文書ごとの様式(列・まとめるセル・文字の大きさ)。ない文書は FORM_COLS か台帳の項目から作る
    列: { k:項目, v:(行)=>表示, l:見出し(null=前の見出しとつなげる), w:幅%, c:中央, m:まとまり(No.が同じ行)で1つのセルにする } */
 const mk = (k, n) => Object.assign(r => hasCheck(r[k], n) ? "○" : "", { tog:[k, n] });   // tog: チェックシートでマスを押すと○が付く・消える
+/* SDGsの目標番号の色(国連の各目標の色)。計画書では番号と名前の四角で出す */
+const SDG_COLORS = { 1:"#E5243B",2:"#DDA63A",3:"#4C9F38",4:"#C5192D",5:"#FF3A21",6:"#26BDE2",7:"#FCC30B",8:"#A21942",9:"#FD6925",10:"#DD1367",11:"#FD9D24",12:"#BF8B2E",13:"#3F7E44",14:"#0A97D9",15:"#56C02B",16:"#00689D",17:"#19486A" };
+const sdgNums = v => [...String(v || "").normalize("NFKC").matchAll(/(?:^|[／\/、,\s]|目標)(\d{1,2})(?=[・.\s:：]|$)/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= 17);
+const sdgBadges = v => sdgNums(v).map(n => '<span style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin:2px;background:'+SDG_COLORS[n]+';color:#fff;font-weight:bold;font-size:18px;border-radius:2px;">'+n+'</span>').join("");
 const condHas = (r, n) => { const t = String(r.condAll || r.cond || ""); return n === "通常" ? t.replace(/非通常/g, "").includes("通常") : t.includes(n); };
 const FORM_DEFS = {
   "A-05": { group:"no", font:10, foot: m => "“順守・非該当・要改善” の3区分で整理しています。証拠は手順書・記録で確認。　　見直し日："+m.dateTxt+"　　次回見直し予定日："+(m.date ? (Number(m.date.slice(0,4))+1)+m.date.slice(4).replace(/-/g,".") : ""),
@@ -553,6 +576,11 @@ const FORM_DEFS = {
       {k:"impact",l:"主な環境改善効果",w:13},
       ...ASPECT_CONTRIB.slice(1).map(n => ({ v:mk("contrib", n), l:n, w:3.2, c:1 })),
       {k:"sigMark",l:"重要管理事項",w:4,c:1},{v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:3.5,c:1},{k:"control",l:"著しい環境側面とした理由",w:13}] },
+  "A-22": { group:"kubun", font:10.5, html:{ sdgsIcon:1 },
+    cols:[{k:"kubun",l:"区分",w:9,m:1},{k:"goal",l:"環境目的",w:17,same:1},{k:"plan",l:"実施計画",w:16},{k:"target",l:"環境目標\n令和7年〜令和9年",w:13,same:1},{k:"target2",l:"環境目標\n令和8年〜令和11年",w:13,same:1},
+      {v:Object.assign(r => sdgNums(r.sdgs).join("・"), { html:r => sdgBadges(r.sdgs) }),l:"関連SDGs",w:9,c:1},{k:"sdgs",l:"SDGs目的",w:12},{k:"sdgsPurpose",l:null,w:14}] },
+  "A-13": { group:"kubun", font:10.5,
+    cols:[{k:"kubun",l:"区分",w:9,m:1},{k:"act",l:"活動名",w:10},{k:"target",l:"達成基準(環境目標)",w:15},{k:"method",l:"推進方法(実施方法)",w:19},{k:"owner",l:"担当者",w:13},{k:"monitor",l:"監視方法",w:20},{k:"status",l:"状況",w:7,c:1}] },
   "A-18": { font:9.5, foot: m => "評価：5項目を0〜2点(2＝あり・良好／1＝一部／0＝なし)。合計 8〜10点＝A、5〜7点＝B、0〜4点＝C。Bは改善を要請、Cは取引の見直しを検討(環境マニュアル6.1.5)。新規契約時に初期評価、毎年8月に見直し。",
     cols:[{k:"name",l:"取引先・委託先",w:13},{k:"kind",l:"委託の内容",w:6,c:1},{k:"certName",l:"認証の種類",w:9},
       {k:"vcCert",l:"認証有無",w:4.2,c:1},{k:"vcPolicy",l:"環境方針",w:4.2,c:1},{k:"vcCo2",l:"CO₂削減目標",w:4.2,c:1},{k:"vcLaw",l:"法令遵守状況",w:4.2,c:1},{k:"vcAccident",l:"事故・不適合履歴",w:4.2,c:1},
@@ -575,21 +603,25 @@ function cellVal(reg, col, r){
 }
 /* rows を表の行に。def.group があれば、同じまとまりの m:1 の列を1つのセル(rowspan)にする。measure=true は高さを測る用(まとめずに先頭行だけ書く) */
 function formRowsHtml(reg, rows, def, measure){
-  const td = (v, col, rs) => '<td'+(rs > 1 ? ' rowspan="'+rs+'"' : '')+' style="border:1px solid #111;padding:2px 3px;vertical-align:'+(col.c ? 'middle;text-align:center' : 'top')+';white-space:pre-wrap;word-break:break-all;line-height:1.4;">'+esc(v)+'</td>';
+  const td = (v, col, rs, r) => '<td'+(rs > 1 ? ' rowspan="'+rs+'"' : '')+' style="border:1px solid #111;padding:2px 3px;vertical-align:'+(col.c || col.same ? 'middle' : 'top')+';'+(col.c ? 'text-align:center;' : '')+'white-space:pre-wrap;word-break:break-all;line-height:1.4;">'+(col.v && col.v.html && r ? col.v.html(r) : esc(v))+'</td>';
   const gk = def.group;
+  // same: 上の行と同じ文なら1つのセルにまとめる(計画書の「環境目的」「環境目標」のように)
+  const sameSpan = {}; if (!measure) def.cols.forEach((col, ci) => { if (!col.same) return; let i = 0;
+    while (i < rows.length){ const v = cellVal(reg, col, rows[i]); let n = 1; while (v && i + n < rows.length && cellVal(reg, col, rows[i+n]) === v) n++; sameSpan[ci+":"+i] = n; for (let k = 1; k < n; k++) sameSpan[ci+":"+(i+k)] = 0; i += n; } });
   return rows.map((r, i) => {
     const first = !gk || i === 0 || String(rows[i-1][gk]) !== String(r[gk]);
     let span = 1; if (gk && first){ while (i + span < rows.length && String(rows[i+span][gk]) === String(r[gk])) span++; }
-    return '<tr>'+def.cols.map(col => {
-      if (!gk || !col.m) return td(cellVal(reg, col, r), col, 1);
-      if (measure) return td(first ? cellVal(reg, col, r) : "", col, 1);
-      return first ? td(cellVal(reg, col, r), col, span) : "";
+    return '<tr>'+def.cols.map((col, ci) => {
+      if (col.same && !measure){ const sp = sameSpan[ci+":"+i]; return sp ? td(cellVal(reg, col, r), col, sp, r) : ""; }
+      if (!gk || !col.m) return td(cellVal(reg, col, r), col, 1, r);
+      if (measure) return td(first ? cellVal(reg, col, r) : "", col, 1, r);
+      return first ? td(cellVal(reg, col, r), col, span, r) : "";
     }).join("")+'</tr>';
   }).join("");
 }
 function formHeadHtml(def){
   const ths = []; def.cols.forEach(c => { if (c.l === null && ths.length) ths[ths.length-1].span++; else ths.push({ l:c.l, span:1 }); });
-  return '<tr>'+ths.map(t => '<th'+(t.span > 1 ? ' colspan="'+t.span+'"' : '')+' style="border:1px solid #111;background:#dbe4f3;padding:3px 2px;font-weight:bold;word-break:break-all;line-height:1.25;">'+esc(t.l)+'</th>').join("")+'</tr>';
+  return '<tr>'+ths.map(t => '<th'+(t.span > 1 ? ' colspan="'+t.span+'"' : '')+' style="border:1px solid #111;background:#dbe4f3;padding:3px 2px;font-weight:bold;word-break:break-all;line-height:1.25;white-space:pre-line;">'+esc(t.l)+'</th>').join("")+'</tr>';
 }
 function formPageHtml(reg, meta, def, rowsHtml, pageNo, pages){
   return '<div class="fp" style="width:1123px;height:794px;box-sizing:border-box;padding:24px 30px;background:#fff;font-family:\'Yu Gothic\',\'Hiragino Sans\',\'Meiryo\',sans-serif;color:#111;position:relative;">'+
