@@ -23,12 +23,20 @@
   .kpi { background:#fff; border:1px solid var(--line); border-left:4px solid var(--navy); border-radius:6px; padding:8px 12px; min-width:150px; }
   .kpi .k { font-size:12px; color:var(--muted); font-weight:700; } .kpi .v { font-size:24px; font-weight:800; color:var(--navy); } .kpi .v small { font-size:12px; color:var(--muted); margin-left:2px; }
   table.cs { border-collapse:collapse; width:100%; font-size:13px; background:#fff; } table.cs th, table.cs td { border:1px solid var(--line); padding:5px 8px; } table.cs th { background:var(--navyBg); color:var(--navy); text-align:left; }
+  /* 表の切り替え(2026/10): 3つのまとまりで折り返して全部見える */
+  #tabs.tabs { display:block; overflow:visible; border-bottom:none; background:#fff; border:1px solid var(--line); border-radius:6px; padding:8px 10px; }
+  #tabs .tg { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:4px 0; } #tabs .tg + .tg { border-top:1px dashed var(--line); }
+  #tabs .tgl { font-size:11px; font-weight:700; color:var(--muted); width:100%; }
+  #tabs .chipT { border:1px solid var(--line); background:#f8fafc; color:var(--ink); border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; margin:0; white-space:nowrap; }
+  #tabs .chipT.on { background:var(--navy); color:#fff; border-color:var(--navy); } #tabs .chipT:hover:not(.on) { border-color:var(--navy); color:var(--navy); }
+  #tabs .chipT .dr { font-size:10px; margin-left:4px; color:#b45309; } #tabs .chipT.on .dr { color:#fde68a; }
+  .help details.hmore summary { cursor:pointer; color:var(--navy); font-size:12px; font-weight:700; margin-top:2px; } .help details.hmore[open] summary { margin-bottom:2px; }
 </style>
 </head>
 <body>
 <header class="bz">
   <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
-  <div><h1>ISOの計画・リスク</h1><div class="sub">課題・利害関係者・環境側面・リスクと機会・目標・委託先・監視測定・苦情・緊急事態の訓練・校正・マネジメントレビュー。ここで入力した内容が「環境への取り組み」に表示されます</div></div>
+  <div><h1>ISOの計画・リスク</h1><div class="sub" style="display:none">課題・利害関係者・環境側面・リスクと機会・目標・委託先・監視測定・苦情・緊急事態の訓練・校正・マネジメントレビュー。ここで入力した内容が「環境への取り組み」に表示されます</div></div>
 </header>
 <div class="wrap">
   <div class="tabs" id="tabs"></div>
@@ -559,14 +567,16 @@ function expired(reg, r){
 
 function render(){
   // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
-  document.getElementById("tabs").innerHTML = ISO_REGS.map(r => {
-    const n = rows.filter(x => x.reg === r.key && !x.draft).length, d = rows.filter(x => x.reg === r.key && x.draft).length;
-    const ds = linkedDocs(r.key), withF = ds.filter(x => EMS.filesOf(x.id).length);
-    const docTxt = ds.length ? (withF.length ? "計画書 "+withF.map(x => "EMS-"+x.id).join("・") : "計画書 原本なし") : "";
-    return '<button class="'+(r.key===cur?"on":"")+'" onclick="setTab(\''+r.key+'\')">'+esc(r.name)+'<small>'+esc(r.clause)+(docTxt ? '　'+esc(docTxt) : '')+(n ? '　表 '+n+'行' : '')+(d ? '(下書き'+d+')' : '')+'</small></button>';
-  }).join("");
+  // タブ: 使う場面ごとに3つにまとめて、折り返して全部見えるように(2026/10)。下書きがあれば(下書き)を付ける
+  const TAB_GROUPS = [["計画を立てる（6章）", ["issues","parties","roles","aspects","sigAspects","risks","legal","objectives"]],
+    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","comms","emergency"]], ["監視・評価（9章）", ["monitoring","calib","review"]]];
+  const inG = new Set(TAB_GROUPS.flatMap(g => g[1])), rest = ISO_REGS.map(r => r.key).filter(k => !inG.has(k));
+  const chip = k => { const r = regOf(k); if (!r) return ""; const d = rows.filter(x => x.reg === k && x.draft).length;
+    return '<button class="chipT'+(k===cur?" on":"")+'" onclick="setTab(\''+k+'\')">'+esc(r.name)+(d ? '<span class="dr">下書き'+d+'</span>' : '')+'</button>'; };
+  document.getElementById("tabs").innerHTML = TAB_GROUPS.concat(rest.length ? [["そのほか", rest]] : []).map(([l, ks]) => '<div class="tg"><span class="tgl">'+l+'</span>'+ks.map(chip).join("")+'</div>').join("");
   const reg = regOf(cur), list = sorted(reg);
-  let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>';
+  const hp = String(reg.help || ""), cut = hp.indexOf("。") + 1, h1 = cut > 0 && cut < hp.length ? hp.slice(0, cut) : hp, h2 = cut > 0 && cut < hp.length ? hp.slice(cut) : "";
+  let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(h1)+(h2 ? '<details class="hmore"><summary>説明をもっと見る</summary>'+esc(h2)+'</details>' : '')+'</div>';
   if (reg.key === "objectives") h += custStepsCard();
   h += emsDocsHtml(reg);
   if (reg.yearCheck) h += yearCheckCard(reg);

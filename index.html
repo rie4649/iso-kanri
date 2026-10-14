@@ -305,6 +305,17 @@
   .hm-show b { font-size:19px; } .hm-show small { display:block; font-size:13px; opacity:.85; margin-top:2px; }
   .hm-show span.go { border:1px solid rgba(255,255,255,.6); border-radius:6px; padding:7px 12px; font-size:13px; font-weight:700; white-space:nowrap; }
   .hm-grp { margin-bottom:14px; }
+  .hm-sec { font-size:14px; font-weight:700; color:#1e3a5f; margin:6px 2px 8px; }
+  .hm-wsub { font-size:12px; color:#6b7280; margin:-4px 0 6px; }
+  .hm-now { border:2px solid #fca5a5; } .hm-now h3 { color:#b91c1c; }
+  .hm-two > .hm-find { margin-bottom:0; }
+  .hm-look { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); column-gap:16px; }
+  .hm-det { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:10px 14px; margin-bottom:12px; }
+  .hm-det > summary { cursor:pointer; font-size:14px; font-weight:700; color:#1e3a5f; padding:4px 0; }
+  .hm-det[open] > summary { margin-bottom:8px; }
+  .purpose-box.empty { background:transparent; border:1px dashed #e5e7eb; padding:6px 12px; }
+  .purpose-box .pb-none { display:none; } .purpose-box.empty .pb-none { display:inline; font-weight:normal; }
+  .purpose-box.empty .purpose-text { display:none; } .purpose-box.empty .purpose-head { color:#9ca3af; font-weight:normal; }
   .hm-find { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:12px 14px; margin-bottom:12px; }
   .hm-find h3 { font-size:15px; color:#1e3a5f; margin:0 0 8px; }
   .hm-find input[type=search] { width:100%; padding:11px 12px; font-size:16px; border:2px solid #1e3a5f; border-radius:8px; box-sizing:border-box; }
@@ -396,7 +407,7 @@
     <button class="install-btn" id="installBtn" style="display:none;">📲 アプリを追加</button>
   </div>
   <div class="section-header-bar" id="sectionHeaderBar" style="display:none;">
-    <button class="home-btn" id="homeBtn">← メニューに戻る</button>
+    <button class="home-btn" id="homeBtn">← ISO管理に戻る</button>
     <div class="section-header-title" id="sectionHeaderTitle"></div>
   </div>
 </header>
@@ -530,7 +541,7 @@
 
 </div>
 
-<!-- ================= 進捗記録クリーン度チェックセクション ================= -->
+<!-- ================= クリーン度チェックセクション ================= -->
 <div class="section" id="section-clean">
   <div class="toolbar-row">
     <div class="search-box"><input type="text" id="cleanSearchInput" placeholder="ゾーン名で検索"></div>
@@ -1206,7 +1217,7 @@
 <!-- 金属拾い出し 追加/編集モーダル -->
 <div class="modal-overlay" id="metalModalOverlay">
   <div class="modal">
-    <h2 id="metalModalTitle">進捗記録金属拾い上げを追加</h2>
+    <h2 id="metalModalTitle">金属拾い上げを追加</h2>
     <form id="metalForm">
       <input type="hidden" id="metalEditId">
       <div class="field">
@@ -1235,10 +1246,10 @@
   </div>
 </div>
 
-<!-- 進捗記録クリーン度チェック 追加/編集モーダル -->
+<!-- クリーン度チェック 追加/編集モーダル -->
 <div class="modal-overlay" id="cleanModalOverlay">
   <div class="modal">
-    <h2 id="cleanModalTitle">進捗記録クリーン度チェックを追加</h2>
+    <h2 id="cleanModalTitle">クリーン度チェックを追加</h2>
     <form id="cleanForm">
       <input type="hidden" id="cleanEditId">
       <div class="field">
@@ -2225,7 +2236,7 @@ document.getElementById("addCleanZoneBtn").addEventListener("click", async () =>
   document.getElementById("newCleanZone").value = "";
 });
 
-// ================= 進捗記録クリーン度チェック =================
+// ================= クリーン度チェック =================
 function subscribeCleanChecks() {
   db.collection(CLEAN_CHECK_COLLECTION).onSnapshot(snapshot => {
     allCleanChecks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -2282,7 +2293,7 @@ document.getElementById("addCleanBtn").addEventListener("click", () => {
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   cleanFormEl.reset();
   document.getElementById("cleanEditId").value = "";
-  document.getElementById("cleanModalTitle").textContent = "進捗記録クリーン度チェックを追加";
+  document.getElementById("cleanModalTitle").textContent = "クリーン度チェックを追加";
   document.getElementById("cleanDeleteBtnInModal").style.display = "none";
   document.getElementById("cleanZonesContainer").innerHTML = "";
   addCleanZoneRow();
@@ -2300,7 +2311,7 @@ window.openEditClean = function(id) {
   document.getElementById("cleanNotes").value = c.notes || "";
   document.getElementById("cleanZonesContainer").innerHTML = "";
   (c.zones && c.zones.length ? c.zones : [{}]).forEach(z => addCleanZoneRow(z));
-  document.getElementById("cleanModalTitle").textContent = "進捗記録クリーン度チェックを編集";
+  document.getElementById("cleanModalTitle").textContent = "クリーン度チェックを編集";
   document.getElementById("cleanDeleteBtnInModal").style.display = "block";
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   cleanOverlay.classList.add("open");
@@ -2308,12 +2319,12 @@ window.openEditClean = function(id) {
 document.getElementById("cleanDeleteBtnInModal").addEventListener("click", () => {
   const id = document.getElementById("cleanEditId").value;
   if (!id) return;
-  if (!confirm("この進捗記録クリーン度チェック記録を削除しますか？")) return;
+  if (!confirm("このクリーン度チェック記録を削除しますか？")) return;
   db.collection(CLEAN_CHECK_COLLECTION).doc(id).delete();
   cleanOverlay.classList.remove("open");
 });
 window.deleteClean = function(id) {
-  if (!confirm("この進捗記録クリーン度チェック記録を削除しますか？")) return;
+  if (!confirm("このクリーン度チェック記録を削除しますか？")) return;
   db.collection(CLEAN_CHECK_COLLECTION).doc(id).delete();
 };
 
@@ -2362,7 +2373,7 @@ function renderCleanList() {
     const q = currentCleanSearch.trim().toLowerCase();
     filtered = filtered.filter(c => (c.zones||[]).some(z => (z.name||"").toLowerCase().includes(q)));
   }
-  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">該当する進捗記録クリーン度チェック記録がありません</div>'; return; }
+  if (filtered.length === 0) { container.innerHTML = '<div class="empty-state">まだクリーン度チェックの記録がありません。右下の ＋ から入れます</div>'; return; }
 
   filtered = [...filtered].sort((a,b) => (b.date||"").localeCompare(a.date||""));
 
@@ -2412,7 +2423,7 @@ document.getElementById("jpegBtnClean").addEventListener("click", () => {
     const zonesText = (c.zones||[]).map(z => `${z.name}:${z.score||"-"}点${z.note?"("+z.note+")":""}`).join("・");
     rows.push([c.date||"-", c.avgScore!==null&&c.avgScore!==undefined?c.avgScore.toFixed(1):"-", escapeHtml(zonesText)]);
   });
-  exportTableAsJpeg("進捗記録クリーン度チェック記録", ["検査日","平均点","ゾーン別評価"], rows, "進捗記録クリーン度チェック記録");
+  exportTableAsJpeg("クリーン度チェック記録", ["検査日","平均点","ゾーン別評価"], rows, "クリーン度チェック記録");
 });
 
 // ---- 車両名マスター(軽油使用量用) ----
@@ -3503,7 +3514,7 @@ document.getElementById("addMetalBtn").addEventListener("click", () => {
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   metalFormEl.reset();
   document.getElementById("metalEditId").value = "";
-  document.getElementById("metalModalTitle").textContent = "進捗記録金属拾い上げを追加";
+  document.getElementById("metalModalTitle").textContent = "金属拾い上げを追加";
   document.getElementById("metalDeleteBtnInModal").style.display = "none";
   document.getElementById("metalItemsContainer").innerHTML = "";
   addMetalItemRow();
@@ -3522,7 +3533,7 @@ window.openEditMetal = function(id) {
   document.getElementById("metalNotes").value = r.notes || "";
   document.getElementById("metalItemsContainer").innerHTML = "";
   (r.items && r.items.length ? r.items : [{}]).forEach(it => addMetalItemRow(it));
-  document.getElementById("metalModalTitle").textContent = "進捗記録金属拾い上げを編集";
+  document.getElementById("metalModalTitle").textContent = "金属拾い上げを編集";
   document.getElementById("metalDeleteBtnInModal").style.display = "block";
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   metalOverlay.classList.add("open");
@@ -3676,7 +3687,7 @@ document.getElementById("jpegBtnMetal").addEventListener("click", () => {
     if (r.adjust) parts.push(`調整額${Number(r.adjust).toLocaleString()}円`);
     return [metalFiscalYear(metalYmOf(r)), r.date||r.yearMonth||"-", escapeHtml(parts.join("・")), Number(r.total||0).toLocaleString()+"円"];
   });
-  exportTableAsJpeg("進捗記録金属拾い上げ実績", ["年度","日付","品目内訳","金額"], rows, "進捗記録金属拾い上げ実績");
+  exportTableAsJpeg("金属拾い上げ実績", ["年度","日付","品目内訳","金額"], rows, "金属拾い上げ実績");
 });
 
 const waterTestOverlay = document.getElementById("waterTestModalOverlay");
@@ -4688,15 +4699,16 @@ const SECTION_DEFS = [
   { key: "company", grp: "org", cl: "4.1 / 5.2 / 5.3", name: "会社情報（沿革・組織図・環境方針）" },
   // 計画(6章)
   { key: "plan", grp: "plan", cl: "4.1〜6.2", name: "ISOの計画・リスク（課題・利害関係者・環境側面・リスク・目標）" },
-  { key: "plan:legal", grp: "plan", cl: "6.1.3 / 9.1.2", name: "法的要求事項特定書・順守評価（EMS-A-05）" },
-  { key: "horei", grp: "plan", cl: "6.1.3", name: "法規制一覧" },
+  { key: "plan:legal", grp: "plan", cl: "6.1.3 / 9.1.2", name: "法令の順守評価・法的要求事項特定書（EMS-A-05）" },
+  { key: "horei", grp: "plan", cl: "6.1.3", name: "法規制一覧（法改正のお知らせ）" },
   { key: "kyoka", grp: "plan", cl: "6.1.3", name: "許可一覧" },
   { key: "permit", grp: "plan", cl: "6.1.3", name: "許可の内容（事業の範囲・積替え保管場所・処理施設）" },
   { key: "plan:changes", grp: "plan", cl: "6.3", name: "変更管理記録（設備・法改正・人員・委託先の変更）" },
   { key: "sdgs", grp: "plan", cl: "6.2", name: "SDGs" },
-  { key: "metal", grp: "plan", cl: "6.2", name: "進捗記録金属拾い上げ" },
-  { key: "custlog", grp: "plan", cl: "6.2 / 7.4.3", name: "進捗記録顧客対応（電話依頼・調査票）EMS-A-27" },
-  { key: "clean", grp: "plan", cl: "6.2", name: "進捗記録クリーン度チェック" },
+  { key: "metal", grp: "plan", cl: "6.2", name: "金属拾い上げ（進捗記録）" },
+  { key: "custlog", grp: "plan", cl: "6.2 / 7.4.3", name: "顧客対応（進捗記録・電話依頼）" },
+  { key: "clean", grp: "plan", cl: "6.2", name: "クリーン度チェック（進捗記録）" },
+  { key: "donation", grp: "plan", cl: "6.2", name: "地域貢献（進捗記録）" },
   // 支援(7章)
   { key: "skills", grp: "sup", cl: "7.2", name: "力量（資格の一覧）" },
   { key: "safety", grp: "sup", cl: "7.2 / 8.2", name: "安全災害対策（安全衛生パトロール・教育訓練）" },
@@ -4718,16 +4730,14 @@ const SECTION_DEFS = [
   { key: "freon", grp: "mon", cl: "9.1.2", name: "フロン排出抑制法簡易点検記録" },
   { key: "plan:calib", grp: "mon", cl: "9.1", name: "測定機器の点検・校正" },
   { key: "calendar", grp: "mon", cl: "9.1", name: "カレンダー" },
-  { key: "summary", grp: "mon", cl: "9.1", name: "年間サマリー" },
   // 評価・改善(9.2〜10章)
   { key: "kiroku", grp: "imp", cl: "9.2 / 10.2", name: "内部監査・是正処置の記録" },
-  { key: "plan:review", grp: "imp", cl: "9.3", name: "マネジメントレビュー" },
-  // 社会との関わり
-  { key: "donation", grp: "soc", cl: "", name: "地域貢献" },
+  { key: "summary", grp: "imp", cl: "9.3", name: "年間サマリー（マネジメントレビューの資料）" },
+  { key: "plan:review", grp: "imp", cl: "9.3", name: "マネジメントレビュー（記録）" },
   { key: "master", grp: "set", cl: "", name: "マスター管理" }
 ];
 const SECTION_GROUPS = [
-  ["org", "会社と体制（4・5章）"], ["plan", "計画（6章）"], ["sup", "支援（7章）"], ["op", "運用（8章）"], ["mon", "監視・測定（9.1）"], ["imp", "評価・改善（9.2〜10章）"], ["soc", "社会との関わり"], ["set", "設定"]
+  ["org", "会社と体制（4・5章）"], ["plan", "計画（6章）"], ["sup", "支援（7章）"], ["op", "運用（8章）"], ["mon", "監視・測定（9.1）"], ["imp", "評価・改善（9.2〜10章）"], ["set", "設定"]
 ];
 
 // 他のページ(EMS文書管理など)から「index.html#sec=水質検査のキー」で、その画面を開いて来られるようにする
@@ -4765,7 +4775,7 @@ const FIND_INDEX = [
   ["手順書 マニュアル 緊急時対応", "環境手順書", "manual"],
   ["法的要求事項 特定書 順守評価 法令 EMS-A-05", "法的要求事項特定書・順守評価（EMS-A-05）", "plan:legal"],
   ["著しい環境側面特定表 著しい 特定 手順書 EMS-A-08", "著しい環境側面特定表（EMS-A-08）", "plan:sigAspects"],
-  ["法規制 法令 順守評価", "法規制一覧・順守評価", "horei"],
+  ["法規制 法令 法改正 改正", "法規制一覧（法改正のお知らせ）", "horei"],
   ["許可証 許可 期限", "許可一覧（登録は共通マスタ管理）", "kyoka"],
   ["許可の内容 積替え 保管場所 処分業 収集運搬 事業の範囲", "許可の内容（事業の範囲・積替え保管場所）", "permit"],
   ["消火器 消防 防火", "消火器・防火管理", "shokaki"],
@@ -4773,9 +4783,10 @@ const FIND_INDEX = [
   ["資格 力量 免許", "力量（資格の一覧）", "skills"],
   ["沿革 組織図 環境方針 認証", "会社情報（沿革・組織図・環境方針）", "company"],
   ["内部監査 是正処置 不適合", "内部監査・是正処置の記録", "kiroku"],
-  ["年間サマリー 年間 まとめ", "年間サマリー", "summary"],
+  ["年間サマリー 年間 まとめ マネジメントレビュー 資料", "年間サマリー（マネジメントレビューの資料）", "summary"],
+  ["環境への取り組み 監査 視察 プロジェクター 見せる", "環境への取り組み（監査・視察で見せる画面）", "show"],
   ["委託先調査票 調査票 アンケート 取引先", "委託先調査票の回答", "survey"],
-  ["顧客対応 お客様 ニーズ 電話依頼 完了率 進捗記録", "進捗記録顧客対応（電話依頼・調査票）", "custlog"],
+  ["顧客対応 お客様 ニーズ 電話依頼 完了率 進捗記録", "顧客対応（進捗記録・電話依頼）", "custlog"],
   ["EMS 文書 原本 PDF 見直し 廃止 一覧", "EMS文書管理（原本PDF・見直しの記録）", "docs"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
@@ -4884,21 +4895,57 @@ function homeYearPlan(o) {
     Y("年1回", "マネジメントレビュー", "社長に1年の結果を報告して、指示をもらう（9.3）" + (highRisk ? `。優先度「高」のリスク ${highRisk}件も確認` : ""), "plan:review", done(mrv) || notYet(7)) +
     Y("7月", "文書の見直し・環境活動計画の見直し", "書類が今のやり方に合っているか見直し、来年度の環境目標・活動計画を決める（7.5.3・6.2）", "docs", done(planRev.length ? planRev : docRev, docRev.length ? ` ほか${docRev.length}件` : "") || notYet(7)));
 }
+/* ===== ホーム(2026/10 作り直し) =====
+   上から ①探す ②今やること(赤い「まだ」だけ自動で集める) ③仕事から探す(5つのまとまり)
+   ④予定と状況をすべて見る(折りたたみ) ⑤ISOの章ごとのメニュー(監査用・折りたたみ) */
+const WORK_GROUPS = [
+  ["📝", "毎月・3か月ごとの記録", "決まった間隔で入力するもの", [
+    ["clean", "クリーン度チェック", "月2回"], ["safety", "安全衛生パトロール・教育訓練", "パトロールは月1回"], ["diesel", "軽油使用量", "毎月・前の月の分"],
+    ["lifeline", "ライフライン（電気・ガス・水道）", "毎月・前の月の分"], ["custlog", "顧客対応の進捗（電話依頼）", "数は自動。月1回 気づきを書き写す"],
+    ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
+  ["📅", "年1回・決まった時期", "環境マニュアルで時期が決まっているもの", [
+    ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
+    ["kiroku", "内部監査・是正処置", "10月〜2月"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
+    ["plan:legal", "法令の順守評価（A-05）", "年1回・チェックシート"], ["waterTest", "水質検査（計量証明書）", "年1回"], ["noiseCheck", "騒音チェック・圧縮機点検", "年1回"],
+    ["plan:review", "マネジメントレビュー", "年1回・社長へ報告"], ["plan:calib", "測定機器の点検・校正", "年1回"], ["shokaki", "消火器・防火管理", "点検のとき"]]],
+  ["🎯", "計画・ルール・書類", "何か変わったとき・見直すときに使う", [
+    ["plan", "ISOの計画（課題・利害関係者・リスク・目標など）", ""], ["plan:changes", "変更管理記録", "設備・法改正・人・委託先が変わったとき"],
+    ["docs", "EMS文書管理（書類の一覧・原本PDF）", ""], ["manual", "環境手順書", ""], ["plan:comms", "コミュニケーション・苦情", "苦情・提案・行政とのやりとり"],
+    ["survey", "委託先調査票の回答", "取引先から届いたとき"], ["horei", "法規制一覧（法改正のお知らせ）", ""], ["kyoka", "許可一覧", ""], ["permit", "許可の内容", ""],
+    ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
+  ["👀", "見る・まとめる", "監査・会議・視察のとき", [
+    ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["summary", "年間サマリー", "マネジメントレビューの資料"],
+    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"]]]
+];
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
+  const wrow = ([to, n, sub]) => `<div class="hm-in" onclick="openSection('${to}')"><span class="nm">${n}${sub ? `<span style="display:block;font-size:11px;color:#6b7280;">${sub}</span>` : ""}</span><span class="to">›</span></div>`;
+  const card = (ic, t, sub, body) => `<div class="hm-find hm-wk"><h3>${ic} ${t}</h3><div class="hm-wsub">${sub}</div>${body}</div>`;
+  const [g1, g2, g3, g4] = WORK_GROUPS;
   document.getElementById("homeMenu").innerHTML =
-    // 監査・視察・プロジェクター用の「環境への取り組み」(旧 見せるモード。見るだけ)
-    `<div class="hm-show" onclick="location.href='show.html'"><div><b>環境への取り組み</b><small>ISO監査・視察・プロジェクター用（閲覧のみ。内容はこの画面で入力）</small></div><span class="go">開く ›</span></div>` +
-    // やることから探す入口
-    `<div class="hm-find"><h3>🔍 書類名・言葉で探す</h3><input type="search" id="hmQ" placeholder="例：リスク、計量証明書、許可証、EMS-A-10" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
-    `<div class="hm-two"><div class="hm-find"><h3>📅 毎月・毎年やること</h3><div id="hmTasks"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
-    `<div class="hm-find"><h3>📥 届いた書類を入れる</h3>${INCOMING.map(([n, to, how]) => `<div class="hm-in" onclick="openSection('${to}')"><span class="nm">${n}<span style="display:block;font-size:11px;color:#6b7280;">${how}</span></span><span class="to">入れる ›</span></div>`).join("")}</div></div>` +
-    `<div style="font-size:13px;font-weight:700;color:#6b7280;margin:4px 2px 8px;">ISOの章ごとのメニュー</div>` +
-    SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("");
-  renderHomeTasks().catch(e => console.error(e));
+    `<div class="hm-find"><input type="search" id="hmQ" placeholder="🔍 書類名・言葉で探す（例：リスク、計量証明書、許可証、EMS-A-10）" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
+    `<div class="hm-find hm-now"><h3>✅ 今やること</h3><div id="hmNow"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
+    `<div class="hm-sec">仕事から探す</div>` +
+    `<div class="hm-two">` + card(g1[0], g1[1], g1[2], g1[3].map(wrow).join("")) + card(g2[0], g2[1], g2[2], g2[3].map(wrow).join("")) + `</div>` +
+    `<div class="hm-two">` + card("📥", "届いた書類を入れる", "書類ごとに入れる場所へ案内します", INCOMING.map(([n, to, how]) => wrow([to, n, how])).join("")) +
+      card(g3[0], g3[1], g3[2], g3[3].map(wrow).join("")) + `</div>` +
+    card(g4[0], g4[1], g4[2], `<div class="hm-look">${g4[3].map(wrow).join("")}</div>`) +
+    `<details class="hm-det"><summary>📅 予定と状況をすべて見る（毎月・3か月ごと・今年度の予定）</summary><div id="hmTasks"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></details>` +
+    `<details class="hm-det"><summary>📚 ISOの章ごとのメニュー（監査で「◯章はどこ？」と聞かれたとき）</summary>` +
+      SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("") + `</details>`;
+  renderHomeTasks().then(renderHomeNow).catch(e => { console.error(e); const el = document.getElementById("hmNow"); if (el) el.innerHTML = '<div style="font-size:13px;color:#6b7280;">状況を読み込めませんでした</div>'; });
+}
+/* 「予定と状況」の中から赤(まだ)のものだけを「今やること」に並べる */
+function renderHomeNow() {
+  const el = document.getElementById("hmNow"); if (!el) return;
+  const ng = [...document.querySelectorAll("#hmTasks .hm-task")].filter(t => t.querySelector(".hm-st.ng"));
+  if (!ng.length) { el.innerHTML = '<div style="font-size:14px;color:#15803d;font-weight:700;padding:4px 2px;">今やることはありません。おつかれさまです 🎉</div>'; return; }
+  el.innerHTML = `<div class="hm-wsub">期限が来ているのに、まだ記録がないものです（${ng.length}件）。押すと入力する画面が開きます。</div>`;
+  ng.forEach(t => { const c = t.cloneNode(true); c.querySelectorAll(".sub").forEach(x => { if (x.textContent.length > 40) x.textContent = x.textContent.slice(0, 38) + "…"; }); el.appendChild(c); });
 }
 
 window.openSection = function(sec) {
+  if (sec === "show") { location.href = "show.html"; return; }
   if (sec === "shokaki") { location.href = "shokaki.html"; return; }
   if (sec === "photos") { location.href = "photos.html"; return; }
   if (sec === "plan") { location.href = "plan.html"; return; }
@@ -4949,8 +4996,8 @@ function injectPurposeBoxes() {
     const sec = document.getElementById("section-" + def.key);
     if (!sec) return;
     const box = document.createElement("div");
-    box.className = "purpose-box";
-    box.innerHTML = `<div class="purpose-head"><span>📌 目的・管理</span><button type="button" class="purpose-edit-btn" onclick="openPurposeModal('${def.key}')">✏️ 編集</button></div><div class="purpose-text" id="purposeText-${def.key}">（未記入：✏️編集から目的・管理・管理コードを書けます）</div>`;
+    box.className = "purpose-box empty"; box.id = "purposeBox-" + def.key;
+    box.innerHTML = `<div class="purpose-head"><span>📌 目的・管理<span class="pb-none">（まだ書いていません）</span></span><button type="button" class="purpose-edit-btn" onclick="openPurposeModal('${def.key}')">✏️ 編集</button></div><div class="purpose-text" id="purposeText-${def.key}">（未記入：✏️編集から目的・管理・管理コードを書けます）</div>`;
     sec.insertBefore(box, sec.firstChild);
   });
 }
@@ -4962,6 +5009,8 @@ function subscribeSectionPurposes() {
       const el = document.getElementById("purposeText-" + def.key);
       if (!el) return;
       el.textContent = composePurposeText(allSectionPurposes[def.key]);
+      const d = allSectionPurposes[def.key], has = !!(d && ((d.text || "").trim() || (d.management || "").trim() || (d.emsCode || "").trim()));
+      const bx = document.getElementById("purposeBox-" + def.key); if (bx) bx.classList.toggle("empty", !has);
     });
   });
 }
