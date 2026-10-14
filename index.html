@@ -4017,8 +4017,9 @@ function loadWaterPhotos() {
   if (waterPhotoLoading) return; waterPhotoLoading = true;
   Promise.all([db.collection("isoPhotos").get(), db.collection("isoPhotoSettings").doc("recordCats").get()]).then(([ph, st]) => {
     const cats = st.exists ? (st.data().items || []) : [];
-    const names = cats.filter(c => c.page === "water").map(c => c.name); if (!names.length) names.push("水質検査の様子");
-    waterPhotos = ph.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.kind === "record" && names.includes(x.targetName));
+    const names = cats.filter(c => c.page === "water").map(c => c.name); names.push("水質検査の様子");
+    // 表示先が水質検査の項目か、項目名に「水質」が入っている写真
+    waterPhotos = ph.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.kind !== "vehicle" && (names.includes(x.targetName) || /水質/.test(x.targetName || "")));
     renderWaterTestList();
   }).catch(e => { console.error(e); waterPhotos = []; });
 }
@@ -4062,6 +4063,8 @@ function renderWaterTestList() {
     groups[y].push(t);
   });
   const wp = waterPhotoMap();
+  const usage = document.getElementById("waterAttachUsage");
+  if (usage && waterPhotos) usage.insertAdjacentHTML("beforeend", `<div style="margin-top:2px;">📷 写真の記録から、水質検査の写真 ${waterPhotos.length}枚 を各検査日のカードに並べています${wp.none.length ? `（近くに検査の記録がない写真 ${wp.none.length}枚）` : ""}</div>`);
   // 検査の記録がない年の写真も、その年に出す(記録がないことに気づけるように)
   wp.none.forEach(x => { const y = String(x.shotDate || "").slice(0, 4); if (y && !groups[y] && (currentWaterTestYear === "all" || currentWaterTestYear === y) && !currentWaterTestSearch.trim()) groups[y] = []; });
   const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
