@@ -444,9 +444,10 @@
   <div class="toolbar-row">
     <div class="search-box"><input type="text" id="waterTestSearchInput" placeholder="検査場所で検索"></div>
     <button class="jpeg-btn" id="jpegBtnWaterTest">🖨️ JPEG</button>
+    <button class="jpeg-btn" style="background:#0d9488;color:#fff;border-color:#0d9488;" onclick="openCertImport()">📥 計量証明書をまとめて入れる</button>
   </div>
   <details class="howto" style="background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #1e3a5f;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;line-height:1.8;color:#334155;"><summary style="font-weight:bold;color:#1e3a5f;cursor:pointer;">📘 使い方（ここを押すと開きます）</summary><div style="margin-top:6px;"><b>■ 検査の記録</b><br>右下の＋で検査日・場所・pHなどを入れて保存します。</div>
-<div style="margin-top:6px;"><b>■ 計量証明書（分析証）の入れ方</b><br>その検査日の記録の「✏️編集」→「添付」で、PDFや写真を選んで保存します。<br>例：2026年1月20日の検査 → 1月20日の記録に「計量証明書 2026.01.20.jpg」を添付。<br>環境への取り組みの水質検査の表の「記録」から開けます。SDGsの水質pHの目標からも同じものに飛べます（SDGs側に入れ直す必要はありません）。</div>
+<div style="margin-top:6px;"><b>■ 計量証明書（分析証）の入れ方</b><br>まとめて入れるときは、上の「📥 計量証明書をまとめて入れる」で、PDFを全部選ぶだけです（ファイル名の日付で自動で振り分けます）。1枚ずつのときは、その検査日の記録の「✏️編集」→「添付」で、PDFや写真を選んで保存します。<br>例：2026年1月20日の検査 → 1月20日の記録に「計量証明書 2026.01.20.jpg」を添付。<br>環境への取り組みの水質検査の表の「記録」から開けます。SDGsの水質pHの目標からも同じものに飛べます（SDGs側に入れ直す必要はありません）。</div>
 <div style="margin-top:6px;"><b>■ 採水・現場の写真</b><br>ホームの「写真の記録」→「保管・掲示・現場の様子」→ 項目「水質検査の様子」に入れます。<br><b>撮影日が検査日の前後7日以内</b>なら、環境への取り組みの水質検査の表で、その検査の行に自動で並びます（撮影日は写真から自動で入ります。違うときは写真の「編集」で直せます）。</div></details>
   <div class="year-filter-tabs" id="waterTestYearTabs"></div>
   <div class="field-hint" id="waterAttachUsage" style="padding:0 0 10px;color:#8b8b9e;font-size:12px;"></div>
@@ -1116,6 +1117,13 @@
 </div>
 
 <!-- 水質検査 追加/編集モーダル -->
+<div id="certBg" onclick="if(event.target===this)closeCertImport()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:300;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 10px;">
+  <div style="background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 18px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><h2 style="flex:1;font-size:17px;margin:0;color:#1e3a5f;">📥 計量証明書をまとめて入れる</h2><button class="btn-cancel" onclick="closeCertImport()" style="width:auto;padding:6px 14px;">閉じる</button></div>
+    <div id="certBody"></div>
+  </div>
+</div>
+<style>.certT th, .certT td { border:1px solid #cbd5e1; padding:4px 6px; text-align:left; vertical-align:top; } .certT th { background:#eef2f7; white-space:nowrap; }</style>
 <div class="modal-overlay" id="waterTestModalOverlay">
   <div class="modal">
     <h2 id="waterTestModalTitle">水質検査を追加</h2>
@@ -3797,6 +3805,81 @@ function blobToBase64(blob) {
     r.readAsDataURL(blob);
   });
 }
+/* ===== 計量証明書をまとめて入れる =====
+   今までの計量証明書(東信公害研究所・油水分離槽処理水)の中身を読み取って入れてあります(WATER_CERTS)。
+   PDFや写真を選ぶと、ファイル名の日付で証明書を見分けて、その検査日の記録に添付します(記録がなければ数値ごと作ります)。
+   新しい証明書が来たら、ここに1行足すか、いつもどおり記録の「✏️編集」→「添付」で入れます */
+const WATER_CERTS = [
+  { no:"G-1800765", issued:"2019-03-11", date:"2019-03-06", time:"13:45", temp:7.3, ph:7.8, phT:13, nhex:"1未満", place:"油水分離槽(南側)" },
+  { no:"G-1900551", issued:"2020-03-05", date:"2020-03-03", time:"13:10", temp:8.9, ph:7.5, phT:11, nhex:"1.9", place:"油水分離槽(南側)" },
+  { no:"G-2000594", issued:"2021-02-22", date:"2021-02-18", time:"15:10", temp:10.0, ph:7.6, phT:14, nhex:"3.0", place:"油水分離槽(南側)" },
+  { no:"G-2100556", issued:"2022-03-01", date:"2022-02-24", time:"11:05", temp:3.0, ph:7.8, phT:8, nhex:"4.2", place:"油水分離槽(南側)" },
+  { no:"G-2200671", issued:"2023-02-14", date:"2023-02-09", time:"09:30", temp:4.5, ph:7.9, phT:15, nhex:"1.3", place:"油水分離槽(南側)" },
+  { no:"G-2400705", issued:"2025-03-17", date:"2025-03-13", time:"09:00", temp:12.5, ph:7.9, phT:20, nhex:"1未満", place:"油水分離槽(南側) 放流口" },
+  { no:"G-2500529", issued:"2026-01-22", date:"2026-01-20", time:"11:55", temp:5.0, ph:7.9, phT:18, nhex:"1未満", place:"油水分離槽(南側) 放流口" }
+];
+let certFiles = [];
+const certDays = (a, b) => Math.abs(new Date(a) - new Date(b)) / 86400000;
+const certRecOf = c => allWaterTests.find(t => t.date && certDays(t.date, c.date) <= 10);
+function certGuess(name){
+  const m = String(name).normalize("NFKC").match(/(20\d\d)[.\-_\/年]?(\d{1,2})[.\-_\/月]?(\d{1,2})/); if (!m) return "";
+  const d = m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  const c = WATER_CERTS.find(c => certDays(c.issued, d) <= 3 || certDays(c.date, d) <= 3); return c ? c.no : "";
+}
+window.openCertImport = function(){ certFiles = []; renderCertImport(); document.getElementById("certBg").style.display = "flex"; };
+window.closeCertImport = function(){ document.getElementById("certBg").style.display = "none"; };
+function renderCertImport(){
+  const rows = WATER_CERTS.map(c => { const r = certRecOf(c), n = r && (r.attachments || []).length;
+    return `<tr><td>${c.date.replace(/-/g,"/")}</td><td>pH ${c.ph}（${c.phT}℃）</td><td>${escapeHtml(c.nhex)} mg/L</td><td>No.${c.no}<br><small>${c.issued.replace(/-/g,"/")} 証明</small></td><td>${r ? (n ? `<span style="color:#15803d;font-weight:bold;">記録あり・添付${n}件</span>` : `<span style="color:#b45309;">記録あり・添付なし</span>`) : `<span style="color:#b91c1c;">記録なし</span>`}</td></tr>`; }).join("");
+  const opts = sel => `<option value="">取り込まない</option>` + WATER_CERTS.map(c => `<option value="${c.no}"${c.no === sel ? " selected" : ""}>${c.date.replace(/-/g,"/")}の検査（No.${c.no}）</option>`).join("");
+  document.getElementById("certBody").innerHTML =
+    `<div class="field-hint" style="color:#475569;font-size:13px;line-height:1.7;margin-bottom:8px;">今までの計量証明書の数値は、もう読み取って入れてあります。下で<b>PDF・写真をまとめて選ぶ</b>と、ファイル名の日付で「どの検査の証明書か」を見分けて、その日の記録に添付します。記録がない年は、証明書の数値(pH・水温・ノルマルヘキサン)で記録も作ります。</div>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;" class="certT"><tr><th>検査日(採取日)</th><th>pH</th><th>ノルマルヘキサン</th><th>証明書</th><th>今の状態</th></tr>${rows}</table></div>
+    <label class="attach-pick" style="margin-top:10px;display:block;text-align:center;">＋ 計量証明書のPDF・写真を選ぶ（まとめて選べます）<input type="file" accept="application/pdf,image/*" multiple style="display:none;" onchange="certPick(this)"></label>
+    ${certFiles.length ? `<div style="margin-top:8px;font-weight:bold;font-size:13px;">選んだファイル（違うときは右で選び直してください）</div>` + certFiles.map((f, i) => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;"><span style="flex:1;word-break:break-all;">📄 ${escapeHtml(f.file.name)} <small>(${Math.round(f.file.size/1024)}KB)</small>${f.dup ? `<br><small style="color:#b45309;">同じ証明書のファイルがほかにもあります(大きい方=写真つきを入れます)</small>` : ""}</span><select onchange="certFiles[${i}].no=this.value" style="width:auto;font-size:12px;">${opts(f.no)}</select></div>`).join("") +
+      `<button class="btn-save" style="width:100%;margin-top:10px;" id="certGo" onclick="doCertImport()">記録に入れる</button>` : ""}`;
+}
+window.certPick = function(inp){
+  Array.from(inp.files || []).forEach(file => certFiles.push({ file, no: certGuess(file.name) }));
+  // 同じ証明書が2つ以上あるときは、大きい方(写真つき)だけを入れる
+  const by = {}; certFiles.forEach(f => { if (f.no) (by[f.no] = by[f.no] || []).push(f); });
+  Object.values(by).forEach(l => { if (l.length > 1){ l.sort((a, b) => b.file.size - a.file.size); l.slice(1).forEach(f => { f.no = ""; f.dup = true; }); l[0].dup = true; } });
+  renderCertImport();
+};
+window.doCertImport = async function(){
+  const go = certFiles.filter(f => f.no); if (!go.length){ alert("取り込むファイルがありません"); return; }
+  const btn = document.getElementById("certGo"); btn.disabled = true; btn.textContent = "入れています…";
+  const loc = (allTestLocations.find(l => /油水|分離/.test(l.name)) || {}).name || "";
+  const hexItem = (allWaterItems.find(i => /ヘキサン/.test(i.name)) || {}).name || "";
+  const TS = firebase.firestore.FieldValue.serverTimestamp;
+  let made = 0, att = 0; const errs = [];
+  for (const c of WATER_CERTS){
+    const fs = go.filter(f => f.no === c.no); if (!fs.length) continue;
+    try {
+      let rec = certRecOf(c), id = rec && rec.id;
+      if (!rec){
+        const data = { date:c.date, location:loc, time:c.time, temp:c.temp, ph:c.ph, items: hexItem ? [{ name:hexItem, value:c.nhex+" mg/L" }] : [],
+          notes:`計量証明書 No.${c.no}（${c.issued.replace(/-/g,"/")} 証明・東信公害研究所）採取場所：${c.place}　pH ${c.ph}（${c.phT}℃）`+(hexItem ? "" : `　ノルマルヘキサン抽出物質 ${c.nhex} mg/L`), fromCert:c.no, createdAt:TS(), updatedAt:TS() };
+        const ref = await db.collection(WATERTEST_COLLECTION).add(data); id = ref.id;
+        const ev = await db.collection(EVENT_COLLECTION).add({ date:c.date, mark:WATER_MARK_NAME, title:`水質検査（${loc || "油水分離槽"}）`, notes:`水温：${c.temp}℃／PH：${c.ph}／ノルマルヘキサン：${c.nhex}mg/L`, createdAt:TS(), updatedAt:TS() });
+        await db.collection(WATERTEST_COLLECTION).doc(id).update({ eventId: ev.id }); rec = { id, attachments: [] }; made++;
+      }
+      const list = (rec.attachments || []).slice();
+      for (const f of fs){
+        if (list.some(a => a.name === f.file.name)) continue;   // 同じ名前の添付はもうある
+        const { blob, name, type } = await shrinkImageIfNeeded(f.file);
+        if (blob.size > INLINE_FILE_MAX){ errs.push(`${name}(${Math.round(blob.size/1024)}KB)は大きすぎて入れられませんでした`); continue; }
+        const data = await blobToBase64(blob);
+        const fr = await db.collection(WATERTEST_FILE_COLLECTION).add({ testId:id, name, type, size:blob.size, data, createdAt:TS() });
+        list.push({ name, fileId:fr.id, type, size:blob.size, uploadedAt:Date.now() }); att++;
+      }
+      await db.collection(WATERTEST_COLLECTION).doc(id).update({ attachments:list, updatedAt:TS() });
+    } catch(e){ errs.push(`${c.date}：${e.message}`); }
+  }
+  btn.disabled = false; btn.textContent = "記録に入れる";
+  alert(`入れました。記録を新しく作成 ${made}件・証明書の添付 ${att}件` + (errs.length ? "\n\nできなかったもの:\n" + errs.join("\n") : ""));
+  certFiles = []; renderCertImport(); setTimeout(renderCertImport, 1500);
+};
 let storageUsable = false; // Firebase Storageは未有効のためFirestore方式に直行（Storageを有効化したらtrueに変更）
 async function uploadWaterAttachments(docId) {
   if (!waterModalNewFiles.length && !waterModalRemoved.length) return null;
