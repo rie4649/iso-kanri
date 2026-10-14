@@ -305,6 +305,15 @@
   .hm-show b { font-size:19px; } .hm-show small { display:block; font-size:13px; opacity:.85; margin-top:2px; }
   .hm-show span.go { border:1px solid rgba(255,255,255,.6); border-radius:6px; padding:7px 12px; font-size:13px; font-weight:700; white-space:nowrap; }
   .hm-grp { margin-bottom:14px; }
+  /* 字が薄く見えないように(2026/10): 名前は濃く太く、説明も濃いグレーで少し大きく */
+  #homeMenu .hm-in .nm, #homeMenu .hm-task .nm { font-size:15.5px; font-weight:600; color:#111827; line-height:1.5; }
+  #homeMenu .hm-in .nm span, #homeMenu .hm-task .sub { font-size:12.5px !important; font-weight:500; color:#374151 !important; }
+  #homeMenu .hm-in .to { font-size:20px; color:#1e3a5f; font-weight:700; }
+  #homeMenu .hm-find h3 { font-size:17px; } #homeMenu .hm-wsub { font-size:13px; color:#374151; font-weight:500; }
+  #homeMenu .hm-sec { font-size:16px; } #homeMenu .hm-det > summary { font-size:15px; }
+  #homeMenu .hm-in, #homeMenu .hm-task { padding:9px 6px; border-bottom:1px solid #e5e7eb; }
+  #homeMenu .hm-in:hover, #homeMenu .hm-task:hover { background:#eef2f7; }
+  #homeMenu .hm-st { font-size:13px; }
   .hm-sec { font-size:14px; font-weight:700; color:#1e3a5f; margin:6px 2px 8px; }
   .hm-wsub { font-size:12px; color:#6b7280; margin:-4px 0 6px; }
   .hm-now { border:2px solid #fca5a5; } .hm-now h3 { color:#b91c1c; }
