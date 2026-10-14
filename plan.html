@@ -101,7 +101,8 @@
   table.sh td.op { text-align:center; vertical-align:middle; background:#f8fafc; } .x { border:none; background:none; color:#dc2626; cursor:pointer; font-size:15px; padding:0 2px; }
   .nw { display:block; font-size:10px; color:#fff; background:#d97706; border-radius:3px; margin:2px auto 0; width:16px; }
   table.sh td.yc { padding:3px; vertical-align:middle; background:#f8fafc; } table.sh tr.ok td.yc { background:#dcfce7; } table.sh tr.ng td.yc { background:#fee2e2; }
-  table.sh td.yc button { border:1px solid #cbd5e1; background:#fff; border-radius:12px; padding:2px 7px; font-size:11px; cursor:pointer; margin:1px; font-family:inherit; }
+  table.sh td.yc .ycb { display:flex; gap:4px; } table.sh td.yc .ycd { font-size:10px; color:#475569; height:13px; margin-top:2px; }
+  table.sh td.yc button { flex:1; border:1px solid #cbd5e1; background:#fff; border-radius:12px; padding:3px 0; font-size:11px; cursor:pointer; font-family:inherit; font-weight:700; white-space:nowrap; text-align:center; }
   table.sh td.yc button.on { background:#1e3a5f; color:#fff; border-color:#1e3a5f; } table.sh td.yc button.on.bad { background:#dc2626; border-color:#dc2626; }
   .mm { font-size:11px; margin-top:2px; min-height:16px; border-bottom:1px dashed #94a3b8; outline:none; } .mm:empty:before { content:attr(data-ph); color:#94a3b8; }
 </style>
@@ -251,7 +252,8 @@ function ycUnits(reg){   // 点検する単位(法的要求事項はNo.ごと、
   const m = new Map(); list.forEach(r => { const k = String(r[reg.group] || ""); if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
   return [...m].map(([k, rows]) => ({ key:k, rows }));
 }
-const ycOf = (u, y) => (u.rows[0].checks || {})[y];
+const ycRaw = (u, y) => (u.rows[0].checks || {})[y];
+const ycOf = (u, y) => { const c = ycRaw(u, y); return c && c.r ? c : null; };   // 結果を選んだものだけ「点検済み」
 function yearCheckCard(reg){
   const us = ycUnits(reg), y = ycFy(), n = us.filter(u => ycOf(u, y)).length, ng = us.filter(u => { const c = ycOf(u, y); return c && /要改善|見直し/.test(c.r); }).length;
   const years = [...new Set(us.flatMap(u => Object.keys(u.rows[0].checks || {})))].sort().reverse();
@@ -297,7 +299,7 @@ async function ycWrite(units, val, memo){
   const reg = regOf(cur), yc = reg.yearCheck, y = String(ycYear), b = db.batch();
   units.forEach(u => u.rows.forEach(r => {
     const checks = { ...(r.checks || {}) }, prev = checks[y] || {};
-    checks[y] = { r: val ?? prev.r, d: today(), memo: memo ?? prev.memo ?? "" };
+    checks[y] = { r: val ?? prev.r ?? null, d: val != null ? (shDate || today()) : (prev.d || shDate || today()), memo: memo ?? prev.memo ?? "" };
     const upd = { checks };
     if (yc.field && val != null) upd[yc.field] = reg.key === "sigAspects" ? (val === "OK" ? "✓" : "見直し") : val;   // 表の「評価」「確認」の列にも入れる
     b.update(db.collection(ISO_REG_COL).doc(r.id), upd); r.checks = checks; Object.assign(r, upd);
@@ -312,23 +314,23 @@ async function ycMemo(key, memo){
   const u = ycUnits(regOf(cur)).find(x => x.key === key); if (!u) return;
   try { await ycWrite([u], null, memo); } catch(e){ toast("保存できませんでした: "+e.message); }
 }
-async function ycAll(){
-  const reg = regOf(cur), yc = reg.yearCheck, rest = ycUnits(reg).filter(u => !ycOf(u, ycYear));
+async function ycAll(only){
+  const reg = regOf(cur), yc = reg.yearCheck, rest = ycUnits(reg).filter(u => !ycOf(u, ycYear) && (!only || u.rows.some(r => only.includes(r))));
   const l = (yc.opts.find(o => o[0] === yc.all) || [,""])[1];
-  if (!confirm("まだ点検していない "+rest.length+"件 を「"+l+"」にします。よろしいですか？")) return;
+  if (!confirm("まだ点検していない "+rest.length+"件 を「"+l+"」にします(確認日 "+String(shDate || today()).replace(/-/g, "/")+")。よろしいですか？")) return;
   try { for (let i = 0; i < rest.length; i += 150) await ycWrite(rest.slice(i, i + 150), yc.all); renderYc(); toast(rest.length+"件を「"+l+"」にしました"); } catch(e){ toast("保存できませんでした: "+e.message); }
 }
 /* ===== チェックシート(紙の様式と同じ形の表で、その場で直す・○を付ける・今年の点検をする) =====
    次の人へ: 列の並びは FORM_DEFS(PDFの様式)と同じ。文字のマスは押して書き換え(枠の外を押すと保存)、
    ○のマスは押すたびに付く・消える。右端が「今年の点検」。保存はすべて自動で、行には最終更新日が残ります */
-let shCode = "", shYear = 0;
+let shCode = "", shYear = 0, shDate = "";   // shDate: 確認日(点検した日)。チェックシートの上で選ぶ
 function sheetCodes(reg){
   const ids = linkedDocs(reg.key).map(d => d.id).filter(c => FORM_DEFS[c] && (!FORM_DEFS[c].filter || reg.key === "aspects"));
   return ids.length ? ids : [""];
 }
 function openSheet(code, y){
   const reg = regOf(cur), codes = sheetCodes(reg);
-  shCode = code != null && codes.includes(code) ? code : (codes.includes(shCode) ? shCode : codes[0]); shYear = y || ycFy();
+  shCode = code != null && codes.includes(code) ? code : (codes.includes(shCode) ? shCode : codes[0]); shYear = y || ycFy(); if (!shDate) shDate = today();
   document.getElementById("ycView").style.display = "block"; renderSheet(true);
 }
 function closeSheet(){ document.getElementById("ycView").style.display = "none"; render(); }
@@ -361,8 +363,9 @@ function renderSheet(top){
       def.cols.map((col, ci) => { if (gk && col.m && !first) return ""; return shCell(reg, col, ci, r, gk && col.m ? span : 1, def); }).join("")+
       ((!yc.perGroup || first) ? '<td class="yc"'+(yc.perGroup && span > 1 ? ' rowspan="'+span+'"' : '')+'>'+
         (ro ? '<b>'+esc(c ? ((yc.opts.find(o => o[0] === c.r) || [,c.r])[1]) : "未点検")+'</b>'+(c && c.memo ? '<div class="mm">'+esc(c.memo)+'</div>' : '')
-          : yc.opts.map(([v, l]) => '<button class="'+(c && c.r === v ? 'on'+(/要改善|見直し/.test(v) ? ' bad' : '') : '')+'" onclick="shYc(\''+esc(u.key)+'\',\''+v+'\')">'+esc(l.replace("✓ ", "✓"))+'</button>').join("")+
-            (c ? '<div class="mm" contenteditable="plaintext-only" data-ph="メモ" onblur="ycMemo(\''+esc(u.key)+'\',this.textContent.trim())">'+esc(c.memo || "")+'</div>' : ''))+'</td>' : '')+'</tr>';
+          : '<div class="ycb">'+yc.opts.map(([v, l]) => '<button class="'+(c && c.r === v ? 'on'+(/要改善|見直し/.test(v) ? ' bad' : '') : '')+'" onclick="shYc(\''+esc(u.key)+'\',\''+v+'\')">'+esc(l.replace("✓ ", "✓").replace("見直しが必要", "見直し要"))+'</button>').join("")+'</div>'+
+            '<div class="ycd">'+(c && c.r ? '確認 '+esc(String(c.d || "").slice(5).replace("-", "/")) : '&nbsp;')+'</div>'+
+            '<div class="mm" contenteditable="plaintext-only" data-ph="メモ(見直す内容など)" onblur="ycMemo(\''+esc(u.key)+'\',this.textContent.trim())">'+esc((ycRaw(u, y) || {}).memo || "")+'</div>')+'</td>' : '')+'</tr>';
   });
   const head = '<tr><th class="op"></th>'+formHeadHtml(def).replace(/^<tr>|<\/tr>$/g, "").replace(/style="[^"]*"/g, "")+'<th class="yc">'+y+'年度の点検</th></tr>';
   const sumW = def.cols.reduce((a, c) => a + c.w, 0), base = Math.max(1000, sumW * 13), px = w => Math.round(w / sumW * base);
@@ -370,7 +373,8 @@ function renderSheet(top){
     '<div class="shTop noPrint"><button class="btn" onclick="closeSheet()">← 戻る</button><b style="font-size:16px;color:var(--navy);">'+esc(reg.name)+(shCode ? '　EMS-'+esc(shCode) : '')+'</b>'+
       (codes.length > 1 ? codes.map(c => '<button class="btn sm'+(c === shCode ? ' pri' : '')+'" onclick="openSheet(\''+c+'\','+y+')">EMS-'+esc(c)+' '+esc((EMS.docs.find(d => d.id === c) || {}).name || "")+'</button>').join("") : '')+
       '<span style="flex:1;"></span><b style="color:'+(done === units.length && units.length ? '#15803d' : '#b45309')+';">'+y+'年度の点検 '+done+' / '+units.length+'</b>'+
-      (!ro && done < units.length ? '<button class="btn sm" onclick="shAll()">残り'+(units.length - done)+'件を「'+esc((yc.opts.find(o => o[0] === yc.all) || [,""])[1])+'」</button>' : '')+
+      (!ro ? '<label style="display:flex;align-items:center;gap:4px;margin:0;font-weight:700;font-size:13px;">確認日<input type="date" value="'+esc(shDate)+'" onchange="shDate=this.value||today();renderSheet()" style="width:auto;padding:4px 6px;"></label>' : '')+
+      (!ro && done < units.length ? '<button class="btn" style="background:#15803d;border-color:#15803d;color:#fff;font-weight:700;" onclick="shAll()">✓ まだの'+(units.length - done)+'件をまとめて「'+esc((yc.opts.find(o => o[0] === yc.all) || [,""])[1]).replace("✓ ", "")+'」にする</button>' : '')+
       '<button class="btn sm" onclick="window.print()">印刷</button></div>'+
     '<details class="shHelp noPrint"'+(top && !done ? ' open' : '')+'><summary>この画面の使い方（はじめての人へ）</summary><ol>'+
       '<li><b>文字のマス</b>：押すと書き換えられます。枠の外を押すと自動で保存されます。</li>'+
@@ -380,7 +384,7 @@ function renderSheet(top){
       '<li>全部点検したら「← 戻る」→「この表で新しい版(PDF)を作る」で今年の版を作ります(去年の版は履歴に残ります)。</li></ol></details>'+
     (ro ? '<div class="note noPrint" style="margin:6px 12px;">'+y+'年度の点検の記録です(見るだけ)。表の中身は今の内容です。</div>' : '')+
     '<h2 class="printOnly">'+esc(reg.name)+(shCode ? '（EMS-'+esc(shCode)+'）' : '')+'　'+y+'年度の点検　株式会社関根商店</h2>'+
-    '<div id="shWrap"><table class="sh" style="width:'+(base + 34 + 160)+'px;"><colgroup><col style="width:34px">'+def.cols.map(c => '<col style="width:'+px(c.w)+'px">').join("")+'<col style="width:160px"></colgroup>'+head+body+'</table>'+
+    '<div id="shWrap"><table class="sh" style="width:'+(base + 34 + 190)+'px;"><colgroup><col style="width:34px">'+def.cols.map(c => '<col style="width:'+px(c.w)+'px">').join("")+'<col style="width:190px"></colgroup>'+head+body+'</table>'+
     (ro ? '' : '<div class="noPrint" style="padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn pri" onclick="shAdd()">＋ 行を追加</button>'+(reg.key === "legal" ? '<span class="note" style="margin:0;align-self:center;">同じ法令に条項を足すときは、No.を同じ番号にしてください</span>' : '')+'</div>')+'</div>';
   const w2 = document.getElementById("shWrap"); if (!top){ w2.scrollLeft = sl; w2.scrollTop = st; }
 }
@@ -404,7 +408,7 @@ async function shTog(id, ci){
   renderSheet();
 }
 async function shYc(key, v){ ycYear = shYear; await ycSet(key, v); renderSheet(); }
-async function shAll(){ ycYear = shYear; await ycAll(); renderSheet(); }
+async function shAll(){ ycYear = shYear; const reg = regOf(cur); await ycAll(shRows(reg, shDef(reg))); renderSheet(); }   // 今開いている表(A-06かA-07)の分だけ
 async function shDel(id){
   const reg = regOf(cur), r = shRow(id); if (!r) return;
   if (!confirm("この行を削除しますか？\n「"+String(r[reg.title] || r.aspect || r.manName || "").slice(0, 40)+"」\n(元に戻せません)")) return;
