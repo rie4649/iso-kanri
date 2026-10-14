@@ -24,7 +24,7 @@
 <body>
 <header class="bz">
   <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
-  <div><h1>顧客対応の進捗記録</h1>
+  <div><h1>顧客対応の進捗記録 <span style="font-size:13px;color:#64748b;font-weight:normal;">EMS-A-27</span></h1>
   <div class="sub">環境目標「お客様のニーズ(依頼)に早く確実に応える」の月ごとの記録(進捗記録兼評価表)。電話依頼アプリ・委託先調査票から自動で数えます</div></div>
 </header>
 <div class="wrap">
@@ -116,7 +116,7 @@ function render(){
   const ms12 = monthsOf(fy), st = ms12.map(m => [m, stat(m)]);
   const past = st.filter(([m]) => m <= cur), tot = past.reduce((a, [, s]) => ({ n:a.n + s.n, done:a.done + s.done, late:a.late + s.late, sv:a.sv + s.sv }), { n:0, done:0, late:0, sv:0 });
   const pendingNow = reqs.filter(r => !r.done).length;
-  let h = '<h2 style="font-size:17px;color:var(--navy);margin:6px 0;">進捗記録兼評価表（顧客対応）　'+fy+'年度　株式会社関根商店</h2>'+
+  let h = '<h2 style="font-size:17px;color:var(--navy);margin:6px 0;">進捗記録兼評価表（顧客対応）　'+fy+'年度　株式会社関根商店　<span style="font-size:12px;color:#64748b;">EMS-A-27</span></h2>'+
     '<div class="note" style="margin:0 0 6px;">環境目標：①電話依頼の対応完了率100%(24時間以上の放置ゼロ)　②調査票・現地確認の期限内回答100%</div>'+
     '<div class="kpis"><div class="kpi"><div class="k">今年度の依頼</div><div class="v">'+tot.n+'<small>件</small></div></div>'+
     '<div class="kpi"><div class="k">対応完了率</div><div class="v">'+(tot.n ? Math.round(tot.done / tot.n * 1000) / 10 : "-")+'<small>%</small></div></div>'+

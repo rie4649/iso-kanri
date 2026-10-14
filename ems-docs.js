@@ -69,6 +69,16 @@ const EMS = (function(){
       }
       did = true;
     }
+    if (!flag.emsA27){   // 2026/10 追加: 進捗記録兼評価表 顧客対応(custlog.html)。番号のルールは特になし → A-26の次
+      await flagRef.set({ emsA27:true }, { merge:true });
+      const ex = await db.collection(DOCS).doc("A-27").get();
+      if (!ex.exists){
+        await db.collection(DOCS).doc("A-27").set({ name:"進捗記録兼評価表 顧客対応", place:"アプリ(ISO管理)", keep:"3年間", approver:"環境管理責任者", link:"custlog", order:26.6, inUse:true, createdMs:Date.now() }, { merge:true });
+        const d = new Date(), ds = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+        await db.collection(REVIEWS).add({ code:"A-27", title:"", date:ds, kind:"作成", by:"", detail:"進捗記録兼評価表(顧客対応)を新しく作成。電話依頼アプリの記録から月ごとに自動で集計(環境マニュアル 6.2・7.4.3)", createdMs:Date.now() });
+        did = true;
+      }
+    }
     if (!flag.emsMigrate1){ await migrateLegacy(); await flagRef.set({ emsMigrate1:true }, { merge:true }); }
     return did;
   }

@@ -434,6 +434,7 @@ const PAGES = [
   { key:"safety", ch:4, icon:"🦺", name:"安全衛生パトロール", purpose:"safety", render: renderSafety },
   { key:"clean", ch:4, icon:"🧹", name:"クリーン度チェック", purpose:"clean", render: renderClean },
   { key:"metal", ch:4, icon:"🔩", name:"金属拾い上げ", purpose:"metal", render: renderMetal },
+  { key:"custlog", ch:4, icon:"", name:"顧客対応の進捗（EMS-A-27）", render: renderCustlog },
   { key:"calib", ch:4, icon:"📏", name:"測定機器の点検・校正", reg:"calib", render: renderReg },
   { key:"audit", ch:4, icon:"🔍", name:"内部監査", render: renderAudit },
   { key:"review", ch:4, icon:"📊", name:"マネジメントレビュー", render: renderReview },
@@ -1267,6 +1268,32 @@ async function renderComp(p){
 }
 
 /* ---------- 金属拾い上げ ---------- */
+/* 顧客対応の進捗(ISO管理 custlog.html と同じ数え方): 電話依頼の完了率・24時間以上・調査票の提出 */
+async function renderCustlog(p){
+  const [live, log, sb, mo] = await Promise.all([col("phoneRequests").catch(() => []), col("phoneRequestLog").catch(() => []), col("isoSurveySubmits").catch(() => []), col("isoCustMonthly").catch(() => [])]);
+  const msOf = v => !v ? 0 : typeof v.toMillis === "function" ? v.toMillis() : typeof v === "number" ? v : (Date.parse(v) || 0);
+  const ym = t => { const d = new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); };
+  const by = {}; log.forEach(x => by[x.id] = { c:x.createdMs || 0, r:x.respondedMs || 0, done:true });
+  live.forEach(x => { const done = x.status === "対応済み"; by[x.id] = { c:msOf(x.createdAt) || msOf(x.createdAtText), r: done ? (msOf(x.respondedAt) || (by[x.id] || {}).r || 0) : 0, done }; });
+  const reqs = Object.values(by).filter(r => r.c), man = {}; mo.forEach(x => man[x.id] = x);
+  const now = new Date(), fy = now.getMonth()+1 >= 8 ? now.getFullYear() : now.getFullYear() - 1, cur = ym(Date.now());
+  const months = Array.from({ length:12 }, (_, i) => { const m = (7 + i) % 12 + 1; return (m >= 8 ? fy : fy + 1)+"-"+String(m).padStart(2,"0"); }).filter(m => m <= cur);
+  const first = log.length ? ym(Math.min(...log.map(x => x.createdMs || Infinity))) : "";
+  const rows = months.map(m => { const l = reqs.filter(r => ym(r.c) === m), mm = man[m] || {}, useMan = mm.n !== undefined && mm.n !== "";
+    const n = useMan ? Number(mm.n) : l.length, done = useMan ? Number(mm.done || 0) : l.filter(r => r.done).length, late = useMan ? Number(mm.late || 0) : l.filter(r => r.done ? r.r - r.c >= 86400000 : Date.now() - r.c >= 86400000).length;
+    const sv = sb.filter(s => String(s.date || "").startsWith(m)).length, none = !useMan && !n && (!first || m < first);
+    return { m, n, done, late, sv, none, rate: n ? Math.round(done / n * 1000) / 10 : null, memo: mm.memo || "" }; });
+  const t = rows.filter(r => !r.none).reduce((a, r) => ({ n:a.n + r.n, done:a.done + r.done, late:a.late + r.late, sv:a.sv + r.sv }), { n:0, done:0, late:0, sv:0 });
+  return await head(p, "ISO14001 6.2・7.4.3") +
+    '<div class="purpose"><b>環境目標</b>　お客様のニーズ(依頼・要望)に早く確実に応える：①電話依頼の対応完了率100%(24時間以上の放置ゼロ) ②調査票・現地確認の期限内回答100%</div>'+
+    '<div class="kpis"><div class="kpi"><div class="k">'+fy+'年度の依頼</div><div class="v">'+t.n+'<small>件</small></div></div><div class="kpi"><div class="k">対応完了率</div><div class="v">'+(t.n ? Math.round(t.done / t.n * 1000) / 10 : "-")+'<small>%</small></div></div>'+
+    '<div class="kpi"><div class="k">24時間以上かかった</div><div class="v">'+t.late+'<small>件</small></div></div><div class="kpi"><div class="k">調査票・現地確認の提出</div><div class="v">'+t.sv+'<small>件</small></div></div></div>'+
+    '<div class="tw"><table class="t"><tr><th>月</th><th>依頼</th><th>対応済み</th><th>完了率</th><th>24時間以上</th><th>調査票・現地確認</th><th>評価</th><th>原因・対策</th></tr>'+
+    rows.map(r => '<tr><td class="c nw">'+Number(r.m.slice(5))+'月</td>'+(r.none ? '<td colspan="4" class="c"><span class="note">記録なし(記録を始める前の月)</span></td>' :
+      '<td class="r">'+r.n+'</td><td class="r">'+r.done+'</td><td class="r">'+(r.rate == null ? "-" : r.rate+"%")+'</td><td class="r">'+r.late+'</td>')+'<td class="r">'+r.sv+'</td>'+
+      '<td class="c">'+(r.n && !r.none ? (r.m === cur ? '<span class="note">集計中</span>' : r.rate >= 100 && !r.late ? '<span class="badge b-ok">達成</span>' : '<span class="badge b-ng">未達</span>') : '')+'</td><td style="white-space:pre-wrap">'+esc(r.memo)+'</td></tr>').join("")+'</table></div>'+
+    '<div class="note" style="margin-top:6px;">電話依頼アプリで受けたお客様の依頼(引取・見積・現場確認など)を、受けた月ごとに数えています。入力はISO管理の「進捗記録顧客対応」。</div>';
+}
 async function renderMetal(p){
   const [r, cfg] = await Promise.all([col("metalRecords"), docGet("metalSettings", "config")]);
   const ymOf = x => x.date ? String(x.date).slice(0,7) : x.yearMonth;
