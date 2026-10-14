@@ -79,6 +79,16 @@ const EMS = (function(){
         did = true;
       }
     }
+    if (!flag.aboInfo1){   // 2026/10/14 相談で決定: 情報公開検討書(A-23・C-09 同じ名前が2つ)を廃止
+      await flagRef.set({ aboInfo1:true }, { merge:true });
+      const reason = "外部への情報公開の判断は、環境マニュアル7.4.3の表で決めている。記録は「コミュニケーション・苦情」と行政照会記録、公開内容は「環境への取り組み」で管理するため廃止。";
+      const rep = "環境マニュアル7.4.3／コミュニケーション・苦情／行政照会記録／環境への取り組み", date = "2026-10-14";
+      for (const code of ["A-23", "C-09"]){
+        const ex = await db.collection(DOCS).doc(code).get(); if (!ex.exists || ex.data().abolished) continue;
+        const ref = await db.collection(REVIEWS).add({ code, title:"", date, kind:"廃止", by:"環境管理責任者", detail:reason+"(代わり："+rep+")", createdMs:Date.now() });
+        await db.collection(DOCS).doc(code).update({ abolished:true, abolishedDate:date, abolishedReason:reason, abolishedBy:"環境管理責任者", replacedBy:rep, abolishReviewId:ref.id });
+      }
+    }
     if (!flag.emsMigrate1){ await migrateLegacy(); await flagRef.set({ emsMigrate1:true }, { merge:true }); }
     return did;
   }

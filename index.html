@@ -176,6 +176,9 @@
   .cal-cell .work-tag { font-size: 9px; font-weight: 700; line-height: 1.2; border-radius: 3px; padding: 0 3px; margin-top: 1px; }
   .cal-cell .work-tag.kyu { background: #dc2626; color: #fff; }
   .cal-cell .work-tag.kado { color: #059669; }
+  .cal-today-btn { white-space:nowrap; min-width:52px; }
+  .cal-cell .work-tag.wa { background: #d9f99d; color: #3f6212; border:1px solid #84cc16; } .cal-cell .work-tag.wb { background: #dbeafe; color: #1e40af; border:1px solid #60a5fa; }
+  .cal-cell .work-tag.kyu { background: #fce7f3; color: #be123c; border:1px solid #f472b6; }
   .cal-work-sum { text-align: center; font-size: 12px; color: #4b4b63; margin: -4px 0 8px; }
 
   /* 一覧 */
@@ -1857,11 +1860,12 @@ function renderCalendar() {
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
   // この月の稼働日・休日の数
-  let kado = 0, kyu = 0, mitouroku = 0;
-  cells.filter(c => !c.otherMonth).forEach(c => { const k = isoWorkKind(c.key); if (k === "稼働日") kado++; else if (k === "休日") kyu++; else mitouroku++; });
-  document.getElementById("calWorkSum").textContent = (kado || kyu)
-    ? `稼働日 ${kado}日 ・ 休日 ${kyu}日` + (mitouroku ? ` ・ 未登録 ${mitouroku}日` : "")
-    : "就業カレンダー未登録(マスター管理で登録すると稼働日・休日が出ます)";
+  // マスター管理の就業カレンダーと同じ表示(全休・A班休み・B班休み)。出勤日は何も出さない
+  const wc = { "全休":0, "A班休み":0, "B班休み":0 }; let reg = 0;
+  cells.filter(c => !c.otherMonth).forEach(c => { const w = workDayOf(c.key); if (w === null) return; reg++; if (w in wc) wc[w]++; });
+  document.getElementById("calWorkSum").textContent = reg
+    ? `全休 ${wc["全休"]}日 ・ A班休み ${wc["A班休み"]}日 ・ B班休み ${wc["B班休み"]}日（マスター管理の就業カレンダー）`
+    : "就業カレンダー未登録(マスター管理の「就業日」で登録すると出ます)";
 
   grid.innerHTML = cells.map(c => {
     const events = eventsByDate[c.key] || [];
@@ -1870,9 +1874,10 @@ function renderCalendar() {
     if (c.otherMonth) classes.push("other-month");
     if (isToday) classes.push("today");
     if (events.length) classes.push("has-events");
-    const wk = c.otherMonth ? null : isoWorkKind(c.key);
-    if (wk === "休日") classes.push("kyujitsu");
-    const workTag = wk ? `<div class="work-tag ${wk === "休日" ? "kyu" : "kado"}">${wk === "休日" ? "休日" : "稼働"}</div>` : "";
+    const wd = c.otherMonth ? null : workDayOf(c.key);
+    const WK = { "全休":["kyu","全休"], "A班休み":["wa","A班休"], "B班休み":["wb","B班休"] }[wd || ""];
+    if (wd === "全休") classes.push("kyujitsu");
+    const workTag = WK ? `<div class="work-tag ${WK[0]}">${WK[1]}</div>` : "";
     const titleLines = events.slice(0,2).map(ev => {
       const mark = findMark(ev.mark);
       const color = mark ? mark.color : "#4338ca";
