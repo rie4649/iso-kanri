@@ -35,7 +35,7 @@
   <div id="body"><div class="empty">読み込み中…</div></div>
 </div>
 
-<div class="bg" id="editBg" onclick="if(event.target===this)closeEdit()">
+<div class="bg" id="editBg" style="z-index:85;" onclick="if(event.target===this)closeEdit()">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTtl">
     <h2 id="editTtl"></h2>
     <div id="editForm"></div>
@@ -95,6 +95,8 @@
   table.sh td { border:1px solid #cbd5e1; padding:0; vertical-align:top; background:#fff; }
   table.sh td.tx div { min-height:22px; padding:3px 4px; white-space:pre-wrap; word-break:break-all; line-height:1.4; outline:none; }
   table.sh td.tx div:focus { background:#fef9c3; box-shadow:inset 0 0 0 2px #f59e0b; }
+  table.sh td.tx div:empty:before { content:"＋入力"; color:#cbd5e1; font-size:11px; } table.sh td.tx div:focus:empty:before { content:""; }
+  table.sh tr.newRow td { background:#fefce8; } .ed { border:none; background:none; cursor:pointer; font-size:13px; padding:0 2px; display:block; margin:0 auto; }
   table.sh td.tg { text-align:center; vertical-align:middle; cursor:pointer; font-size:15px; font-weight:700; color:#1e3a5f; user-select:none; } table.sh td.tg:hover { background:#e0f2fe; } table.sh td.tg.on { background:#eff6ff; }
   table.sh td.sl select { width:100%; border:none; background:transparent; font-size:12px; padding:3px 0; }
   table.sh td.ro { padding:3px 4px; color:#475569; }
@@ -257,11 +259,13 @@ const ycOf = (u, y) => { const c = ycRaw(u, y); return c && c.r ? c : null; };  
 function yearCheckCard(reg){
   const us = ycUnits(reg), y = ycFy(), n = us.filter(u => ycOf(u, y)).length, ng = us.filter(u => { const c = ycOf(u, y); return c && /要改善|見直し/.test(c.r); }).length;
   const years = [...new Set(us.flatMap(u => Object.keys(u.rows[0].checks || {})))].sort().reverse();
+  const svs = Object.values(shSaved).filter(v => v.reg === reg.key && v.year === y);
   return '<div class="card" style="border-left:4px solid '+(n === us.length && us.length ? '#16a34a' : '#d97706')+';"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
     '<b style="flex:1;color:var(--navy);">📋 年度の点検（'+y+'年度：'+y+'年8月〜'+(y+1)+'年7月）</b>'+
     '<span style="font-weight:700;color:'+(n === us.length && us.length ? '#15803d' : '#b45309')+';">'+n+' / '+us.length+(reg.yearCheck.perGroup ? ' 法令' : ' 行')+' 点検済み</span>'+(ng ? '<span class="tag sig">'+(reg.key === "legal" ? "要改善" : "見直しが必要")+' '+ng+'</span>' : '')+
     '<button class="btn pri" onclick="openSheet()">📋 チェックシートを開く（直す・点検する）</button>'+
     (years.filter(x => Number(x) !== y).length ? '<select style="width:auto;" onchange="if(this.value)openSheet(null, Number(this.value))"><option value="">過去の点検を見る</option>'+years.filter(x => Number(x) !== y).map(x => '<option value="'+x+'">'+x+'年度</option>').join("")+'</select>' : '')+'</div>'+
+    (svs.length ? '<div style="margin-top:4px;font-size:13px;color:#166534;font-weight:700;">'+svs.map(v => '✔ '+(v.code ? 'EMS-'+esc(v.code)+' ' : '')+'保存済み：確認日 '+esc(String(v.date).replace(/-/g, "/"))+'・確認者 '+esc(v.by || "-")).join("　")+'</div>' : '')+
     '<div class="note" style="margin:4px 0 0;">チェックシートは紙の様式と同じ形の表です。文字はその場で書き換え、○はマスを押すだけで付け外しできます(自動で保存)。右端の「今年の点検」を全部付けたら、「この表で新しい版(PDF)を作る」で今年の版を作ります。</div></div>';
 }
 function openYc(y){ ycYear = y; renderYc(); document.getElementById("ycView").style.display = "block"; document.getElementById("ycView").scrollTop = 0; }
@@ -299,7 +303,7 @@ async function ycWrite(units, val, memo){
   const reg = regOf(cur), yc = reg.yearCheck, y = String(ycYear), b = db.batch();
   units.forEach(u => u.rows.forEach(r => {
     const checks = { ...(r.checks || {}) }, prev = checks[y] || {};
-    checks[y] = { r: val ?? prev.r ?? null, d: val != null ? (shDate || today()) : (prev.d || shDate || today()), memo: memo ?? prev.memo ?? "" };
+    checks[y] = { r: val ?? prev.r ?? null, d: val != null ? (shDate || today()) : (prev.d || shDate || today()), by: val != null ? (shBy || prev.by || "") : (prev.by || shBy || ""), memo: memo ?? prev.memo ?? "" };
     const upd = { checks };
     if (yc.field && val != null) upd[yc.field] = reg.key === "sigAspects" ? (val === "OK" ? "✓" : "見直し") : val;   // 表の「評価」「確認」の列にも入れる
     b.update(db.collection(ISO_REG_COL).doc(r.id), upd); r.checks = checks; Object.assign(r, upd);
@@ -323,7 +327,10 @@ async function ycAll(only){
 /* ===== チェックシート(紙の様式と同じ形の表で、その場で直す・○を付ける・今年の点検をする) =====
    次の人へ: 列の並びは FORM_DEFS(PDFの様式)と同じ。文字のマスは押して書き換え(枠の外を押すと保存)、
    ○のマスは押すたびに付く・消える。右端が「今年の点検」。保存はすべて自動で、行には最終更新日が残ります */
-let shCode = "", shYear = 0, shDate = "";   // shDate: 確認日(点検した日)。チェックシートの上で選ぶ
+let shNewId = "", shCode = "", shYear = 0, shDate = "", shBy = (() => { try { return localStorage.getItem("isoShBy") || ""; } catch(e){ return ""; } })(), shSaved = {};
+const YC_COL = "isoYearChecks";   // 年度の点検を「保存」した記録(表ごと・年度ごと): 確認日・確認者・点検数
+const ycDocId = (reg, code, y) => reg+"_"+(code || "all")+"_"+y;
+async function loadShSaved(){ try { const s = await db.collection(YC_COL).get(); shSaved = {}; s.docs.forEach(d => shSaved[d.id] = d.data()); } catch(e){ console.error(e); } }   // shDate: 確認日(点検した日)。チェックシートの上で選ぶ
 function sheetCodes(reg){
   const ids = linkedDocs(reg.key).map(d => d.id).filter(c => FORM_DEFS[c] && (!FORM_DEFS[c].filter || reg.key === "aspects"));
   return ids.length ? ids : [""];
@@ -332,6 +339,7 @@ function openSheet(code, y){
   const reg = regOf(cur), codes = sheetCodes(reg);
   shCode = code != null && codes.includes(code) ? code : (codes.includes(shCode) ? shCode : codes[0]); shYear = y || ycFy(); if (!shDate) shDate = today();
   document.getElementById("ycView").style.display = "block"; renderSheet(true);
+  loadShSaved().then(() => renderSheet());
 }
 function closeSheet(){ document.getElementById("ycView").style.display = "none"; render(); }
 function shDef(reg){ const d = formDef(reg, shCode); return { ...d, cols: d.cols.filter(c => !(c.v && c.v.yc)) }; }
@@ -358,8 +366,8 @@ function renderSheet(top){
     const u = yc.perGroup ? units.find(x => x.rows.includes(r)) : units.find(x => x.key === r.id);
     const c = u && ycOf(u, y), ng = c && /要改善|見直し/.test(c.r);
     const recent = r.updatedAt && r.updatedAt.toDate && ycFy(r.updatedAt.toDate()) === cy;
-    body += '<tr class="'+(ng ? 'ng' : c ? 'ok' : '')+'">'+
-      '<td class="op" title="'+(r.updatedAt && r.updatedAt.toDate ? '最終更新 '+fdTs(r.updatedAt) : '')+'">'+(ro ? '' : '<button class="x" onclick="shDel(\''+r.id+'\')" title="この行を削除">×</button>')+(recent ? '<span class="nw" title="今年度に直した行">直</span>' : '')+'</td>'+
+    body += '<tr data-id="'+r.id+'" class="'+(ng ? 'ng' : c ? 'ok' : '')+(r.id === shNewId ? ' newRow' : '')+'">'+
+      '<td class="op" title="'+(r.updatedAt && r.updatedAt.toDate ? '最終更新 '+fdTs(r.updatedAt) : '')+'">'+(ro ? '' : '<button class="ed" onclick="openEdit(\''+r.id+'\')" title="この行を入力画面で書く">✏️</button><button class="x" onclick="shDel(\''+r.id+'\')" title="この行を削除">×</button>')+(recent ? '<span class="nw" title="今年度に直した行">直</span>' : '')+'</td>'+
       def.cols.map((col, ci) => { if (gk && col.m && !first) return ""; return shCell(reg, col, ci, r, gk && col.m ? span : 1, def); }).join("")+
       ((!yc.perGroup || first) ? '<td class="yc"'+(yc.perGroup && span > 1 ? ' rowspan="'+span+'"' : '')+'>'+
         (ro ? '<b>'+esc(c ? ((yc.opts.find(o => o[0] === c.r) || [,c.r])[1]) : "未点検")+'</b>'+(c && c.memo ? '<div class="mm">'+esc(c.memo)+'</div>' : '')
@@ -373,15 +381,23 @@ function renderSheet(top){
     '<div class="shTop noPrint"><button class="btn" onclick="closeSheet()">← 戻る</button><b style="font-size:16px;color:var(--navy);">'+esc(reg.name)+(shCode ? '　EMS-'+esc(shCode) : '')+'</b>'+
       (codes.length > 1 ? codes.map(c => '<button class="btn sm'+(c === shCode ? ' pri' : '')+'" onclick="openSheet(\''+c+'\','+y+')">EMS-'+esc(c)+' '+esc((EMS.docs.find(d => d.id === c) || {}).name || "")+'</button>').join("") : '')+
       '<span style="flex:1;"></span><b style="color:'+(done === units.length && units.length ? '#15803d' : '#b45309')+';">'+y+'年度の点検 '+done+' / '+units.length+'</b>'+
-      (!ro ? '<label style="display:flex;align-items:center;gap:4px;margin:0;font-weight:700;font-size:13px;">確認日<input type="date" value="'+esc(shDate)+'" onchange="shDate=this.value||today();renderSheet()" style="width:auto;padding:4px 6px;"></label>' : '')+
+      (!ro ? '<label style="display:flex;align-items:center;gap:4px;margin:0;font-weight:700;font-size:13px;">確認日<input type="date" value="'+esc(shDate)+'" onchange="shDate=this.value||today();renderSheet()" style="width:auto;padding:4px 6px;"></label>'+
+        '<label style="display:flex;align-items:center;gap:4px;margin:0;font-weight:700;font-size:13px;">確認者<input value="'+esc(shBy)+'" placeholder="例: 川村" onchange="shBy=this.value.trim();try{localStorage.setItem(\'isoShBy\',shBy)}catch(e){}" style="width:110px;padding:4px 6px;"></label>'+
+        '<button class="btn pri" onclick="shSave2()">💾 保存</button>' : '')+
+      (()=>{ const f = shCode && EMS.filesOf(shCode)[0]; return f ? '<button class="btn sm" onclick="EMS.view(\''+f.id+'\')" title="今登録されている原本">📄 原本(PDF)を見る</button>' : ''; })()+
       (!ro && done < units.length ? '<button class="btn" style="background:#15803d;border-color:#15803d;color:#fff;font-weight:700;" onclick="shAll()">✓ まだの'+(units.length - done)+'件をまとめて「'+esc((yc.opts.find(o => o[0] === yc.all) || [,""])[1]).replace("✓ ", "")+'」にする</button>' : '')+
       '<button class="btn sm" onclick="window.print()">印刷</button></div>'+
+    (() => { const sv = shSaved[ycDocId(reg.key, shCode, y)];
+      return '<div class="noPrint" style="margin:6px 12px 0;padding:6px 10px;border-radius:6px;font-size:13px;'+(sv ? 'background:#dcfce7;color:#166534;' : 'background:#fff7ed;color:#9a3412;')+'">'+
+        (sv ? '✔ '+y+'年度の点検を保存済み：確認日 '+esc(String(sv.date).replace(/-/g, "/"))+'　確認者 '+esc(sv.by || "-")+'　（'+sv.done+' / '+sv.total+' 点検'+(sv.ng ? '・見直し '+sv.ng+'件' : '')+'）　保存 '+esc(sv.savedAtTxt || "")
+          : '○や文字・点検のボタンは押したときに自動で保存されています。点検が終わったら、確認日・確認者を入れて「💾 保存」を押すと、今年の点検の記録として残ります。')+'</div>'; })()+
     '<details class="shHelp noPrint"'+(top && !done ? ' open' : '')+'><summary>この画面の使い方（はじめての人へ）</summary><ol>'+
       '<li><b>文字のマス</b>：押すと書き換えられます。枠の外を押すと自動で保存されます。</li>'+
       '<li><b>○のマス</b>：押すたびに ○ が付く・消えます(すぐ保存)。</li>'+
       '<li><b>右端「'+y+'年度の点検」</b>：1年に1回、行'+(yc.perGroup ? '(法令)' : '')+'ごとに確認してボタンを押します。直すところがあれば「'+esc((yc.opts.find(o => /要改善|見直し/.test(o[0])) || [,""])[1])+'」を押してメモを書き、表を直します。</li>'+
-      '<li><b>行を足す</b>：いちばん下の「＋ 行を追加」。<b>行を消す</b>：左端の ×。左端の「直」は今年度に直した行です。</li>'+
-      '<li>全部点検したら「← 戻る」→「この表で新しい版(PDF)を作る」で今年の版を作ります(去年の版は履歴に残ります)。</li></ol></details>'+
+      '<li><b>行を足す</b>：いちばん下の「＋ 行を追加」→ 黄色い行ができるので、「＋入力」のマスを押して書きます(左端の ✏️ を押すと、1行分の入力画面でも書けます)。<b>行を消す</b>：左端の ×。左端の「直」は今年度に直した行です。</li>'+
+      '<li><b>確認日・確認者</b>を入れて「💾 保存」。今年の点検の記録が残り、続けて今年の版(PDF)を作れます。作ったPDFは「📄 原本(PDF)を見る」とEMS文書管理で見られます(去年の版は履歴に残ります)。</li>'+
+      '<li>ここで入れた内容は「環境への取り組み」の同じ表のページにも出ます(点検の確認日・確認者も)。</li></ol></details>'+
     (ro ? '<div class="note noPrint" style="margin:6px 12px;">'+y+'年度の点検の記録です(見るだけ)。表の中身は今の内容です。</div>' : '')+
     '<h2 class="printOnly">'+esc(reg.name)+(shCode ? '（EMS-'+esc(shCode)+'）' : '')+'　'+y+'年度の点検　株式会社関根商店</h2>'+
     '<div id="shWrap"><table class="sh" style="width:'+(base + 34 + 190)+'px;"><colgroup><col style="width:34px">'+def.cols.map(c => '<col style="width:'+px(c.w)+'px">').join("")+'<col style="width:190px"></colgroup>'+head+body+'</table>'+
@@ -407,6 +423,22 @@ async function shTog(id, ci){
     const f = reg.fields.find(x => x.k === k), ord = f && f.options ? f.options : null; await shSave(id, { [k]: (ord ? ord.filter(o => nx.includes(o)) : nx).join("、") }); }
   renderSheet();
 }
+async function shSave2(){
+  const reg = regOf(cur), def = shDef(reg), rows2 = shRows(reg, def), y = shYear;
+  if (!shDate){ toast("確認日を入れてください"); return; }
+  if (!shBy){ toast("確認者を入れてください"); return; }
+  const units = ycUnits(reg).filter(u => u.rows.some(r => rows2.includes(r)));
+  const done = units.filter(u => ycOf(u, y)).length, ng = units.filter(u => { const c = ycOf(u, y); return c && /要改善|見直し/.test(c.r); }).length;
+  if (done < units.length && !confirm("まだ点検していない行が "+(units.length - done)+"件 あります。このまま保存しますか？\n(あとで続きをして、もう一度保存できます)")) return;
+  const now = new Date(), data = { reg:reg.key, code:shCode || "", year:y, date:shDate, by:shBy, done, total:units.length, ng, savedAtTxt: now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0"), savedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  try { await db.collection(YC_COL).doc(ycDocId(reg.key, shCode, y)).set(data); shSaved[ycDocId(reg.key, shCode, y)] = data; renderSheet(); toast("保存しました"); }
+  catch(e){ toast("保存できませんでした: "+e.message); return; }
+  if (shCode && linkedDocs(reg.key).some(d => d.id === shCode) && confirm("保存しました。\n続けて、この表で今年の版(PDF)を作りますか？\n(確認日・確認者が入った様式のPDFが、EMS-"+shCode+" の原本の新しい版になります)")){
+    const code = shCode; closeSheet(); openMakeVer();
+    const sel = document.getElementById("mvCode"); sel.value = code; if (sel.onchange) sel.onchange();
+    document.getElementById("mvDate").value = shDate; document.getElementById("mvChecker").value = shBy; document.getElementById("mvMemo").value = y+"年度の点検(確認日 "+shDate.replace(/-/g, "/")+")";
+  }
+}
 async function shYc(key, v){ ycYear = shYear; await ycSet(key, v); renderSheet(); }
 async function shAll(){ ycYear = shYear; const reg = regOf(cur); await ycAll(shRows(reg, shDef(reg))); renderSheet(); }   // 今開いている表(A-06かA-07)の分だけ
 async function shDel(id){
@@ -421,8 +453,11 @@ async function shAdd(){
   if (reg.key === "legal"){ const no = prompt("No.(同じ法令に条項を足すときは同じ番号。新しい法令は "+(Math.max(0, ...list.map(r => Number(r.no) || 0)) + 1)+")", String(Math.max(0, ...list.map(r => Number(r.no) || 0)) + 1)); if (no == null) return;
     data.no = no.trim(); const g = list.find(r => String(r.no) === data.no); if (g) reg.groupFields.forEach(k => data[k] = g[k] || ""); }
   if (reg.key === "sigAspects" && last.group) data.group = last.group;
+  if (reg.key !== "legal" && reg.fields.some(f => f.k === "no")) data.no = String(Math.max(0, ...list.map(r => Number(r.no) || 0)) + 1);   // 番号は続きの番号
   if (reg.key === "aspects" && last.activity) data.activity = last.activity;
-  try { const ref = await db.collection(ISO_REG_COL).add(data); rows.push({ id:ref.id, ...data, updatedAt:{ toDate:() => new Date() } }); renderSheet(); const w = document.getElementById("shWrap"); w.scrollTop = w.scrollHeight; toast("行を追加しました。マスを押して入力してください"); }
+  try { const ref = await db.collection(ISO_REG_COL).add(data); rows.push({ id:ref.id, ...data, updatedAt:{ toDate:() => new Date() } }); shNewId = ref.id; renderSheet(); const w = document.getElementById("shWrap"); w.scrollTop = w.scrollHeight;
+    const tr = document.querySelector('tr[data-id="'+ref.id+'"]'); const first = tr && tr.querySelector("td.tx div"); if (first) first.focus();
+    toast("いちばん下に黄色い行を足しました。「＋入力」のマスを押して書くか、左の ✏️ で入力画面を開けます"); }
   catch(e){ toast("追加できませんでした: "+e.message); }
 }
 function setTab(k){ cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
@@ -647,6 +682,7 @@ async function planSeedOnce(){
   if (nl || ns || np) toast("去年の表を入れました(法的要求事項 "+nl+"行・著しい環境側面 "+ns+"行・環境側面の○印 "+np+"件)");
 }
 setTimeout(() => planSeedOnce().catch(e => console.error(e)), 1500);
+loadShSaved().then(() => render());
 
 /* ===== 計画書の原本(PDF)。台帳ごとに文書番号で版を管理(いちばん新しい日付が現在の版、ほかは改訂履歴)
    Firestore: isoPlanDocs(目次 reg・docNo・title・date・author・memo)/ isoPlanChunks(中身・分割base64) ===== */
@@ -814,6 +850,7 @@ async function saveEdit(){
       if (same.length){ const b = db.batch(); same.forEach(x => b.update(db.collection(ISO_REG_COL).doc(x.id), upd)); await b.commit(); }
     }
     closeEdit(); toast("保存しました");
+    if (document.getElementById("ycView").style.display === "block") setTimeout(() => renderSheet(), 700);   // チェックシートから開いたときは表を描き直す
   } catch(e){ toast("保存できませんでした: "+e.message); }
 }
 async function confirmRow(id){

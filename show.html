@@ -403,7 +403,9 @@ const PAGES = [
   { key:"roles", ch:1, icon:"👥", name:"役割・責任と権限", reg:"roles", render: renderReg },
   { key:"equip", ch:1, icon:"🚛", name:"主な設備・車両", render: renderEquip },
   { key:"aspects", ch:2, icon:"🌱", name:"環境側面", reg:"aspects", render: renderReg },
+  { key:"sigAspects", ch:2, icon:"", name:"著しい環境側面特定表", reg:"sigAspects", render: renderReg },
   { key:"horei", ch:2, icon:"⚖️", name:"法規制一覧", render: renderHorei },
+  { key:"legal", ch:2, icon:"", name:"法的要求事項・順守評価", reg:"legal", render: renderReg },
   { key:"kyoka", ch:2, icon:"📜", name:"許可一覧", render: renderKyoka },
   { key:"permit", ch:2, icon:"", name:"許可の内容(事業の範囲・施設)", render: renderPermit },
   { key:"risks", ch:2, icon:"⚠️", name:"リスクと機会", reg:"risks", render: renderReg },
@@ -776,6 +778,10 @@ async function renderReg(p){
     try { pdb += '<h3 class="sec">契約件数</h3>' + ContractStats.html(await ContractStats.load()) + '<h3 class="sec">委託先の評価</h3>'; } catch(e){ console.error(e); }
   }
   let list = (await col(ISO_REG_COL)).filter(r => r.reg === R.key && !r.draft);
+  // 年度の点検(ISO管理のチェックシートで「保存」したもの): 確認日・確認者
+  try { const yc = (await col("isoYearChecks")).filter(v => v.reg === R.key).sort((a, b) => (b.year - a.year) || String(b.date).localeCompare(String(a.date)));
+    if (yc.length){ const y = yc[0].year; pdb += '<div class="note" style="margin:0 0 10px;padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534;">'+y+'年度の点検：'+
+      yc.filter(v => v.year === y).map(v => (v.code ? 'EMS-'+esc(v.code)+' ' : '')+'確認日 '+esc(fd(v.date))+'・確認者 '+esc(v.by || "-")+'（'+v.done+'/'+v.total+(v.ng ? '・見直し '+v.ng : '')+'）').join("　")+'</div>'; } } catch(e){ console.error(e); }
   const sub = "ISO14001 "+R.clause;
   if (!list.length && R.key === "calib") return await head(p, sub) + pdb + empty("まだ登録がありません(ISO管理の「ISOの計画・リスク」→「測定機器の点検・校正」から入力します)") +
     '<div class="purpose" style="margin-top:12px;"><b>このページに載せるもの</b>　測定に使う機器そのものが正しく測れるかの確認です(点検の記録は「監視・測定の計画」と各ページにあります)。\n'+
