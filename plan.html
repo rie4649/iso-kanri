@@ -84,7 +84,26 @@
   .ycBtns button { border:1px solid var(--line); background:#fff; border-radius:16px; padding:5px 12px; font-size:13px; cursor:pointer; font-family:inherit; }
   .ycBtns button.on { background:var(--navy); color:#fff; border-color:var(--navy); } .ycBtns button.on.ng { background:#dc2626; border-color:#dc2626; }
   .ycBtns input { flex:1; min-width:180px; font-size:13px; padding:5px 8px; }
-  @media print { body > *:not(#ycView) { display:none !important; } #ycView { position:static !important; background:#fff; } #ycView .noPrint { display:none !important; } }
+  @media print { body > *:not(#ycView) { display:none !important; } #ycView { position:static !important; background:#fff; } #ycView .noPrint { display:none !important; } #shWrap { overflow:visible !important; height:auto !important; } .printOnly { display:block !important; } }
+  .printOnly { display:none; font-size:16px; margin:6px 0; }
+  .shTop { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 12px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  .shHelp { margin:8px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 12px; font-size:13px; } .shHelp summary { cursor:pointer; font-weight:700; color:#92400e; } .shHelp ol { margin:6px 0 2px 18px; padding:0; line-height:1.8; }
+  #shWrap { overflow:auto; height:calc(100vh - 120px); background:#fff; margin:0 12px 12px; border:1px solid var(--line); }
+  table.sh { border-collapse:separate; border-spacing:0; font-size:12px; table-layout:fixed; }
+  table.sh th.yc, table.sh td.yc { position:sticky; right:0; z-index:1; box-shadow:-2px 0 4px rgba(0,0,0,.08); } table.sh th.yc { z-index:3; }
+  table.sh th { position:sticky; top:0; z-index:2; background:#dbe4f3; border:1px solid #94a3b8; padding:4px 2px; font-size:11px; line-height:1.25; word-break:break-all; }
+  table.sh td { border:1px solid #cbd5e1; padding:0; vertical-align:top; background:#fff; }
+  table.sh td.tx div { min-height:22px; padding:3px 4px; white-space:pre-wrap; word-break:break-all; line-height:1.4; outline:none; }
+  table.sh td.tx div:focus { background:#fef9c3; box-shadow:inset 0 0 0 2px #f59e0b; }
+  table.sh td.tg { text-align:center; vertical-align:middle; cursor:pointer; font-size:15px; font-weight:700; color:#1e3a5f; user-select:none; } table.sh td.tg:hover { background:#e0f2fe; } table.sh td.tg.on { background:#eff6ff; }
+  table.sh td.sl select { width:100%; border:none; background:transparent; font-size:12px; padding:3px 0; }
+  table.sh td.ro { padding:3px 4px; color:#475569; }
+  table.sh td.op { text-align:center; vertical-align:middle; background:#f8fafc; } .x { border:none; background:none; color:#dc2626; cursor:pointer; font-size:15px; padding:0 2px; }
+  .nw { display:block; font-size:10px; color:#fff; background:#d97706; border-radius:3px; margin:2px auto 0; width:16px; }
+  table.sh td.yc { padding:3px; vertical-align:middle; background:#f8fafc; } table.sh tr.ok td.yc { background:#dcfce7; } table.sh tr.ng td.yc { background:#fee2e2; }
+  table.sh td.yc button { border:1px solid #cbd5e1; background:#fff; border-radius:12px; padding:2px 7px; font-size:11px; cursor:pointer; margin:1px; font-family:inherit; }
+  table.sh td.yc button.on { background:#1e3a5f; color:#fff; border-color:#1e3a5f; } table.sh td.yc button.on.bad { background:#dc2626; border-color:#dc2626; }
+  .mm { font-size:11px; margin-top:2px; min-height:16px; border-bottom:1px dashed #94a3b8; outline:none; } .mm:empty:before { content:attr(data-ph); color:#94a3b8; }
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -239,9 +258,9 @@ function yearCheckCard(reg){
   return '<div class="card" style="border-left:4px solid '+(n === us.length && us.length ? '#16a34a' : '#d97706')+';"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
     '<b style="flex:1;color:var(--navy);">📋 年度の点検（'+y+'年度：'+y+'年8月〜'+(y+1)+'年7月）</b>'+
     '<span style="font-weight:700;color:'+(n === us.length && us.length ? '#15803d' : '#b45309')+';">'+n+' / '+us.length+(reg.yearCheck.perGroup ? ' 法令' : ' 行')+' 点検済み</span>'+(ng ? '<span class="tag sig">'+(reg.key === "legal" ? "要改善" : "見直しが必要")+' '+ng+'</span>' : '')+
-    '<button class="btn pri sm" onclick="openYc('+y+')">'+(n ? '点検の続き' : '今年の点検を始める')+'</button>'+
-    (years.filter(x => Number(x) !== y).length ? '<select style="width:auto;" onchange="if(this.value)openYc(Number(this.value))"><option value="">過去の点検を見る</option>'+years.filter(x => Number(x) !== y).map(x => '<option value="'+x+'">'+x+'年度</option>').join("")+'</select>' : '')+'</div>'+
-    '<div class="note" style="margin:4px 0 0;">1年に1回、表の'+(reg.yearCheck.perGroup ? '法令' : '行')+'を1つずつ確認して、結果を残します。終わったら「この表で新しい版(PDF)を作る」で、今年の版を作ります。</div></div>';
+    '<button class="btn pri" onclick="openSheet()">📋 チェックシートを開く（直す・点検する）</button>'+
+    (years.filter(x => Number(x) !== y).length ? '<select style="width:auto;" onchange="if(this.value)openSheet(null, Number(this.value))"><option value="">過去の点検を見る</option>'+years.filter(x => Number(x) !== y).map(x => '<option value="'+x+'">'+x+'年度</option>').join("")+'</select>' : '')+'</div>'+
+    '<div class="note" style="margin:4px 0 0;">チェックシートは紙の様式と同じ形の表です。文字はその場で書き換え、○はマスを押すだけで付け外しできます(自動で保存)。右端の「今年の点検」を全部付けたら、「この表で新しい版(PDF)を作る」で今年の版を作ります。</div></div>';
 }
 function openYc(y){ ycYear = y; renderYc(); document.getElementById("ycView").style.display = "block"; document.getElementById("ycView").scrollTop = 0; }
 function closeYc(){ document.getElementById("ycView").style.display = "none"; render(); }
@@ -299,6 +318,109 @@ async function ycAll(){
   if (!confirm("まだ点検していない "+rest.length+"件 を「"+l+"」にします。よろしいですか？")) return;
   try { for (let i = 0; i < rest.length; i += 150) await ycWrite(rest.slice(i, i + 150), yc.all); renderYc(); toast(rest.length+"件を「"+l+"」にしました"); } catch(e){ toast("保存できませんでした: "+e.message); }
 }
+/* ===== チェックシート(紙の様式と同じ形の表で、その場で直す・○を付ける・今年の点検をする) =====
+   次の人へ: 列の並びは FORM_DEFS(PDFの様式)と同じ。文字のマスは押して書き換え(枠の外を押すと保存)、
+   ○のマスは押すたびに付く・消える。右端が「今年の点検」。保存はすべて自動で、行には最終更新日が残ります */
+let shCode = "", shYear = 0;
+function sheetCodes(reg){
+  const ids = linkedDocs(reg.key).map(d => d.id).filter(c => FORM_DEFS[c] && (!FORM_DEFS[c].filter || reg.key === "aspects"));
+  return ids.length ? ids : [""];
+}
+function openSheet(code, y){
+  const reg = regOf(cur), codes = sheetCodes(reg);
+  shCode = code != null && codes.includes(code) ? code : (codes.includes(shCode) ? shCode : codes[0]); shYear = y || ycFy();
+  document.getElementById("ycView").style.display = "block"; renderSheet(true);
+}
+function closeSheet(){ document.getElementById("ycView").style.display = "none"; render(); }
+function shDef(reg){ const d = formDef(reg, shCode); return { ...d, cols: d.cols.filter(c => !(c.v && c.v.yc)) }; }
+function shRows(reg, def){ return sorted(reg).filter(r => !r.draft && (!def.filter || def.filter(r))); }
+function shCell(reg, col, ci, r, span, def){
+  const rs = span > 1 ? ' rowspan="'+span+'"' : '', id = r.id;
+  if (col.v && (col.v.tog || col.v.cond)){ const on = col.v(r) === "○";
+    return '<td'+rs+' class="tg'+(on ? ' on' : '')+'" onclick="shTog(\''+id+'\','+ci+')" title="押すと○が付く・消える">'+(on ? '○' : '')+'</td>'; }
+  if (col.v) return '<td'+rs+' class="ro">'+esc(col.v(r))+'</td>';
+  const f = reg.fields.find(x => x.k === col.k); if (!f) return '<td'+rs+' class="ro">'+esc(r[col.k] || "")+'</td>';
+  if (f.type === "select") return '<td'+rs+' class="sl"><select onchange="shSet(\''+id+'\',\''+f.k+'\',this.value,'+(col.m ? 1 : 0)+')">'+f.options.map(o => '<option value="'+esc(o[0])+'"'+(String(r[f.k] || "") === o[0] ? ' selected' : '')+'>'+esc(o[0] || "―")+'</option>').join("")+'</select></td>';
+  return '<td'+rs+' class="tx"><div contenteditable="plaintext-only" data-old="'+esc(r[f.k] || "")+'" onblur="shText(\''+id+'\',\''+f.k+'\',this,'+(col.m ? 1 : 0)+')">'+esc(r[f.k] || "")+'</div></td>';
+}
+function renderSheet(top){
+  const reg = regOf(cur), yc = reg.yearCheck, def = shDef(reg), rows = shRows(reg, def), y = shYear, cy = ycFy(), ro = y !== cy;
+  const units = ycUnits(reg).filter(u => u.rows.some(r => rows.includes(r)));
+  const done = units.filter(u => ycOf(u, y)).length, codes = sheetCodes(reg);
+  const wrap = document.getElementById("shWrap"), sl = wrap ? wrap.scrollLeft : 0, st = wrap ? wrap.scrollTop : 0;
+  const gk = def.group;
+  let body = "";
+  rows.forEach((r, i) => {
+    const first = !gk || i === 0 || String(rows[i-1][gk]) !== String(r[gk]);
+    let span = 1; if (gk && first){ while (i + span < rows.length && String(rows[i+span][gk]) === String(r[gk])) span++; }
+    const u = yc.perGroup ? units.find(x => x.rows.includes(r)) : units.find(x => x.key === r.id);
+    const c = u && ycOf(u, y), ng = c && /要改善|見直し/.test(c.r);
+    const recent = r.updatedAt && r.updatedAt.toDate && ycFy(r.updatedAt.toDate()) === cy;
+    body += '<tr class="'+(ng ? 'ng' : c ? 'ok' : '')+'">'+
+      '<td class="op" title="'+(r.updatedAt && r.updatedAt.toDate ? '最終更新 '+fdTs(r.updatedAt) : '')+'">'+(ro ? '' : '<button class="x" onclick="shDel(\''+r.id+'\')" title="この行を削除">×</button>')+(recent ? '<span class="nw" title="今年度に直した行">直</span>' : '')+'</td>'+
+      def.cols.map((col, ci) => { if (gk && col.m && !first) return ""; return shCell(reg, col, ci, r, gk && col.m ? span : 1, def); }).join("")+
+      ((!yc.perGroup || first) ? '<td class="yc"'+(yc.perGroup && span > 1 ? ' rowspan="'+span+'"' : '')+'>'+
+        (ro ? '<b>'+esc(c ? ((yc.opts.find(o => o[0] === c.r) || [,c.r])[1]) : "未点検")+'</b>'+(c && c.memo ? '<div class="mm">'+esc(c.memo)+'</div>' : '')
+          : yc.opts.map(([v, l]) => '<button class="'+(c && c.r === v ? 'on'+(/要改善|見直し/.test(v) ? ' bad' : '') : '')+'" onclick="shYc(\''+esc(u.key)+'\',\''+v+'\')">'+esc(l.replace("✓ ", "✓"))+'</button>').join("")+
+            (c ? '<div class="mm" contenteditable="plaintext-only" data-ph="メモ" onblur="ycMemo(\''+esc(u.key)+'\',this.textContent.trim())">'+esc(c.memo || "")+'</div>' : ''))+'</td>' : '')+'</tr>';
+  });
+  const head = '<tr><th class="op"></th>'+formHeadHtml(def).replace(/^<tr>|<\/tr>$/g, "").replace(/style="[^"]*"/g, "")+'<th class="yc">'+y+'年度の点検</th></tr>';
+  const sumW = def.cols.reduce((a, c) => a + c.w, 0), base = Math.max(1000, sumW * 13), px = w => Math.round(w / sumW * base);
+  document.getElementById("ycView").innerHTML =
+    '<div class="shTop noPrint"><button class="btn" onclick="closeSheet()">← 戻る</button><b style="font-size:16px;color:var(--navy);">'+esc(reg.name)+(shCode ? '　EMS-'+esc(shCode) : '')+'</b>'+
+      (codes.length > 1 ? codes.map(c => '<button class="btn sm'+(c === shCode ? ' pri' : '')+'" onclick="openSheet(\''+c+'\','+y+')">EMS-'+esc(c)+' '+esc((EMS.docs.find(d => d.id === c) || {}).name || "")+'</button>').join("") : '')+
+      '<span style="flex:1;"></span><b style="color:'+(done === units.length && units.length ? '#15803d' : '#b45309')+';">'+y+'年度の点検 '+done+' / '+units.length+'</b>'+
+      (!ro && done < units.length ? '<button class="btn sm" onclick="shAll()">残り'+(units.length - done)+'件を「'+esc((yc.opts.find(o => o[0] === yc.all) || [,""])[1])+'」</button>' : '')+
+      '<button class="btn sm" onclick="window.print()">印刷</button></div>'+
+    '<details class="shHelp noPrint"'+(top && !done ? ' open' : '')+'><summary>この画面の使い方（はじめての人へ）</summary><ol>'+
+      '<li><b>文字のマス</b>：押すと書き換えられます。枠の外を押すと自動で保存されます。</li>'+
+      '<li><b>○のマス</b>：押すたびに ○ が付く・消えます(すぐ保存)。</li>'+
+      '<li><b>右端「'+y+'年度の点検」</b>：1年に1回、行'+(yc.perGroup ? '(法令)' : '')+'ごとに確認してボタンを押します。直すところがあれば「'+esc((yc.opts.find(o => /要改善|見直し/.test(o[0])) || [,""])[1])+'」を押してメモを書き、表を直します。</li>'+
+      '<li><b>行を足す</b>：いちばん下の「＋ 行を追加」。<b>行を消す</b>：左端の ×。左端の「直」は今年度に直した行です。</li>'+
+      '<li>全部点検したら「← 戻る」→「この表で新しい版(PDF)を作る」で今年の版を作ります(去年の版は履歴に残ります)。</li></ol></details>'+
+    (ro ? '<div class="note noPrint" style="margin:6px 12px;">'+y+'年度の点検の記録です(見るだけ)。表の中身は今の内容です。</div>' : '')+
+    '<h2 class="printOnly">'+esc(reg.name)+(shCode ? '（EMS-'+esc(shCode)+'）' : '')+'　'+y+'年度の点検　株式会社関根商店</h2>'+
+    '<div id="shWrap"><table class="sh" style="width:'+(base + 34 + 160)+'px;"><colgroup><col style="width:34px">'+def.cols.map(c => '<col style="width:'+px(c.w)+'px">').join("")+'<col style="width:160px"></colgroup>'+head+body+'</table>'+
+    (ro ? '' : '<div class="noPrint" style="padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn pri" onclick="shAdd()">＋ 行を追加</button>'+(reg.key === "legal" ? '<span class="note" style="margin:0;align-self:center;">同じ法令に条項を足すときは、No.を同じ番号にしてください</span>' : '')+'</div>')+'</div>';
+  const w2 = document.getElementById("shWrap"); if (!top){ w2.scrollLeft = sl; w2.scrollTop = st; }
+}
+function shRow(id){ return rows.find(x => x.id === id); }
+async function shSave(id, upd, group){
+  const reg = regOf(cur), r = shRow(id); if (!r) return;
+  const targets = group && reg.group ? rows.filter(x => x.reg === reg.key && String(x[reg.group]) === String(r[reg.group])) : [r];
+  const b = db.batch(); targets.forEach(x => { b.update(db.collection(ISO_REG_COL).doc(x.id), { ...upd, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); Object.assign(x, upd, { updatedAt:{ toDate:() => new Date() } }); });
+  try { await b.commit(); toast("保存しました"); } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function shText(id, k, el, group){
+  const v = el.textContent.replace(/\u00a0/g, " ").trim(); if (v === el.dataset.old) return; el.dataset.old = v;
+  await shSave(id, { [k]: v }, group); if (k === regOf(cur).group) renderSheet();
+}
+async function shSet(id, k, v, group){ await shSave(id, { [k]: v }, group); renderSheet(); }
+async function shTog(id, ci){
+  const reg = regOf(cur), col = shDef(reg).cols[ci], r = shRow(id); if (!r) return;
+  if (col.v.cond){ const sel = ["通常","非通常","緊急"].filter(n => n === col.v.cond ? !condHas(r, n) : condHas(r, n)); await shSave(id, { condAll: sel.join("・"), cond: sel[0] || "" }); }
+  else { const [k, n] = col.v.tog, cur2 = String(r[k] || "").split("、").filter(Boolean); const nx = cur2.includes(n) ? cur2.filter(x => x !== n) : cur2.concat(n);
+    const f = reg.fields.find(x => x.k === k), ord = f && f.options ? f.options : null; await shSave(id, { [k]: (ord ? ord.filter(o => nx.includes(o)) : nx).join("、") }); }
+  renderSheet();
+}
+async function shYc(key, v){ ycYear = shYear; await ycSet(key, v); renderSheet(); }
+async function shAll(){ ycYear = shYear; await ycAll(); renderSheet(); }
+async function shDel(id){
+  const reg = regOf(cur), r = shRow(id); if (!r) return;
+  if (!confirm("この行を削除しますか？\n「"+String(r[reg.title] || r.aspect || r.manName || "").slice(0, 40)+"」\n(元に戻せません)")) return;
+  try { await db.collection(ISO_REG_COL).doc(id).delete(); const i = rows.indexOf(r); if (i >= 0) rows.splice(i, 1); renderSheet(); toast("削除しました"); } catch(e){ toast("削除できませんでした: "+e.message); }
+}
+async function shAdd(){
+  const reg = regOf(cur), def = shDef(reg), list = shRows(reg, def), last = list[list.length - 1] || {};
+  const data = { reg:reg.key, draft:false, createdMs:Date.now(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  if (reg.key === "aspects") data.good = shCode === "A-07" ? "良い" : "";
+  if (reg.key === "legal"){ const no = prompt("No.(同じ法令に条項を足すときは同じ番号。新しい法令は "+(Math.max(0, ...list.map(r => Number(r.no) || 0)) + 1)+")", String(Math.max(0, ...list.map(r => Number(r.no) || 0)) + 1)); if (no == null) return;
+    data.no = no.trim(); const g = list.find(r => String(r.no) === data.no); if (g) reg.groupFields.forEach(k => data[k] = g[k] || ""); }
+  if (reg.key === "sigAspects" && last.group) data.group = last.group;
+  if (reg.key === "aspects" && last.activity) data.activity = last.activity;
+  try { const ref = await db.collection(ISO_REG_COL).add(data); rows.push({ id:ref.id, ...data, updatedAt:{ toDate:() => new Date() } }); renderSheet(); const w = document.getElementById("shWrap"); w.scrollTop = w.scrollHeight; toast("行を追加しました。マスを押して入力してください"); }
+  catch(e){ toast("追加できませんでした: "+e.message); }
+}
 function setTab(k){ cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
 
 function sorted(reg){
@@ -339,7 +461,7 @@ function render(){
       (lds.length && list.length ? '<div class="note" style="margin:-6px 0 8px;">行を追加・修正したら「この表で新しい版を作る」で、会社の様式('+esc(lds.map(d => "EMS-"+d.id).join("・"))+')のPDFを作って原本の新しい版として登録できます(前の版は改訂履歴に残ります)。</div>' : '')+
     (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
     list.map(r => cardHtml(reg, r)).join("");
-  h += '<details class="card" style="padding:10px 14px;"'+(list.length ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">📝 表で入力・修正する（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
+  h += '<details class="card" style="padding:10px 14px;"'+(list.length && !reg.yearCheck ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">'+(reg.yearCheck ? '📝 1行ずつ見る・くわしく入力する(今までの画面)' : '📝 表で入力・修正する')+'（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
     '<div class="note" style="margin:4px 0 8px;">計画書の中身を1行ずつ入力すると、環境への取り組みで表として見せられ、1行ずつ直せます。'+(list.some(r => r.fromDoc) ? '受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・"))+')から書き写した内容が入っています。' : '')+'</div>'+tbl+'</details>';
   document.getElementById("body").innerHTML = h;
 }
@@ -356,14 +478,15 @@ const FORM_COLS = {
 };
 /* 文書ごとの様式(列・まとめるセル・文字の大きさ)。ない文書は FORM_COLS か台帳の項目から作る
    列: { k:項目, v:(行)=>表示, l:見出し(null=前の見出しとつなげる), w:幅%, c:中央, m:まとまり(No.が同じ行)で1つのセルにする } */
-const mk = (k, n) => r => hasCheck(r[k], n) ? "○" : "";
+const mk = (k, n) => Object.assign(r => hasCheck(r[k], n) ? "○" : "", { tog:[k, n] });   // tog: チェックシートでマスを押すと○が付く・消える
+const condHas = (r, n) => { const t = String(r.condAll || r.cond || ""); return n === "通常" ? t.replace(/非通常/g, "").includes("通常") : t.includes(n); };
 const FORM_DEFS = {
   "A-05": { group:"no", font:10, foot: m => "“順守・非該当・要改善” の3区分で整理しています。証拠は手順書・記録で確認。　　見直し日："+m.dateTxt+"　　次回見直し予定日："+(m.date ? (Number(m.date.slice(0,4))+1)+m.date.slice(4).replace(/-/g,".") : ""),
     cols:[{k:"no",l:"No.",w:3,c:1,m:1},{k:"name",l:"法規制等の名称",w:10,m:1},{k:"clause",l:"該当する条項",w:11},{k:"content",l:"内容",w:11},{k:"target",l:"対象設備・業務",w:19},
       {k:"esg",l:"気候変動・ESG関連",w:4,c:1,m:1},{k:"esgNote",l:null,w:10,m:1},{k:"parties",l:"地域・利害関係者との関連",w:9,m:1},{k:"method",l:"順守方法",w:15},{k:"eval",l:"順守状況の評価",w:6,c:1,m:1}] },
   "A-06": { filter: r => r.good !== "良い", font:8.5, head:7.5,
     cols:[{k:"no",l:"NO",w:2.5,c:1},{k:"activity",l:"環境側面区分",w:7},{k:"aspect",l:"環境側面",w:13},
-      ...["通常","非通常","緊急"].map(n => ({ v:r => { const t = String(r.condAll || r.cond || ""); return (n === "通常" ? t.replace(/非通常/g, "").includes("通常") : t.includes(n)) ? "○" : ""; }, l:n, w:2.2, c:1 })),
+      ...["通常","非通常","緊急"].map(n => ({ v:Object.assign(r => condHas(r, n) ? "○" : "", { cond:n }), l:n, w:2.2, c:1 })),
       ...ASPECT_CATS.map(n => ({ v:mk("cats", n), l:n, w:2.4, c:1 })),
       {v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:2.4,c:1},{v:mk("biz","ビジネスリスク"),l:"ビジネスリスク",w:2.4,c:1},
       {v:mk("dirKind","直接影響"),l:"直接影響",w:2.4,c:1},{v:mk("dirKind","間接影響"),l:"間接影響",w:2.4,c:1},
@@ -378,7 +501,7 @@ const FORM_DEFS = {
       {k:"sigMark",l:"重要管理事項",w:4,c:1},{v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:3.5,c:1},{k:"control",l:"著しい環境側面とした理由",w:13}] },
   "A-08": { group:"group", font:9.5, foot: m => "更新日："+m.dateTxt+"　　次回更新：年1度（"+(m.date ? Number(m.date.slice(0,4))+1 : "")+"年11月予定）",
     cols:[{k:"group",l:"環境影響",w:8,m:1},{k:"impact",l:null,w:10},{k:"life",l:"ライフサイクル区分",w:7},{k:"manNo",l:"手順書No.",w:4.5,c:1},{k:"manName",l:"手順書内容",w:19},
-      {k:"kind",l:"区分",w:4.5,c:1},{k:"action",l:"対応方法",w:11},{k:"sig",l:"著しい環境側面",w:5,c:1},{k:"reason",l:"著しい理由",w:25},{v:r => { const c = (r.checks || {})[ycFy()]; return c ? (c.r === "OK" ? "✓" : "見直し") : (r.check || ""); },l:"確認",w:4,c:1}] }
+      {k:"kind",l:"区分",w:4.5,c:1},{k:"action",l:"対応方法",w:11},{k:"sig",l:"著しい環境側面",w:5,c:1},{k:"reason",l:"著しい理由",w:25},{v:Object.assign(r => { const c = (r.checks || {})[ycFy()]; return c ? (c.r === "OK" ? "✓" : "見直し") : (r.check || ""); }, { yc:1 }),l:"確認",w:4,c:1}] }
 };
 function formDef(reg, code){
   if (FORM_DEFS[code]) return FORM_DEFS[code];
