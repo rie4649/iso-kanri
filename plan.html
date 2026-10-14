@@ -185,6 +185,7 @@
 </script>
 <script src="registers.js"></script>
 <script src="ems-seed.js"></script>
+<script src="plan-seed.js"></script>
 <script src="ems-docs.js"></script>
 <script src="contract-stats.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -217,6 +218,7 @@ function setTab(k){ cur = k; try { history.replaceState(null, "", "#"+k); } catc
 function sorted(reg){
   const list = rows.filter(r => r.reg === reg.key);
   if (reg.dated) return list.sort((a,b) => String(b[reg.dated]||"").localeCompare(String(a[reg.dated]||"")) || (a.createdMs||0) - (b.createdMs||0));
+  if (reg.key === "legal") return list.sort((a,b) => (Number(a.no)||999) - (Number(b.no)||999) || (a.sub ?? 999) - (b.sub ?? 999) || (a.createdMs||0) - (b.createdMs||0));
   if (reg.key === "aspects") return list.sort((a,b) => aspectScore(b).total - aspectScore(a).total || (a.createdMs||0) - (b.createdMs||0));
   return list.sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
 }
@@ -265,36 +267,83 @@ const FORM_COLS = {
   aspects: [["activity","区分",10],["aspect","環境側面",22],["impact","環境影響",20],["cond","状態",6],["lawName","法規制",12],["control","管理事項",22],["sigMark","著しい",6]],
   parties: null
 };
-function formCols(reg){
-  if (FORM_COLS[reg.key]) return FORM_COLS[reg.key];
-  const fs = reg.fields.filter(f => f.list && !f.score); const w = Math.floor(100 / Math.max(1, fs.length));
-  return fs.map(f => [f.k, f.label, w]);
+/* 文書ごとの様式(列・まとめるセル・文字の大きさ)。ない文書は FORM_COLS か台帳の項目から作る
+   列: { k:項目, v:(行)=>表示, l:見出し(null=前の見出しとつなげる), w:幅%, c:中央, m:まとまり(No.が同じ行)で1つのセルにする } */
+const mk = (k, n) => r => hasCheck(r[k], n) ? "○" : "";
+const FORM_DEFS = {
+  "A-05": { group:"no", font:10, foot: m => "“順守・非該当・要改善” の3区分で整理しています。証拠は手順書・記録で確認。　　見直し日："+m.dateTxt+"　　次回見直し予定日："+(m.date ? (Number(m.date.slice(0,4))+1)+m.date.slice(4).replace(/-/g,".") : ""),
+    cols:[{k:"no",l:"No.",w:3,c:1,m:1},{k:"name",l:"法規制等の名称",w:10,m:1},{k:"clause",l:"該当する条項",w:11},{k:"content",l:"内容",w:11},{k:"target",l:"対象設備・業務",w:19},
+      {k:"esg",l:"気候変動・ESG関連",w:4,c:1,m:1},{k:"esgNote",l:null,w:10,m:1},{k:"parties",l:"地域・利害関係者との関連",w:9,m:1},{k:"method",l:"順守方法",w:15},{k:"eval",l:"順守状況の評価",w:6,c:1,m:1}] },
+  "A-06": { filter: r => r.good !== "良い", font:8.5, head:7.5,
+    cols:[{k:"no",l:"NO",w:2.5,c:1},{k:"activity",l:"環境側面区分",w:7},{k:"aspect",l:"環境側面",w:13},
+      ...["通常","非通常","緊急"].map(n => ({ v:r => { const t = String(r.condAll || r.cond || ""); return (n === "通常" ? t.replace(/非通常/g, "").includes("通常") : t.includes(n)) ? "○" : ""; }, l:n, w:2.2, c:1 })),
+      ...ASPECT_CATS.map(n => ({ v:mk("cats", n), l:n, w:2.4, c:1 })),
+      {v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:2.4,c:1},{v:mk("biz","ビジネスリスク"),l:"ビジネスリスク",w:2.4,c:1},
+      {v:mk("dirKind","直接影響"),l:"直接影響",w:2.4,c:1},{v:mk("dirKind","間接影響"),l:"間接影響",w:2.4,c:1},
+      {k:"lawName",l:"法規制名",w:7},{k:"emergency",l:"緊急事態の特定",w:7},{k:"control",l:"管理事項",w:12},
+      {v:mk("mgmt","手順書化"),l:"手順書化",w:2.2,c:1},{v:mk("mgmt","訓練"),l:"訓練",w:2.2,c:1},{v:mk("mgmt","力量"),l:"力量",w:2.2,c:1},{k:"sigMark",l:"著しい環境側面",w:3.5,c:1}] },
+  "A-07": { filter: r => r.good === "良い", font:9, head:8,
+    cols:[{k:"no",l:"番号",w:3,c:1},{k:"activity",l:"環境側面区分",w:7},{k:"aspect",l:"環境側面(活動の要素)",w:16},
+      {v:mk("dirKind","直接影響"),l:"直接影響",w:3,c:1},{v:mk("dirKind","間接影響"),l:"間接影響",w:3,c:1},{k:"lawName",l:"法規制名",w:7},
+      ...ASPECT_CONTRIB.map((n, i) => ({ v:mk("contrib", n), l:n, w:i ? 3.2 : 3, c:1 })).slice(0,1),
+      {k:"impact",l:"主な環境改善効果",w:13},
+      ...ASPECT_CONTRIB.slice(1).map(n => ({ v:mk("contrib", n), l:n, w:3.2, c:1 })),
+      {k:"sigMark",l:"重要管理事項",w:4,c:1},{v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:3.5,c:1},{k:"control",l:"著しい環境側面とした理由",w:13}] },
+  "A-08": { group:"group", font:9.5, foot: m => "更新日："+m.dateTxt+"　　次回更新：年1度（"+(m.date ? Number(m.date.slice(0,4))+1 : "")+"年11月予定）",
+    cols:[{k:"group",l:"環境影響",w:8,m:1},{k:"impact",l:null,w:10},{k:"life",l:"ライフサイクル区分",w:7},{k:"manNo",l:"手順書No.",w:4.5,c:1},{k:"manName",l:"手順書内容",w:19},
+      {k:"kind",l:"区分",w:4.5,c:1},{k:"action",l:"対応方法",w:11},{k:"sig",l:"著しい環境側面",w:5,c:1},{k:"reason",l:"著しい理由",w:25},{k:"check",l:"確認",w:4,c:1}] }
+};
+function formDef(reg, code){
+  if (FORM_DEFS[code]) return FORM_DEFS[code];
+  const cols = FORM_COLS[reg.key] || (() => { const fs = reg.fields.filter(f => f.list && !f.score); const w = Math.floor(100 / Math.max(1, fs.length)); return fs.map(f => [f.k, f.label, w]); })();
+  return { cols: cols.map(([k, l, w]) => ({ k, l, w })) };
 }
-function formRowsHtml(reg, rows, cols){
-  return rows.map(r => '<tr>'+cols.map(([k]) => { const f = reg.fields.find(x => x.k === k); let v = f ? regLabel(f, r[k]) : (r[k] || "");
-    if ((k === "freq" || k === "level") && reg.key === "risks") v = r[k] || "";
-    return '<td style="border:1px solid #111;padding:3px 4px;vertical-align:top;white-space:pre-wrap;word-break:break-all;line-height:1.45;">'+esc(v)+'</td>'; }).join("")+'</tr>').join("");
+function cellVal(reg, col, r){
+  if (col.v) return col.v(r);
+  const f = reg.fields.find(x => x.k === col.k); let v = f ? regLabel(f, r[col.k]) : (r[col.k] || "");
+  if (f && f.type === "select" && ["eval","esg","sig","sigMark","kind","freq","level"].includes(col.k)) v = r[col.k] || "";
+  return v;
 }
-function formPageHtml(reg, meta, cols, rowsHtml, pageNo, pages){
-  return '<div class="fp" style="width:1123px;height:794px;box-sizing:border-box;padding:28px 34px;background:#fff;font-family:\'Yu Gothic\',\'Hiragino Sans\',\'Meiryo\',sans-serif;color:#111;position:relative;">'+
-    '<div style="display:flex;gap:16px;align-items:stretch;margin-bottom:12px;">'+
-      '<div style="flex:1;border:1.5px solid #111;background:#d9d9d9;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;letter-spacing:.1em;">'+esc(meta.title)+'</div>'+
-      '<table style="border-collapse:collapse;font-size:12px;width:330px;">'+[["文書番号",meta.docNo],["作成者",meta.author],["日付",meta.dateTxt],["確認者",meta.checker]].map(([k,v]) => '<tr><td style="border:1px solid #111;padding:3px 6px;width:80px;">'+k+'</td><td style="border:1px solid #111;padding:3px 6px;text-align:center;">'+esc(v||"")+'</td></tr>').join("")+'</table></div>'+
-    '<table class="mt" style="border-collapse:collapse;width:100%;font-size:11px;table-layout:fixed;"><colgroup>'+cols.map(c => '<col style="width:'+c[2]+'%">').join("")+'</colgroup>'+
-      '<tr>'+cols.map(c => '<th style="border:1px solid #111;background:#dbe4f3;padding:4px;font-weight:bold;">'+esc(c[1])+'</th>').join("")+'</tr>'+rowsHtml+'</table>'+
-    '<div style="position:absolute;bottom:14px;right:34px;font-size:11px;color:#444;">株式会社関根商店　'+pageNo+' / '+pages+'</div></div>';
+/* rows を表の行に。def.group があれば、同じまとまりの m:1 の列を1つのセル(rowspan)にする。measure=true は高さを測る用(まとめずに先頭行だけ書く) */
+function formRowsHtml(reg, rows, def, measure){
+  const td = (v, col, rs) => '<td'+(rs > 1 ? ' rowspan="'+rs+'"' : '')+' style="border:1px solid #111;padding:2px 3px;vertical-align:'+(col.c ? 'middle;text-align:center' : 'top')+';white-space:pre-wrap;word-break:break-all;line-height:1.4;">'+esc(v)+'</td>';
+  const gk = def.group;
+  return rows.map((r, i) => {
+    const first = !gk || i === 0 || String(rows[i-1][gk]) !== String(r[gk]);
+    let span = 1; if (gk && first){ while (i + span < rows.length && String(rows[i+span][gk]) === String(r[gk])) span++; }
+    return '<tr>'+def.cols.map(col => {
+      if (!gk || !col.m) return td(cellVal(reg, col, r), col, 1);
+      if (measure) return td(first ? cellVal(reg, col, r) : "", col, 1);
+      return first ? td(cellVal(reg, col, r), col, span) : "";
+    }).join("")+'</tr>';
+  }).join("");
 }
-/* 行を高さで分けて、ページごとのHTMLを作る */
+function formHeadHtml(def){
+  const ths = []; def.cols.forEach(c => { if (c.l === null && ths.length) ths[ths.length-1].span++; else ths.push({ l:c.l, span:1 }); });
+  return '<tr>'+ths.map(t => '<th'+(t.span > 1 ? ' colspan="'+t.span+'"' : '')+' style="border:1px solid #111;background:#dbe4f3;padding:3px 2px;font-weight:bold;word-break:break-all;line-height:1.25;">'+esc(t.l)+'</th>').join("")+'</tr>';
+}
+function formPageHtml(reg, meta, def, rowsHtml, pageNo, pages){
+  return '<div class="fp" style="width:1123px;height:794px;box-sizing:border-box;padding:24px 30px;background:#fff;font-family:\'Yu Gothic\',\'Hiragino Sans\',\'Meiryo\',sans-serif;color:#111;position:relative;">'+
+    '<div style="display:flex;gap:16px;align-items:stretch;margin-bottom:10px;">'+
+      '<div style="flex:1;border:1.5px solid #111;background:#d9d9d9;display:flex;align-items:center;justify-content:center;font-size:'+(meta.title.length > 22 ? 18 : 24)+'px;font-weight:bold;letter-spacing:.06em;text-align:center;padding:0 8px;">'+esc(meta.title)+'</div>'+
+      '<table style="border-collapse:collapse;font-size:12px;width:330px;">'+[["文書番号",meta.docNo],["作成者",meta.author],["日付",meta.dateTxt],["確認者",meta.checker]].map(([k,v]) => '<tr><td style="border:1px solid #111;padding:3px 6px;width:80px;background:#f3f4f6;">'+k+'</td><td style="border:1px solid #111;padding:3px 6px;">'+esc(v)+'</td></tr>').join("")+'</table></div>'+
+    '<table class="mt" style="border-collapse:collapse;width:100%;font-size:'+(def.font || 11)+'px;table-layout:fixed;"><colgroup>'+def.cols.map(c => '<col style="width:'+c.w+'%">').join("")+'</colgroup>'+
+      formHeadHtml(def).replace('<tr>', '<tr style="font-size:'+(def.head || def.font || 11)+'px;">')+rowsHtml+'</table>'+
+    (def.foot ? '<div class="ft" style="font-size:11px;margin-top:6px;">'+esc(def.foot(meta))+'</div>' : '')+
+    '<div style="position:absolute;bottom:12px;right:30px;font-size:11px;color:#444;">株式会社関根商店　'+pageNo+' / '+pages+'</div></div>';
+}
+/* 行を高さで分けて、ページごとのHTMLを作る(まとまりの途中で分かれたときは、次のページでもう一度まとめる) */
 function buildFormPages(reg, meta){
-  const rows = sorted(reg).filter(r => !r.draft), cols = formCols(reg);
+  const def = formDef(reg, meta.code), rows = sorted(reg).filter(r => !r.draft && (!def.filter || def.filter(r)));
   const st = document.getElementById("formStage");
-  st.innerHTML = formPageHtml(reg, meta, cols, formRowsHtml(reg, rows, cols), 1, 1);
-  const trs = [...st.querySelectorAll("table.mt tr")].slice(1), headH = st.querySelector("table.mt tr").offsetHeight;
-  const avail = 794 - 28 - 34 - st.querySelector(".fp > div").offsetHeight - 12 - headH - 10;
+  st.innerHTML = formPageHtml(reg, meta, def, formRowsHtml(reg, rows, def, true), 1, 1);
+  const trs = [...st.querySelectorAll("table.mt tr")].slice(1), headH = st.querySelector("table.mt tr").offsetHeight, ft = st.querySelector(".ft");
+  const avail = 794 - 24 - 30 - st.querySelector(".fp > div").offsetHeight - 10 - headH - (ft ? ft.offsetHeight + 6 : 0) - 10;
   const pages = []; let curP = [], h = 0;
   trs.forEach((tr, i) => { const rh = tr.offsetHeight; if (curP.length && h + rh > avail){ pages.push(curP); curP = []; h = 0; } curP.push(i); h += rh; });
   if (curP.length) pages.push(curP);
-  return pages.map((idx, pi) => formPageHtml(reg, meta, cols, formRowsHtml(reg, idx.map(i => rows[i]), cols), pi+1, pages.length));
+  if (!pages.length) pages.push([]);
+  return pages.map((idx, pi) => formPageHtml(reg, meta, def, formRowsHtml(reg, idx.map(i => rows[i]), def), pi+1, pages.length));
 }
 function mvMeta(){
   const reg = regOf(cur), code = document.getElementById("mvCode") && document.getElementById("mvCode").value || (linkedDocs(reg.key)[0] || {}).id;
@@ -356,6 +405,34 @@ function emsDocsHtml(reg){
 }
 EMS.subscribe(() => render());
 EMS.ensureSeed().then(did => { if (did) toast("受け取った書類の中身を台帳に入れました"); }).catch(e => console.error(e));
+/* 最初の1回だけ: 法的要求事項特定書(A-05)・著しい環境側面特定表(A-08)の表を入れ、環境側面に A-06/A-07 の○印を足し、文書の入力する場所をつなぐ */
+async function planSeedOnce(){
+  if (typeof PLAN_SEED === "undefined") return;
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().planSeed1) return;
+  await fr.set({ planSeed1:true }, { merge:true });
+  const col = db.collection(ISO_REG_COL), TS = firebase.firestore.FieldValue.serverTimestamp;
+  const all = (await col.get()).docs.map(d => ({ id:d.id, ...d.data() }));
+  let b = db.batch(), n = 0; const t = Date.now();
+  const flush = async () => { if (n){ await b.commit(); b = db.batch(); n = 0; } };
+  const add = async (list, reg, src) => { if (all.some(x => x.reg === reg)) return 0; for (let i = 0; i < list.length; i++){ b.set(col.doc(), { ...list[i], reg, draft:false, fromDoc:src, createdMs:t+i, updatedAt:TS() }); if (++n >= 400) await flush(); } return list.length; };
+  const nl = await add(PLAN_SEED.legal, "legal", "EMS-A-05"), ns = await add(PLAN_SEED.sig, "sigAspects", "EMS-A-08");
+  const norm = v => String(v || "").normalize("NFKC").replace(/\s+/g, "");
+  const m6 = {}, m7 = {}; Object.entries(PLAN_SEED.a06).forEach(([k, v]) => m6[norm(k)] = v); Object.entries(PLAN_SEED.a07).forEach(([k, v]) => m7[norm(k)] = v);
+  let np = 0;
+  for (const x of all.filter(x => x.reg === "aspects")){
+    const p = (x.good === "良い" ? m7 : m6)[norm(x.aspect)]; if (!p) continue;
+    const upd = {}; Object.entries(p).forEach(([k, v]) => { if (v && !x[k]) upd[k] = v; });
+    if (Object.keys(upd).length){ b.update(col.doc(x.id), upd); np++; if (++n >= 400) await flush(); }
+  }
+  await flush();
+  for (const [code, link] of [["A-05","plan:legal"],["A-08","plan:sigAspects"]]){
+    const d = await db.collection(EMS.DOCS).doc(code).get().catch(() => null);
+    if (d && d.exists && d.data().link !== link) await db.collection(EMS.DOCS).doc(code).update({ link }).catch(() => {});
+  }
+  if (nl || ns || np) toast("去年の表を入れました(法的要求事項 "+nl+"行・著しい環境側面 "+ns+"行・環境側面の○印 "+np+"件)");
+}
+setTimeout(() => planSeedOnce().catch(e => console.error(e)), 1500);
 
 /* ===== 計画書の原本(PDF)。台帳ごとに文書番号で版を管理(いちばん新しい日付が現在の版、ほかは改訂履歴)
    Firestore: isoPlanDocs(目次 reg・docNo・title・date・author・memo)/ isoPlanChunks(中身・分割base64) ===== */
@@ -470,6 +547,7 @@ function fdTs(v){ const d = v.toDate ? v.toDate() : new Date(v); return d.getFul
 /* ---------- 入力フォーム ---------- */
 function fieldHtml(f, v){
   const id = "f_"+f.k, val = v == null ? "" : v;
+  if (f.type === "checks") return '<div id="'+id+'" class="chkGrp" style="display:flex;flex-wrap:wrap;gap:4px 14px;padding:4px 0;">'+f.options.map(o => '<label style="display:flex;gap:4px;align-items:center;font-weight:normal;margin:0;"><input type="checkbox" style="width:auto;" value="'+esc(o)+'"'+(hasCheck(val, o) ? ' checked' : '')+'>'+esc(o)+'</label>').join("")+'</div>';
   if (f.type === "select") return '<select id="'+id+'" onchange="updScore()">'+f.options.map(o => '<option value="'+esc(o[0])+'"'+(String(val)===o[0]?' selected':'')+'>'+esc(o[1] || "―")+'</option>').join("")+'</select>';
   const ph = f.ph ? ' placeholder="'+esc(f.ph)+'"' : '';
   if (f.type === "textarea") return '<textarea id="'+id+'"'+ph+'>'+esc(val)+'</textarea>';
@@ -503,14 +581,24 @@ function closeEdit(){ document.getElementById("editBg").classList.remove("show")
 async function saveEdit(){
   const reg = regOf(cur), data = {};
   for (const f of reg.fields){
-    const el = document.getElementById("f_"+f.k); data[f.k] = el ? el.value.trim() : "";
+    const el = document.getElementById("f_"+f.k);
+    data[f.k] = !el ? "" : f.type === "checks" ? [...el.querySelectorAll("input:checked")].map(x => x.value).join("、") : el.value.trim();
     if (f.req && !data[f.k]){ toast("「"+f.label+"」を入力してください"); if (el) el.focus(); return; }
   }
+  // 新しい行を同じNo.のまとまりに足すときは、空のまとまり項目(法令名・評価など)を今ある行からもらう
+  if (!editId && reg.group && data[reg.group]){ const g = rows.find(x => x.reg === reg.key && String(x[reg.group]) === String(data[reg.group]));
+    if (g) (reg.groupFields || []).forEach(k => { if (!data[k]) data[k] = g[k] || ""; }); }
   data.draft = document.getElementById("editDraft").checked;
   data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
   try {
     if (editId) await db.collection(ISO_REG_COL).doc(editId).update(data);
     else await db.collection(ISO_REG_COL).add({ ...data, reg:reg.key, createdMs:Date.now() });
+    // 同じNo.(まとまり)の行に、まとまりの項目(法令名・評価など)を入れる
+    if (reg.group && (reg.groupFields || []).length && data[reg.group]){
+      const same = rows.filter(x => x.reg === reg.key && x.id !== editId && String(x[reg.group]) === String(data[reg.group]));
+      const upd = {}; reg.groupFields.forEach(k => upd[k] = data[k]);
+      if (same.length){ const b = db.batch(); same.forEach(x => b.update(db.collection(ISO_REG_COL).doc(x.id), upd)); await b.commit(); }
+    }
     closeEdit(); toast("保存しました");
   } catch(e){ toast("保存できませんでした: "+e.message); }
 }

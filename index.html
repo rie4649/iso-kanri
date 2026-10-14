@@ -4553,6 +4553,7 @@ const SECTION_DEFS = [
   { key: "company", grp: "org", cl: "4.1 / 5.2 / 5.3", name: "会社情報（沿革・組織図・環境方針）" },
   // 計画(6章)
   { key: "plan", grp: "plan", cl: "4.1〜6.2", name: "ISOの計画・リスク（課題・利害関係者・環境側面・リスク・目標）" },
+  { key: "plan:legal", grp: "plan", cl: "6.1.3 / 9.1.2", name: "法的要求事項特定書・順守評価（EMS-A-05）" },
   { key: "horei", grp: "plan", cl: "6.1.3", name: "法規制一覧" },
   { key: "kyoka", grp: "plan", cl: "6.1.3", name: "許可一覧" },
   { key: "permit", grp: "plan", cl: "6.1.3", name: "許可の内容（事業の範囲・積替え保管場所・処理施設）" },
@@ -4626,6 +4627,8 @@ const FIND_INDEX = [
   ["地域貢献 清掃 寄付 義援金 感謝状", "地域貢献（書類も添付できます）", "donation"],
   ["SDGs ブリケット 取組レベル 結果レポート", "SDGs", "sdgs"],
   ["手順書 マニュアル 緊急時対応", "環境手順書", "manual"],
+  ["法的要求事項 特定書 順守評価 法令 EMS-A-05", "法的要求事項特定書・順守評価（EMS-A-05）", "plan:legal"],
+  ["著しい環境側面特定表 著しい 特定 手順書 EMS-A-08", "著しい環境側面特定表（EMS-A-08）", "plan:sigAspects"],
   ["法規制 法令 順守評価", "法規制一覧・順守評価", "horei"],
   ["許可証 許可 期限", "許可一覧（登録は共通マスタ管理）", "kyoka"],
   ["許可の内容 積替え 保管場所 処分業 収集運搬 事業の範囲", "許可の内容（事業の範囲・積替え保管場所）", "permit"],
@@ -4716,7 +4719,7 @@ function homeYearPlan(o) {
   const audit = inFy(o.au, "date"), mrv = inFy(o.mr, "date").concat(inFy(o.rg.filter(x => x.reg === "review"), "date"));
   const meet = inFy(o.ev, "date").filter(x => /環境管理会議|推進委員会|ISO会議|ISO推進/.test((x.title || "") + " " + (x.notes || "")));
   const highRisk = o.rg.filter(x => x.reg === "risks" && x.level === "高").length;
-  const water = inFy(o.wt, "date"), noise = inFy(o.nc, "date"), hv = inFy(o.hv, "date");
+  const water = inFy(o.wt, "date"), noise = inFy(o.nc, "date"), hv = inFy(o.hv, "date").concat(docRev.filter(x => /A-05/.test(x.code || "")));
   const auditDue = monthsFromAug >= 6;   // 2月(10月〜翌2月の最後)を過ぎた
   return document.getElementById("hmTasks").insertAdjacentHTML("beforeend",
     `<div class="hm-per">今年度 ${fy}年8月〜${fy + 1}年7月（環境マニュアルで決まっている時期）</div>` +
@@ -4727,7 +4730,7 @@ function homeYearPlan(o) {
     Y("11月", "緊急事態の手順書の見直し・定期テスト", "8.2 定期テスト記録", "safety", done(test) || notYet(11)) +
     Y("1月末", "半期末の目標の評価", "6.2 進捗記録兼評価表（未達は是正処置）", "plan:objectives", st(null, "1月末")) +
     Y("年7〜8回", "環境管理会議", "7.4.2 カレンダーに「環境管理会議」で記録", "calendar", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
-    Y("年1回", "法令の順守評価", "9.1.2", "horei", done(hv) || st(null, "まだ")) +
+    Y("年1回", "法令の順守評価", "9.1.2 法的要求事項特定書(A-05)", "plan:legal", done(hv) || st(null, "まだ")) +
     Y("年1回", "水質検査", "計量証明書も添付", "waterTest", done(water) || st(null, "まだ")) +
     Y("年1回", "騒音チェック", "", "noiseCheck", done(noise) || st(null, "まだ")) +
     Y("年1回", "マネジメントレビュー", "9.3 " + (highRisk ? `優先度「高」のリスク ${highRisk}件を確認` : "気候変動・取引先リスクも"), "plan:review", done(mrv) || notYet(7)) +

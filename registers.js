@@ -27,6 +27,10 @@ function vendorCheck(r){
   return { done:true, total, rank: total >= 8 ? "A" : total >= 5 ? "B" : "C" };
 }
 const VENDOR_RANK_ACTION = { A:"継続", B:"改善を要請する", C:"取引の見直しを検討する" };
+// 環境影響評価表(EMS-A-06 有害・A-07 有益)の○印の区分。checks 型は「、」区切りの文字で保存
+const ASPECT_CATS = ["大気汚染","水質汚濁","土壌汚染","資源・森林等の減少","水資源の減少","地球温暖化","悪臭・騒音・振動","廃棄物処分場の減少","自然災害(地震・台風等）","人への健康障害"];
+const ASPECT_CONTRIB = ["直接的環境改善効果","環境意識の高揚","収益(コストダウン)","企業イメージアップ","業務の効率化","地域貢献","行政・地域・顧客の要望"];
+const hasCheck = (v, name) => String(v || "").split("、").includes(name);
 // リスクの優先度(環境マニュアル 6.1.4)
 const RISK_LEVELS = [["", "未評価"], ["低", "低(監視のみ)"], ["中", "中(改善計画に反映)"], ["高", "高(重点管理・マネジメントレビューで必ず確認)"]];
 
@@ -104,7 +108,12 @@ const ISO_REGS = [
       { k:"lawName", label:"法規制名", type:"text", list:true },
       { k:"emergency", label:"緊急事態の特定", type:"text" },
       { k:"control", label:"管理の方法(手順書・記録など)", type:"textarea", list:true },
-      { k:"sigMark", label:"著しい環境側面", type:"select", options:[["","(点数で判断)"],["◎","◎ 著しい環境側面"],["—","— 該当しない"]], list:true }
+      { k:"sigMark", label:"著しい環境側面", type:"select", options:[["","(点数で判断)"],["◎","◎ 著しい環境側面"],["—","— 該当しない"]], list:true },
+      { k:"dirKind", label:"影響区分", type:"checks", options:["直接影響","間接影響"] },
+      { k:"cats", label:"環境影響(有害 EMS-A-06 の○)", type:"checks", options:ASPECT_CATS, only:"bad" },
+      { k:"biz", label:"ビジネス", type:"checks", options:["ビジネスチャンス","ビジネスリスク"] },
+      { k:"mgmt", label:"管理状況(有害 EMS-A-06)", type:"checks", options:["手順書化","訓練","力量"], only:"bad" },
+      { k:"contrib", label:"有益環境影響度(有益 EMS-A-07 の○)", type:"checks", options:ASPECT_CONTRIB, only:"good" }
     ],
     examples:[
       { activity:"車両の運行(収集運搬)", aspect:"軽油の使用", impact:"CO₂の排出(気候変動)", cond:"通常", control:"軽油使用量の毎月の記録と削減目標" },
@@ -159,6 +168,40 @@ const ISO_REGS = [
     examples:[
       { goal:"軽油使用量の削減", target:"前年度比3%減(150,500L以下)", plan:"アイドリングストップ・配車の効率化", measure:"軽油使用量の年度集計", status:"実施中" },
       { goal:"金属のブリケット化率の向上", target:"80%(3年平均)", plan:"分別の徹底とブリケットマシンの活用", measure:"ブリケット化率の3年平均", status:"実施中" }
+    ]
+  },
+  {
+    key:"legal", icon:"⚖️", name:"法的要求事項特定書", clause:"6.1.3 / 9.1.2",
+    help:"環境法規制順守評価記録兼環境法的要求事項特定書(EMS-A-05)です。法令ごとに、該当する条項・内容・対象設備・順守方法を1行ずつ入れ、年1回「順守状況の評価」(順守・非該当・要改善)を付けます。No.が同じ行は1つの法令としてまとまり、法令名・気候変動ESG・利害関係者・評価は、どの行で直しても同じNo.の行全部に入ります。評価が終わったら「この表で新しい版(PDF)を作る」で、今の様式のPDFが原本の新しい版になります。「要改善」は是正処置へ。",
+    title:"name", sortNo:true, group:"no", groupFields:["name","esg","esgNote","parties","eval"],
+    fields:[
+      { k:"no", label:"No.", type:"text", req:true, list:true, ph:"例: 1" },
+      { k:"name", label:"法規制等の名称", type:"text", list:true, ph:"同じNo.の行があれば空のままでOK(自動で入ります)" },
+      { k:"clause", label:"該当する条項", type:"textarea", list:true },
+      { k:"content", label:"内容", type:"textarea", list:true },
+      { k:"target", label:"対象設備・業務", type:"textarea", list:true },
+      { k:"esg", label:"気候変動・ESG関連", type:"select", options:[["",""],["〇","〇 関連あり"]], list:true },
+      { k:"esgNote", label:"気候変動・ESGの内容", type:"textarea", list:true },
+      { k:"parties", label:"地域・利害関係者との関連", type:"text", list:true },
+      { k:"method", label:"順守方法", type:"textarea", list:true },
+      { k:"eval", label:"順守状況の評価", type:"select", options:[["",""],["順守","順守"],["非該当","非該当"],["要改善","要改善"]], list:true }
+    ]
+  },
+  {
+    key:"sigAspects", icon:"◎", name:"著しい環境側面特定表", clause:"6.1.2",
+    help:"著しい環境側面特定表(EMS-A-08)です。環境手順書ごとに、環境影響・ライフサイクル区分(受入〜運搬〜保管〜再資源化〜出荷)・有害/有益・対応方法と、著しい環境側面(◎)とした理由を記録します。判定基準(有害): 法令に関わる／漏えい・飛散・火災などの重大リスク／気候変動の影響が大きい／利害関係者の要求が強い／緊急事態。(有益): 環境改善効果が大きい／利害関係者の期待／経営上のメリット／社員・地域への貢献。年1回(11月)見直します。",
+    title:"manName", group:"group", groupFields:[],
+    fields:[
+      { k:"group", label:"環境影響の分類", type:"text", list:true, ph:"例: 社内ルール・車両管理・廃棄物管理・安全管理・環境対策・緊急・災害" },
+      { k:"impact", label:"環境影響", type:"text", list:true, ph:"例: 事故・資源・法令" },
+      { k:"life", label:"ライフサイクル区分", type:"select", options:[["",""],["受入・分別","受入・分別"],["受入・運搬","受入・運搬"],["運搬","運搬"],["管理","管理"],["再資源化","再資源化"],["出荷","出荷"],["緊急対応","緊急対応"]], list:true },
+      { k:"manNo", label:"手順書No.", type:"text", list:true },
+      { k:"manName", label:"手順書内容", type:"text", req:true, list:true },
+      { k:"kind", label:"区分", type:"select", options:[["",""],["有害","有害(リスク)"],["有益","有益(機会)"]], list:true },
+      { k:"action", label:"対応方法", type:"text", list:true },
+      { k:"sig", label:"著しい環境側面", type:"select", options:[["",""],["◎","◎"]], list:true },
+      { k:"reason", label:"著しい理由", type:"textarea", list:true },
+      { k:"check", label:"確認", type:"text", list:true }
     ]
   },
   {
