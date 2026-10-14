@@ -173,7 +173,7 @@
   .cal-cell .more { font-size: 9px; color: #4338ca; margin-top: 1px; }
   /* 就業カレンダー(マスター管理で登録):全休=休日、それ以外=稼働日 */
   .cal-cell.kyujitsu { background: #fff1f2; }
-  .cal-cell .work-tag { font-size: 9px; font-weight: 700; line-height: 1.2; border-radius: 3px; padding: 0 3px; margin-top: 1px; }
+  .cal-cell .work-tag { font-size: 10.5px; font-weight: 700; line-height: 1.2; border-radius: 3px; padding: 0 3px; margin-top: 1px; }
   .cal-cell .work-tag.kyu { background: #dc2626; color: #fff; }
   .cal-cell .work-tag.kado { color: #059669; }
   .cal-today-btn { white-space:nowrap; min-width:52px; }
@@ -1813,11 +1813,13 @@ db.collection("workCalendars").where("owner", "==", "sekine").onSnapshot(snap =>
   workCals = snap.docs.map(d => d.data());
   if (document.getElementById("section-calendar").classList.contains("active")) renderCalendar();
 }, err => console.error("就業カレンダーの読み込みエラー", err));
+// マスター管理では A班休み = "A"、B班休み = "B" で保存されている(古い形の "A班休み" も読めるようにそろえる)
+const WORK_NORM = { "A":"A班休み", "B":"B班休み", "A班休":"A班休み", "B班休":"B班休み" };
 function workDayOf(ds) {
   const c = workCals.find(c => c.start <= ds && ds <= c.end); if (!c) return null;
   const o = (c.overrides || {})[ds];
-  if (o) return o === "出勤" ? "" : o;
-  return (c.days || {})[ds] || "";
+  const v = o ? (o === "出勤" ? "" : o) : ((c.days || {})[ds] || "");
+  return WORK_NORM[v] || v;
 }
 function isoWorkKind(ds) { const w = workDayOf(ds); return w === null ? null : (w === "全休" ? "休日" : "稼働日"); }
 function renderCalendar() {
