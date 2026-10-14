@@ -4011,7 +4011,37 @@ function renderWaterAttachUsage() {
   const pct = (mb / 1024 * 100);
   el.textContent = `📎 添付 ${n}件・合計 ${mb < 1 ? Math.round(bytes/1024) + "KB" : mb.toFixed(1) + "MB"}（無料枠1GBの${pct < 0.1 ? "0.1%未満" : pct.toFixed(1) + "%"}）`;
 }
+/* 水質検査の写真(写真の記録「水質検査の様子」など)を、撮影日が検査日の前後7日以内でいちばん近い検査に並べる(環境への取り組みと同じ決まり) */
+let waterPhotos = null, waterPhotoLoading = false;
+function loadWaterPhotos() {
+  if (waterPhotoLoading) return; waterPhotoLoading = true;
+  Promise.all([db.collection("isoPhotos").get(), db.collection("isoPhotoSettings").doc("recordCats").get()]).then(([ph, st]) => {
+    const cats = st.exists ? (st.data().items || []) : [];
+    const names = cats.filter(c => c.page === "water").map(c => c.name); if (!names.length) names.push("水質検査の様子");
+    waterPhotos = ph.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.kind === "record" && names.includes(x.targetName));
+    renderWaterTestList();
+  }).catch(e => { console.error(e); waterPhotos = []; });
+}
+function waterPhotoMap() {
+  const dayN = d => Math.round(new Date(String(d).slice(0, 10) + "T00:00:00").getTime() / 86400000);
+  const by = {}, none = [];
+  (waterPhotos || []).forEach(x => {
+    if (!x.shotDate) { none.push(x); return; }
+    let best = null, bd = 8;
+    allWaterTests.forEach(t => { if (!/^\d{4}-\d{2}-\d{2}/.test(String(t.date || ""))) return; const d = Math.abs(dayN(t.date) - dayN(x.shotDate)); if (d < bd) { bd = d; best = t; } });
+    if (best) (by[best.id] = by[best.id] || []).push(x); else none.push(x);
+  });
+  return { by, none };
+}
+window.openWaterPhoto = async function(id) {
+  const x = (waterPhotos || []).find(p => p.id === id); if (!x) return;
+  let bg = document.getElementById("wpLb");
+  if (!bg) { bg = document.createElement("div"); bg.id = "wpLb"; bg.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;"; bg.onclick = () => bg.remove(); document.body.appendChild(bg); }
+  bg.innerHTML = `<img id="wpImg" src="${x.thumb}" style="max-width:96vw;max-height:86vh;object-fit:contain;"><div style="color:#fff;margin-top:8px;font-size:14px;">${escapeHtml((x.shotDate || "").replace(/-/g, "/"))} 撮影　${escapeHtml(x.memo || "")}（押すと閉じます）</div>`;
+  try { const d = await db.collection("isoPhotoFiles").doc(id).get(); const im = document.getElementById("wpImg"); if (d.exists && im) im.src = d.data().data; } catch (e) {}
+};
 function renderWaterTestList() {
+  if (waterPhotos === null) loadWaterPhotos();
   renderWaterTestYearTabs();
   renderWaterAttachUsage();
   const container = document.getElementById("waterTestListContainer");
@@ -4031,7 +4061,12 @@ function renderWaterTestList() {
     if (!groups[y]) groups[y] = [];
     groups[y].push(t);
   });
+  const wp = waterPhotoMap();
+  // 検査の記録がない年の写真も、その年に出す(記録がないことに気づけるように)
+  wp.none.forEach(x => { const y = String(x.shotDate || "").slice(0, 4); if (y && !groups[y] && (currentWaterTestYear === "all" || currentWaterTestYear === y) && !currentWaterTestSearch.trim()) groups[y] = []; });
   const years = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+  const thumbs = l => l.map(x => `<img src="${x.thumb}" alt="" title="${escapeHtml((x.shotDate || "").replace(/-/g, "/"))} 撮影" onclick="openWaterPhoto('${x.id}')" style="width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;cursor:pointer;">`).join("");
+  const blk = (ttl, inner) => `<div style="margin-top:8px;"><div style="font-size:12px;font-weight:bold;color:#0f766e;margin-bottom:4px;">${ttl}</div>${inner}</div>`;
 
   container.innerHTML = years.map(y => {
     const list = groups[y];
@@ -4041,6 +4076,7 @@ function renderWaterTestList() {
     const avgPh = phs.length ? (phs.reduce((a,b)=>a+b,0)/phs.length).toFixed(2) : null;
     return `
     <div class="year-group-label">${y}年${avgTemp!==null||avgPh!==null?`　（年間平均：${avgTemp!==null?"水温"+avgTemp+"℃":""}${avgTemp!==null&&avgPh!==null?" / ":""}${avgPh!==null?"PH"+avgPh:""}）`:""}</div>
+    ${(() => { const un = wp.none.filter(x => String(x.shotDate || "").startsWith(y)); return un.length ? `<div class="event-card" style="border-left-color:#d97706;background:#fffbeb;"><div class="event-title" style="font-size:14px;">この年の写真（近くに検査の記録がありません）</div>${blk("📷 " + un.map(x => (x.shotDate || "").replace(/-/g, "/")).join("・") + " 撮影", `<div style="display:flex;gap:6px;flex-wrap:wrap;">${thumbs(un)}</div>`)}<div style="font-size:12px;color:#92400e;margin-top:6px;">この日の水質検査の記録と計量証明書がまだ入っていません。証明書が見つかったら「＋」で記録を作って添付してください。</div></div>` : ""; })()}
     ${list.map(t => `
       <div class="event-card" style="border-left-color:#0d9488;">
         <div class="event-date">${t.date || "-"}${t.time ? "　" + escapeHtml(t.time) : ""}</div>
@@ -4051,7 +4087,8 @@ function renderWaterTestList() {
           ${(t.items||[]).map(it => `<div class="water-test-item-line"><span>${escapeHtml(it.name)}</span><span>${escapeHtml(it.value||"-")}</span></div>`).join("")}
         </div>
         ${t.notes ? `<div class="event-notes">${escapeHtml(t.notes)}</div>` : ""}
-        ${(t.attachments||[]).length ? `<div class="attach-list">${(t.attachments||[]).map(a => `<span class="attach-chip">${attachLinkHtml(a)}</span>`).join("")}</div>` : ""}
+        ${blk("📄 計量証明書（分析証）", (t.attachments||[]).length ? `<div class="attach-list">${(t.attachments||[]).map(a => `<span class="attach-chip">${attachLinkHtml(a)}</span>`).join("")}</div>` : `<div style="font-size:12px;color:#b45309;">まだ入っていません（上の「📥 計量証明書をまとめて入れる」か「編集」→「添付」）</div>`)}
+        ${blk("📷 採水・現場の写真", (wp.by[t.id] || []).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${thumbs(wp.by[t.id])}</div>` : `<div style="font-size:12px;color:#8b8b9e;">写真はありません（写真の記録 →「水質検査の様子」に、検査日の前後7日以内の撮影日で入れるとここに出ます）</div>`)}
         <div class="event-actions">
           <button class="btn-edit" onclick="openEditWaterTest('${t.id}')">編集</button>
           <button class="btn-delete" onclick="deleteWaterTest('${t.id}')">削除</button>
