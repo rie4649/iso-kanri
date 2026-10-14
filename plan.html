@@ -76,6 +76,16 @@
 </div></div>
 <div id="formStage" style="position:fixed;left:-20000px;top:0;"></div>
 <div id="toast"></div>
+<div id="ycView" style="display:none;position:fixed;inset:0;z-index:70;background:#f1f5f9;overflow:auto;"></div>
+<style>
+  .ycRow { background:#fff; border:1px solid var(--line); border-left:4px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:6px; }
+  .ycRow.done { border-left-color:#16a34a; } .ycRow.ng { border-left-color:#dc2626; background:#fef2f2; }
+  .ycBtns { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; align-items:center; }
+  .ycBtns button { border:1px solid var(--line); background:#fff; border-radius:16px; padding:5px 12px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .ycBtns button.on { background:var(--navy); color:#fff; border-color:var(--navy); } .ycBtns button.on.ng { background:#dc2626; border-color:#dc2626; }
+  .ycBtns input { flex:1; min-width:180px; font-size:13px; padding:5px 8px; }
+  @media print { body > *:not(#ycView) { display:none !important; } #ycView { position:static !important; background:#fff; } #ycView .noPrint { display:none !important; } }
+</style>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -213,6 +223,82 @@ const today = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.
 db.collection(ISO_REG_COL).onSnapshot(s => { rows = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); },
   e => { console.error(e); toast("読み込みエラー: "+e.message); });
 
+/* ===== 年度の点検(チェックシート) =====
+   毎年(年度 8月〜翌7月)、表の行を1つずつ確認して結果を残す。法的要求事項はNo.ごとに 順守/非該当/要改善 */
+let ycYear = ycFy();
+function ycUnits(reg){   // 点検する単位(法的要求事項はNo.ごと、ほかは1行ずつ)
+  const list = sorted(reg).filter(r => !r.draft);
+  if (!reg.yearCheck.perGroup) return list.map(r => ({ key:r.id, rows:[r] }));
+  const m = new Map(); list.forEach(r => { const k = String(r[reg.group] || ""); if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
+  return [...m].map(([k, rows]) => ({ key:k, rows }));
+}
+const ycOf = (u, y) => (u.rows[0].checks || {})[y];
+function yearCheckCard(reg){
+  const us = ycUnits(reg), y = ycFy(), n = us.filter(u => ycOf(u, y)).length, ng = us.filter(u => { const c = ycOf(u, y); return c && /要改善|見直し/.test(c.r); }).length;
+  const years = [...new Set(us.flatMap(u => Object.keys(u.rows[0].checks || {})))].sort().reverse();
+  return '<div class="card" style="border-left:4px solid '+(n === us.length && us.length ? '#16a34a' : '#d97706')+';"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'+
+    '<b style="flex:1;color:var(--navy);">📋 年度の点検（'+y+'年度：'+y+'年8月〜'+(y+1)+'年7月）</b>'+
+    '<span style="font-weight:700;color:'+(n === us.length && us.length ? '#15803d' : '#b45309')+';">'+n+' / '+us.length+(reg.yearCheck.perGroup ? ' 法令' : ' 行')+' 点検済み</span>'+(ng ? '<span class="tag sig">'+(reg.key === "legal" ? "要改善" : "見直しが必要")+' '+ng+'</span>' : '')+
+    '<button class="btn pri sm" onclick="openYc('+y+')">'+(n ? '点検の続き' : '今年の点検を始める')+'</button>'+
+    (years.filter(x => Number(x) !== y).length ? '<select style="width:auto;" onchange="if(this.value)openYc(Number(this.value))"><option value="">過去の点検を見る</option>'+years.filter(x => Number(x) !== y).map(x => '<option value="'+x+'">'+x+'年度</option>').join("")+'</select>' : '')+'</div>'+
+    '<div class="note" style="margin:4px 0 0;">1年に1回、表の'+(reg.yearCheck.perGroup ? '法令' : '行')+'を1つずつ確認して、結果を残します。終わったら「この表で新しい版(PDF)を作る」で、今年の版を作ります。</div></div>';
+}
+function openYc(y){ ycYear = y; renderYc(); document.getElementById("ycView").style.display = "block"; document.getElementById("ycView").scrollTop = 0; }
+function closeYc(){ document.getElementById("ycView").style.display = "none"; render(); }
+function ycLabel(reg, u){
+  const r = u.rows[0];
+  if (reg.key === "legal") return '<b>No.'+esc(r.no)+'　'+esc(r.name)+'</b><div class="note" style="margin:2px 0 0;">'+u.rows.map(x => esc([x.clause, x.content].filter(Boolean).join(" ")).slice(0, 60)).filter(Boolean).join(" ／ ")+'</div>';
+  if (reg.key === "sigAspects") return '<b>'+esc(r.manNo ? "手順書"+r.manNo+"　" : "")+esc(r.manName)+'</b><div class="note" style="margin:2px 0 0;">'+esc([r.group, r.impact, r.life, r.kind, r.sig].filter(Boolean).join("・"))+'</div>';
+  if (reg.key === "aspects") return '<b>'+esc(r.aspect)+'</b>'+(r.sigMark === "◎" ? ' <span class="tag sig">◎</span>' : '')+'<div class="note" style="margin:2px 0 0;">'+esc([r.good === "良い" ? "有益" : "有害", r.activity, r.impact].filter(Boolean).join("・").slice(0, 90))+'</div>';
+  return '<b>'+esc((r.no ? r.no+". " : "")+(r[reg.title] || ""))+'</b><div class="note" style="margin:2px 0 0;">'+esc(String(r.content || r.risk || "").slice(0, 90))+'</div>';
+}
+function renderYc(){
+  const reg = regOf(cur), yc = reg.yearCheck, us = ycUnits(reg), y = ycYear, cy = ycFy();
+  const n = us.filter(u => ycOf(u, y)).length;
+  let h = '<div style="max-width:960px;margin:0 auto;padding:12px;">'+
+    '<div class="noPrint" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:#f1f5f9;padding:8px 0;z-index:2;">'+
+      '<button class="btn" onclick="closeYc()">← 戻る</button><b style="flex:1;color:var(--navy);font-size:16px;">'+esc(reg.name)+'　'+y+'年度の点検　'+n+' / '+us.length+'</b>'+
+      (y === cy && n < us.length ? '<button class="btn" onclick="ycAll()">残り'+(us.length - n)+'件を「'+esc((yc.opts.find(o => o[0] === yc.all) || [,""])[1])+'」にする</button>' : '')+
+      '<button class="btn pri" onclick="window.print()">点検の記録を印刷</button></div>'+
+    '<h2 class="printOnly" style="font-size:18px;">'+esc(reg.name)+'　'+y+'年度の点検の記録（株式会社関根商店）</h2>'+
+    (y !== cy ? '<div class="note">過去の年度の記録です(見るだけ)。</div>' : '<div class="note">ボタンを押すとすぐ保存されます。見直しが必要なものは、メモを書いて、あとで表の「編集」で直してください。</div>');
+  let last = "";
+  us.forEach(u => {
+    const c = ycOf(u, y), ng = c && /要改善|見直し/.test(c.r), g = reg.key === "sigAspects" ? u.rows[0].group : reg.key === "aspects" ? (u.rows[0].good === "良い" ? "有益な環境側面(EMS-A-07)" : "有害な環境側面(EMS-A-06)") : "";
+    if (g && g !== last){ h += '<div style="font-weight:700;color:var(--navy);margin:12px 0 4px;border-bottom:1px solid var(--navy);">'+esc(g)+'</div>'; last = g; }
+    h += '<div class="ycRow'+(c ? (ng ? ' ng' : ' done') : '')+'">'+ycLabel(reg, u)+
+      '<div class="ycBtns">'+(y === cy ? yc.opts.map(([v, l]) => '<button class="'+(c && c.r === v ? 'on'+(/要改善|見直し/.test(v) ? ' ng' : '') : '')+'" onclick="ycSet(\''+esc(u.key)+'\',\''+v+'\')">'+esc(l)+'</button>').join("") +
+        '<input placeholder="メモ(見直す内容など)" value="'+esc(c && c.memo || "")+'" onchange="ycMemo(\''+esc(u.key)+'\',this.value)"'+(c ? '' : ' disabled title="先に結果を選んでください"')+'>'
+        : '<b>'+esc(c ? ((yc.opts.find(o => o[0] === c.r) || [,c.r])[1]) : "未点検")+'</b>'+(c && c.memo ? '<span class="note" style="margin:0;">'+esc(c.memo)+'</span>' : ''))+
+        (c ? '<span class="note" style="margin:0;">'+esc(String(c.d || "").replace(/-/g, "/"))+'</span>' : '')+'</div></div>';
+  });
+  document.getElementById("ycView").innerHTML = h+'</div>';
+}
+async function ycWrite(units, val, memo){
+  const reg = regOf(cur), yc = reg.yearCheck, y = String(ycYear), b = db.batch();
+  units.forEach(u => u.rows.forEach(r => {
+    const checks = { ...(r.checks || {}) }, prev = checks[y] || {};
+    checks[y] = { r: val ?? prev.r, d: today(), memo: memo ?? prev.memo ?? "" };
+    const upd = { checks };
+    if (yc.field && val != null) upd[yc.field] = reg.key === "sigAspects" ? (val === "OK" ? "✓" : "見直し") : val;   // 表の「評価」「確認」の列にも入れる
+    b.update(db.collection(ISO_REG_COL).doc(r.id), upd); r.checks = checks; Object.assign(r, upd);
+  }));
+  await b.commit();
+}
+async function ycSet(key, val){
+  const u = ycUnits(regOf(cur)).find(x => x.key === key); if (!u) return;
+  try { await ycWrite([u], val); renderYc(); } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function ycMemo(key, memo){
+  const u = ycUnits(regOf(cur)).find(x => x.key === key); if (!u) return;
+  try { await ycWrite([u], null, memo); } catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function ycAll(){
+  const reg = regOf(cur), yc = reg.yearCheck, rest = ycUnits(reg).filter(u => !ycOf(u, ycYear));
+  const l = (yc.opts.find(o => o[0] === yc.all) || [,""])[1];
+  if (!confirm("まだ点検していない "+rest.length+"件 を「"+l+"」にします。よろしいですか？")) return;
+  try { for (let i = 0; i < rest.length; i += 150) await ycWrite(rest.slice(i, i + 150), yc.all); renderYc(); toast(rest.length+"件を「"+l+"」にしました"); } catch(e){ toast("保存できませんでした: "+e.message); }
+}
 function setTab(k){ cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
 
 function sorted(reg){
@@ -241,6 +327,7 @@ function render(){
   const reg = regOf(cur), list = sorted(reg);
   let h = '<div class="help"><div class="ttl">'+esc(reg.name)+'<span class="cl">ISO14001 '+esc(reg.clause)+'</span></div>'+esc(reg.help)+'</div>';
   h += emsDocsHtml(reg);
+  if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
     h += '<div class="card" style="border-left:4px solid var(--navy);"><b style="color:var(--navy);">📑 契約件数(共通マスタ管理と連動)</b><div id="cstats" style="margin-top:8px;">'+(cstats ? ContractStats.html(cstats, { tableClass:"cs" }) : '<div class="note">読み込み中…</div>')+'</div></div>';
     if (!cstats && !cstatsLoading){ cstatsLoading = true; ContractStats.load().then(st => { cstats = st; render(); }).catch(e => { const el = document.getElementById("cstats"); if (el) el.textContent = "読み込めませんでした: "+e.message; }); }
@@ -291,7 +378,7 @@ const FORM_DEFS = {
       {k:"sigMark",l:"重要管理事項",w:4,c:1},{v:mk("biz","ビジネスチャンス"),l:"ビジネスチャンス",w:3.5,c:1},{k:"control",l:"著しい環境側面とした理由",w:13}] },
   "A-08": { group:"group", font:9.5, foot: m => "更新日："+m.dateTxt+"　　次回更新：年1度（"+(m.date ? Number(m.date.slice(0,4))+1 : "")+"年11月予定）",
     cols:[{k:"group",l:"環境影響",w:8,m:1},{k:"impact",l:null,w:10},{k:"life",l:"ライフサイクル区分",w:7},{k:"manNo",l:"手順書No.",w:4.5,c:1},{k:"manName",l:"手順書内容",w:19},
-      {k:"kind",l:"区分",w:4.5,c:1},{k:"action",l:"対応方法",w:11},{k:"sig",l:"著しい環境側面",w:5,c:1},{k:"reason",l:"著しい理由",w:25},{k:"check",l:"確認",w:4,c:1}] }
+      {k:"kind",l:"区分",w:4.5,c:1},{k:"action",l:"対応方法",w:11},{k:"sig",l:"著しい環境側面",w:5,c:1},{k:"reason",l:"著しい理由",w:25},{v:r => { const c = (r.checks || {})[ycFy()]; return c ? (c.r === "OK" ? "✓" : "見直し") : (r.check || ""); },l:"確認",w:4,c:1}] }
 };
 function formDef(reg, code){
   if (FORM_DEFS[code]) return FORM_DEFS[code];

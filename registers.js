@@ -30,6 +30,8 @@ const VENDOR_RANK_ACTION = { A:"継続", B:"改善を要請する", C:"取引の
 // 環境影響評価表(EMS-A-06 有害・A-07 有益)の○印の区分。checks 型は「、」区切りの文字で保存
 const ASPECT_CATS = ["大気汚染","水質汚濁","土壌汚染","資源・森林等の減少","水資源の減少","地球温暖化","悪臭・騒音・振動","廃棄物処分場の減少","自然災害(地震・台風等）","人への健康障害"];
 const ASPECT_CONTRIB = ["直接的環境改善効果","環境意識の高揚","収益(コストダウン)","企業イメージアップ","業務の効率化","地域貢献","行政・地域・顧客の要望"];
+// 年度(8月〜翌7月)。年度の点検の記録は 行.checks["2026"] = { r:結果, d:日付, memo }
+const ycFy = (d) => { d = d ? new Date(d) : new Date(); return d.getMonth() + 1 >= 8 ? d.getFullYear() : d.getFullYear() - 1; };
 const hasCheck = (v, name) => String(v || "").split("、").includes(name);
 // リスクの優先度(環境マニュアル 6.1.4)
 const RISK_LEVELS = [["", "未評価"], ["低", "低(監視のみ)"], ["中", "中(改善計画に反映)"], ["高", "高(重点管理・マネジメントレビューで必ず確認)"]];
@@ -96,6 +98,7 @@ const ISO_REGS = [
     key:"aspects", icon:"🌱", name:"環境側面", clause:"6.1.2",
     help:"受入・運搬・保管・再資源化・出荷の流れで、環境にどんな影響を与えるか(環境側面)を有害(リスク)・有益(機会)の両面から書き出します。環境マニュアル6.1.2: 法令に関わる／漏えい・飛散・火災など重大な汚染リスク／気候変動の影響が大きい／利害関係者の要求が強い／緊急事態に該当（有益は CO₂削減・省資源・再資源化、利害関係者の期待、コスト削減、社員・地域への貢献）のどれかに当たるものを「◎ 著しい環境側面」にします。毎年8月に見直します。規模・頻度・法規制の点数(1〜3)で目安を出すこともできます。",
     title:"aspect",
+    yearCheck:{ opts:[["OK","✓ 変更なし"],["見直し","見直しが必要"]], all:"OK" },
     fields:[
       { k:"activity", label:"活動・作業", type:"text", req:true, list:true },
       { k:"aspect", label:"環境側面(何が出る・何を使う)", type:"text", req:true, list:true },
@@ -130,6 +133,7 @@ const ISO_REGS = [
     key:"risks", icon:"⚠️", name:"リスクと機会", clause:"6.1.1 / 6.1.4",
     help:"課題・利害関係者・環境側面から、起こると困ること(リスク)と、良くなるチャンス(機会)を選び、どう取り組むかを決めます(リスク対応計画書)。環境マニュアル6.1.4: 優先度を 低(監視のみ)・中(改善計画に反映)・高(重点管理) で決め、「高」は必ずマネジメントレビューで確認します。気候変動(異常気象・CO₂排出規制・地域災害)もここに記録します。",
     title:"issue", sortNo:true,
+    yearCheck:{ opts:[["OK","✓ 変更なし"],["見直し","見直しが必要"]], all:"OK" },
     fields:[
       { k:"no", label:"No.", type:"text", list:true },
       { k:"issue", label:"課題", type:"text", req:true, list:true },
@@ -174,6 +178,7 @@ const ISO_REGS = [
     key:"legal", icon:"⚖️", name:"法的要求事項特定書", clause:"6.1.3 / 9.1.2",
     help:"環境法規制順守評価記録兼環境法的要求事項特定書(EMS-A-05)です。法令ごとに、該当する条項・内容・対象設備・順守方法を1行ずつ入れ、年1回「順守状況の評価」(順守・非該当・要改善)を付けます。No.が同じ行は1つの法令としてまとまり、法令名・気候変動ESG・利害関係者・評価は、どの行で直しても同じNo.の行全部に入ります。評価が終わったら「この表で新しい版(PDF)を作る」で、今の様式のPDFが原本の新しい版になります。「要改善」は是正処置へ。",
     title:"name", sortNo:true, group:"no", groupFields:["name","esg","esgNote","parties","eval"],
+    yearCheck:{ perGroup:true, field:"eval", opts:[["順守","順守"],["非該当","非該当"],["要改善","要改善"]], all:"順守" },
     fields:[
       { k:"no", label:"No.", type:"text", req:true, list:true, ph:"例: 1" },
       { k:"name", label:"法規制等の名称", type:"text", list:true, ph:"同じNo.の行があれば空のままでOK(自動で入ります)" },
@@ -191,6 +196,7 @@ const ISO_REGS = [
     key:"sigAspects", icon:"◎", name:"著しい環境側面特定表", clause:"6.1.2",
     help:"著しい環境側面特定表(EMS-A-08)です。環境手順書ごとに、環境影響・ライフサイクル区分(受入〜運搬〜保管〜再資源化〜出荷)・有害/有益・対応方法と、著しい環境側面(◎)とした理由を記録します。判定基準(有害): 法令に関わる／漏えい・飛散・火災などの重大リスク／気候変動の影響が大きい／利害関係者の要求が強い／緊急事態。(有益): 環境改善効果が大きい／利害関係者の期待／経営上のメリット／社員・地域への貢献。年1回(11月)見直します。",
     title:"manName", group:"group", groupFields:[],
+    yearCheck:{ field:"check", opts:[["OK","✓ 変更なし"],["見直し","見直しが必要"]], all:"OK" },
     fields:[
       { k:"group", label:"環境影響の分類", type:"text", list:true, ph:"例: 社内ルール・車両管理・廃棄物管理・安全管理・環境対策・緊急・災害" },
       { k:"impact", label:"環境影響", type:"text", list:true, ph:"例: 事故・資源・法令" },

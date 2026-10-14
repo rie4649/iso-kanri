@@ -217,7 +217,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <div id="bar">
   <button class="bt" onclick="location.href='index.html'">← ISO管理</button>
   <button class="bt" onclick="go(0)">目次</button>
-  <button class="bt" id="backBt" onclick="goBackPage()" style="display:none;">元のページへ戻る</button>
+  <button class="bt" id="backBt" onclick="goBackPage()" style="display:none;">← 戻る</button>
   <button class="bt nav" onclick="step(-1)">◀</button>
   <div class="ttl" id="barTtl">環境への取り組み</div>
   <span class="pg" id="barPg"></span>
@@ -512,7 +512,7 @@ async function renderDash(p){
   card("n", "📅 これから30日の予定", up.length+"件", up.slice(0,3).map(x => fd(x.date)+" "+esc(x.title)).join("<br>") || "予定はありません", "calendar");
   return await head(p, fyLabel(fy)+"("+fySub(fy)+")・押すとそのページへ") + '<div class="dash">'+cards.join("")+'</div>';
 }
-function goKey(k){ const c = courseFor(k); if (!c) return; const from = coursePages()[cur]; if (from && from.key !== k){ backStack.push(from.key); if (backStack.length > 20) backStack.shift(); } course = c; go(coursePages().findIndex(x => x.key === k)); }
+function goKey(k){ const c = courseFor(k); if (!c) return; course = c; go(coursePages().findIndex(x => x.key === k)); }
 
 
 /* ---------- 審査前チェック(準備漏れを自動で見つける) ---------- */
@@ -1521,12 +1521,15 @@ let cur = 0;
 const EMOJI_RE = /(?![\u25C0\u25B6\u2713\u2714\u2715\u2716\u2192\u2190\u2191\u2193\u25CB\u00D7\u25B3])\p{Extended_Pictographic}\uFE0F?\s?/gu;
 function noEmoji(h){ return String(h).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(EMOJI_RE, "")); }
 /* 「開く」で別のページへ飛んだとき、元のページに戻れるようにする */
-let backStack = [];
-function goBackPage(){ const k = backStack.pop(); if (!k) return; const i = coursePages().findIndex(x => x.key === k); go(i >= 0 ? i : 0); }
+let backStack = [], lastKey = "", goingBack = false;
+function goBackPage(){ const k = backStack.pop(); if (!k){ go(0); return; } goingBack = true; const i = coursePages().findIndex(x => x.key === k); go(i >= 0 ? i : 0); }
 async function show(i){
   const cp = coursePages();
   cur = Math.max(0, Math.min(cp.length-1, i));
   const p = cp[cur];
+  // 見たページを順に覚えておき、「← 戻る」で1つ前に見たページへ戻る
+  if (lastKey && lastKey !== p.key && !goingBack && backStack[backStack.length-1] !== lastKey){ backStack.push(lastKey); if (backStack.length > 30) backStack.shift(); }
+  goingBack = false; lastKey = p.key;
   document.getElementById("barTtl").textContent = p.name;
   document.getElementById("backBt").style.display = backStack.length ? "" : "none";
   document.getElementById("barPg").textContent = COURSES[course].name+"　"+(cur+1)+" / "+cp.length;
@@ -1535,7 +1538,9 @@ async function show(i){
   const html = await renderFull(p);
   if (coursePages()[cur] !== p) return;   // 読み込み中に別のページへ移ったとき
   document.getElementById("stage").innerHTML = '<div class="slide">'+noEmoji(html)+'</div>'+
-    (p.key !== "cover" ? '<div class="noPrintBar" style="text-align:center;margin:14px 0 30px;"><button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="printCurrent()">このページを印刷</button></div>' : '');
+    (p.key !== "cover" ? '<div class="noPrintBar" style="text-align:center;margin:14px 0 30px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'+
+      (backStack.length ? '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="goBackPage()">← 戻る</button>' : '')+
+      '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="go(0)">目次へ</button><button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="printCurrent()">このページを印刷</button></div>' : '');
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
 /* 読み込んだデータは開いている間とっておくので、ISO管理で入力してからこの画面に戻ったら、読み直して今のページを描き直す */

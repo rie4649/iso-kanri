@@ -4719,7 +4719,10 @@ function homeYearPlan(o) {
   const audit = inFy(o.au, "date"), mrv = inFy(o.mr, "date").concat(inFy(o.rg.filter(x => x.reg === "review"), "date"));
   const meet = inFy(o.ev, "date").filter(x => /環境管理会議|推進委員会|ISO会議|ISO推進/.test((x.title || "") + " " + (x.notes || "")));
   const highRisk = o.rg.filter(x => x.reg === "risks" && x.level === "高").length;
-  const water = inFy(o.wt, "date"), noise = inFy(o.nc, "date"), hv = inFy(o.hv, "date").concat(docRev.filter(x => /A-05/.test(x.code || "")));
+  // 年度の点検(ISOの計画のチェックシート)をした日
+  const ycDates = reg => o.rg.filter(x => x.reg === reg && x.checks && x.checks[String(fy)]).map(x => ({ date: x.checks[String(fy)].d }));
+  const water = inFy(o.wt, "date"), noise = inFy(o.nc, "date"), hv = inFy(o.hv, "date").concat(docRev.filter(x => /A-05/.test(x.code || ""))).concat(ycDates("legal"));
+  aspRev.push(...ycDates("aspects"), ...ycDates("sigAspects"));
   const auditDue = monthsFromAug >= 6;   // 2月(10月〜翌2月の最後)を過ぎた
   return document.getElementById("hmTasks").insertAdjacentHTML("beforeend",
     `<div class="hm-per">今年度 ${fy}年8月〜${fy + 1}年7月（環境マニュアルで決まっている時期）</div>` +
