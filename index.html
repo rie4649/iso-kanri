@@ -3835,10 +3835,22 @@ function renderCertImport(){
   document.getElementById("certBody").innerHTML =
     `<div class="field-hint" style="color:#475569;font-size:13px;line-height:1.7;margin-bottom:8px;">今までの計量証明書の数値は、もう読み取って入れてあります。下で<b>PDF・写真をまとめて選ぶ</b>と、ファイル名の日付で「どの検査の証明書か」を見分けて、その日の記録に添付します。記録がない年は、証明書の数値(pH・水温・ノルマルヘキサン)で記録も作ります。</div>
     <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;" class="certT"><tr><th>検査日(採取日)</th><th>pH</th><th>ノルマルヘキサン</th><th>証明書</th><th>今の状態</th></tr>${rows}</table></div>
-    <label class="attach-pick" style="margin-top:10px;display:block;text-align:center;">＋ 計量証明書のPDF・写真を選ぶ（まとめて選べます）<input type="file" accept="application/pdf,image/*" multiple style="display:none;" onchange="certPick(this)"></label>
+    <button class="btn-save" style="width:100%;margin-top:10px;font-size:15px;" id="certAllBtn" onclick="certImportBundled()">✅ 今までの証明書7枚（2019〜2026年）をまとめて入れる<br><small style="font-weight:normal;">ファイルを選ばなくてOK。押すだけで各年の記録に添付します</small></button>
+    <div class="field-hint" style="margin:10px 0 2px;color:#475569;font-size:12px;">これから届く新しい証明書は、下で選んで入れるか、その日の記録の「編集」→「添付」で入れます。</div>
+    <label class="attach-pick" style="margin-top:4px;display:block;text-align:center;">＋ 計量証明書のPDF・写真を選ぶ（まとめて選べます）<input type="file" accept="application/pdf,image/*" multiple style="display:none;" onchange="certPick(this)"></label>
     ${certFiles.length ? `<div style="margin-top:8px;font-weight:bold;font-size:13px;">選んだファイル（違うときは右で選び直してください）</div>` + certFiles.map((f, i) => `<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;"><span style="flex:1;word-break:break-all;">📄 ${escapeHtml(f.file.name)} <small>(${Math.round(f.file.size/1024)}KB)</small>${f.dup ? `<br><small style="color:#b45309;">同じ証明書のファイルがほかにもあります(大きい方=写真つきを入れます)</small>` : ""}</span><select onchange="certFiles[${i}].no=this.value" style="width:auto;font-size:12px;">${opts(f.no)}</select></div>`).join("") +
       `<button class="btn-save" style="width:100%;margin-top:10px;" id="certGo" onclick="doCertImport()">記録に入れる</button>` : ""}`;
 }
+/* 今までの証明書の原本(water-certs.js)を読み込んで、そのまま入れる */
+window.certImportBundled = async function(){
+  const btn = document.getElementById("certAllBtn"); btn.disabled = true; btn.textContent = "証明書を読み込み中…";
+  try {
+    if (typeof WATER_CERT_FILES === "undefined") await new Promise((ok, ng) => { const sc = document.createElement("script"); sc.src = "water-certs.js?v=1014"; sc.onload = ok; sc.onerror = () => ng(new Error("water-certs.js が見つかりません(GitHubにアップロードしてください)")); document.head.appendChild(sc); });
+    certFiles = Object.entries(WATER_CERT_FILES).map(([no, f]) => { const bin = atob(f.data), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return { file: new File([arr], f.name, { type: f.type }), no }; });
+    renderCertImport(); await doCertImport();
+  } catch(e){ alert("入れられませんでした: " + e.message); renderCertImport(); }
+};
 window.certPick = function(inp){
   Array.from(inp.files || []).forEach(file => certFiles.push({ file, no: certGuess(file.name) }));
   // 同じ証明書が2つ以上あるときは、大きい方(写真つき)だけを入れる
