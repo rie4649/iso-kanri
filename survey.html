@@ -100,6 +100,7 @@
 #subView th { background:#eef2f7; white-space:nowrap; }
 </style>
 <div class="saveBar"><span class="cnt" id="cnt"></span>
+  <label for="saveDate" style="margin:0;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;">入力日</label><input id="saveDate" type="date" style="width:auto;padding:6px 6px;">
   <label for="saveBy" style="margin:0;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;">保存する人</label><input id="saveBy" placeholder="例: 関根 理絵" style="width:130px;padding:7px 8px;">
   <button class="btn" id="undoBtn" onclick="undoAll()">変更を取り消す</button>
   <button class="btn pri" id="saveBtn" onclick="saveAll()">保存</button></div>
@@ -146,6 +147,8 @@ const TPLS = () => SURVEY_TEMPLATES.concat(added.filter(a => !a.deleted).map(a =
 let savedAt = {}, totals = {};
 let lastSavedBy = "";
 try { document.getElementById("saveBy").value = localStorage.getItem("isoRecBy") || ""; } catch(e){}
+document.getElementById("saveDate").value = (() => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
+let lastSavedDate = "";
 let names = {}, bank = {}, subs = [], customQs = [], ITEMS = [], saved = null, ans = {}, filter = "all", dirty = false, lastSavedAt = null, counts = {};
 const T = () => TPLS().find(t => t.id === tpl) || SURVEY_TEMPLATES[0];
 const tplName = id => names[id] || (TPLS().find(t => t.id === id) || {}).name || id;
@@ -190,6 +193,7 @@ async function loadAll(){
     if (!TPLS().some(t => t.id === tpl)) tpl = "astemo";
     await seedOnce();
   } catch(e){ console.error(e); }
+  try { await seedOnce2(); } catch(e){ console.error(e); }
   await openTpl(tpl, true);
   db.collection(SUB_COL).onSnapshot(sn => { subs = sn.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)); renderTpls(); renderSubs();
     if (openSubId && !window._openedSub && subs.some(x => x.id === openSubId)){ window._openedSub = true; const x = subs.find(y => y.id === openSubId); if ((x.tpl||"astemo") !== tpl) openTpl(x.tpl||"astemo", true).then(() => viewSub(openSubId)); else viewSub(openSubId); } }, e => console.error(e));
@@ -212,6 +216,19 @@ async function seedOnce(){
   customQs = [];
   if (Object.keys(bank).length) await BANK_REF.set({ items: bank }, { merge:true });
 }
+/* 2026/10: TDK・アート金属工業の回答がまだ1つもなければ、用意した答えを入れる(1回だけ)。
+   アート金属の A3-4(石綿・特管の仕切り)・A4-1(施行令7条の設置許可)・A6-1(結論) は、会社の状況で変わるので空けてある */
+async function seedOnce2(){
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().surveySeed2) return;
+  await fr.set({ surveySeed2:true }, { merge:true });
+  for (const t of ["tdk", "art"]){
+    const items = SURVEY_SEED_ANSWERS[t]; if (!items) continue;
+    const r = ansRef(t), d = await r.get(), cur = d.exists ? (d.data().items || {}) : {};
+    if (Object.values(cur).some(answered)) continue;   // もう答えがある会社はさわらない
+    await r.set({ items: { ...cur, ...items }, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), recBy:"自動入力(要確認)", recDate: todayYmd() }, { merge:true });
+  }
+}
 async function loadCounts(){
   for (const t of TPLS()){ try { const [d, c] = await Promise.all([ansRef(t.id).get(), customRef(t.id).get()]);
     counts[t.id] = d.exists ? Object.values(d.data().items || {}).filter(answered).length : 0;
@@ -229,7 +246,7 @@ async function openTpl(id, first){
     if (!c.exists && CUSTOM_SEED[tpl]){ await customRef(tpl).set({ items: CUSTOM_SEED[tpl] }); customQs = CUSTOM_SEED[tpl].slice(); }
     else customQs = c.exists ? (c.data().items || []) : [];
     saved = d.exists ? (d.data().items || {}) : null;
-    const u = d.exists && d.data().updatedAt; lastSavedAt = u && u.toDate ? u.toDate() : null; lastSavedBy = d.exists ? (d.data().recBy || "") : "";
+    const u = d.exists && d.data().updatedAt; lastSavedAt = u && u.toDate ? u.toDate() : null; lastSavedBy = d.exists ? (d.data().recBy || "") : ""; lastSavedDate = d.exists ? (d.data().recDate || "") : "";
   } catch(e){ toast("読み込みエラー: "+e.message); saved = null; customQs = []; }
   buildItems(); initAns(saved); showLastSaved(); renderTpls(); renderInfo(); renderSubs(); render();
 }
@@ -254,7 +271,7 @@ function renderInfo(){
         l.map(it => '<div style="font-size:13px;padding:2px 0;">・'+esc(it.label)+'　'+esc(it.q)+'</div>').join(""); }).join("")+
     '<button class="btn sm" style="margin-top:8px;" onclick="printPrep()">この一覧を印刷</button></div></details>' : "";
 }
-function showLastSaved(){ const el = document.getElementById("lastSaved"); if (el) el.textContent = lastSavedAt ? "最終保存 "+lastSavedAt.getFullYear()+"/"+(lastSavedAt.getMonth()+1)+"/"+lastSavedAt.getDate()+" "+String(lastSavedAt.getHours()).padStart(2,"0")+":"+String(lastSavedAt.getMinutes()).padStart(2,"0")+(lastSavedBy ? "　保存した人 "+lastSavedBy : "") : "まだ保存されていません"; }
+function showLastSaved(){ const el = document.getElementById("lastSaved"); if (el) el.textContent = lastSavedAt ? "最終保存 "+lastSavedAt.getFullYear()+"/"+(lastSavedAt.getMonth()+1)+"/"+lastSavedAt.getDate()+" "+String(lastSavedAt.getHours()).padStart(2,"0")+":"+String(lastSavedAt.getMinutes()).padStart(2,"0")+(lastSavedDate ? "　入力日 "+lastSavedDate.replace(/-/g, "/") : "")+(lastSavedBy ? "　保存した人 "+lastSavedBy : "") : "まだ保存されていません"; }
 function setFilter(f){ filter = f; render(); }
 function render(){
   const all = ITEMS, n = all.filter(it => answered(ans[it.id])).length;
@@ -301,14 +318,14 @@ async function saveAll(){
   const by = document.getElementById("saveBy").value.trim();
   if (!by){ toast("「保存する人」に名前を入れてください"); document.getElementById("saveBy").focus(); return; }
   try { localStorage.setItem("isoRecBy", by); } catch(e){}
-  const now = new Date(), recDate = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+  const recDate = document.getElementById("saveDate").value || todayYmd();   // 入力日(あとから入れるときは日付を変えられる)
   const items = {}, bankUpd = {};
   ITEMS.forEach(it => { const a = ans[it.id]; items[it.id] = { ans:a.ans||"", num:a.num||"", on:!!a.on };
     if (it.key && answered(a)) bankUpd[it.key] = { ans:a.ans||"", num:a.num||"", good: (it.opts||[]).length ? a.ans === it.opts[0] : null, fromTpl:tpl, fromName:tplName(tpl), cross:true, updatedMs:Date.now() }; });
   try {
     await ansRef(tpl).set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), recBy: by, recDate });
     if (Object.keys(bankUpd).length){ bank = { ...bank, ...bankUpd }; await BANK_REF.set({ items: bank }, { merge:true }); }
-    saved = items; dirty = false; ITEMS.forEach(it => { ans[it.id].isPre = false; ans[it.id].com = false; }); lastSavedAt = new Date(); lastSavedBy = by; showLastSaved();
+    saved = items; dirty = false; ITEMS.forEach(it => { ans[it.id].isPre = false; ans[it.id].com = false; }); lastSavedAt = new Date(); lastSavedBy = by; lastSavedDate = recDate; showLastSaved();
     counts[tpl] = Object.values(items).filter(answered).length; renderTpls();
     render(); toast("保存しました"+(Object.keys(bankUpd).length ? "(共通の答え "+Object.keys(bankUpd).length+"件をほかの会社にも反映)" : ""));
   } catch(e){ toast("保存できませんでした: "+e.message); }
