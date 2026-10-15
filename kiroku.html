@@ -95,6 +95,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="recby.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -211,6 +212,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// 記録者(管理者)と記録日を残す(recby.js)
+if (window.RecBy) RecBy.install(db, [ { modal:"#modalBg", before:"#modalBg .mBtns", cols:["isoAudits","isoCorrectives"], idInput:"#recId" } ]);
 
 const COLS = { audit:"isoAudits", fix:"isoCorrectives" };
 const NAMES = { audit:"内部監査", fix:"是正処置" };

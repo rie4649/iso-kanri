@@ -31,6 +31,7 @@
   .pend { width:100%; border-collapse:collapse; font-size:13px; } .pend td, .pend th { border:1px solid var(--line); padding:5px; } .pend select, .pend input { padding:6px; font-size:13px; }
   .search { display:flex; gap:8px; margin-bottom:10px; } .search input { flex:1; }
   @media print { header, .tabs, .help, .bar, .search, .noPrint { display:none !important; } .doc .acts { display:none; } body { background:#fff; } }
+  table.ptab { border-collapse:collapse; width:100%; background:#fff; font-size:14px; } table.ptab th, table.ptab td { border:1px solid var(--line); padding:6px 8px; vertical-align:top; text-align:left; } table.ptab th { background:var(--navyBg); color:var(--navy); }
 </style>
 </head>
 <body>
@@ -82,6 +83,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="recby.js"></script>
 <script src="ems-seed.js"></script>
 <script src="ems-docs.js"></script>
 <script>
@@ -95,6 +97,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// 記録者(管理者)と記録日を残す(recby.js)
+if (window.RecBy) RecBy.install(db, [ { modal:"#docBg", before:"#docBg .mBtns", cols:["emsDocs"], id: () => (document.getElementById("dCode") || {}).value || "" } ]);
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -107,9 +111,14 @@ const LINKS = [["",""],["company","会社情報(沿革・組織図・環境方�
   ["plan:legal","法的要求事項特定書(A-05)"],["plan:sigAspects","著しい環境側面特定表(A-08)"],["plan:changes","変更管理記録"],["plan:vendors","外部委託先の管理"],["plan:comms","コミュニケーション・苦情"],["plan:emergency","緊急事態の訓練・テスト"],["plan:monitoring","監視・測定の計画"],["plan:calib","測定機器の点検・校正"],
   ["skills","力量(資格の一覧)"],["safety","安全災害対策(パトロール・教育訓練)"],["manual","環境手順書"],["sdgs","SDGs"],["clean","クリーン度チェック"],["metal","金属拾い上げ"],
   ["donation","地域貢献"],["custlog","顧客対応の進捗記録(電話依頼)"],["freon","フロン排出抑制法簡易点検"],["noiseCheck","騒音チェック・圧縮機定期点検"],["waterTest","水質検査"],["diesel","軽油使用量"],["lifeline","ライフライン"],
-  ["calendar","カレンダー"],["kiroku","内部監査・是正処置"],["summary","年間サマリー・マネジメントレビュー"],["shokaki","消火器・防火管理"],["photos","写真の記録"]];
+  ["calendar","カレンダー"],["plan:roles","役割・責任と権限"],["plan:review","マネジメントレビュー(記録)"],["docs","EMS文書管理(この画面)"],["plan:auditPlan","内部監査の計画(C-01)"],["plan:nearMiss","ヒヤリハット報告(C-12)"],["plan:minutes","会議の議事録(C-19)"],["plan:distrib","文書の配布記録(C-18)"],["custlog","顧客対応の進捗記録"],["process","ISOの要求と書類(この画面のタブ)"],["abolist","廃止文書の一覧(この画面)"],["ext:master","マスター管理(車両・担当)"],["kiroku","内部監査・是正処置"],["summary","年間サマリー・マネジメントレビュー"],["shokaki","消火器・防火管理"],["photos","写真の記録"]];
 const linkName = k => (LINKS.find(l => l[0] === k) || ["",""])[1];
-function goLink(k){ location.href = "index.html#sec=" + encodeURIComponent(k); }
+function goLink(k){
+  if (k === "process"){ setTab("process"); return; }
+  if (k === "abolist"){ showAbo = true; setTab("list"); setTimeout(() => { const el = document.querySelector(".grpH.abo"); if (el) el.scrollIntoView({ behavior:"smooth" }); }, 200); return; }
+  if (k === "ext:master"){ window.open("https://rie4649.github.io/sekine-master/", "_blank"); return; }
+  location.href = "index.html#sec=" + encodeURIComponent(k);
+}
 
 let tab = (location.hash || "#list").slice(1), q = "", reviews = [], openCodes = new Set(), showAbo = false;
 function setTab(t){ tab = t; try { history.replaceState(null, "", "#"+t); } catch(e){} render(); }
@@ -119,11 +128,12 @@ EMS.ensureSeed().then(did => { if (did) toast("文書の一覧と、受け取っ
 
 function render(){
   const docs = EMS.docs;
-  document.getElementById("tabs").innerHTML = [["list","文書の一覧<small>"+docs.length+"文書</small>"],["reviews","見直し・確認の記録<small>"+reviews.length+"件</small>"],["bulk","一括登録<small>今までのPDF</small>"]]
+  document.getElementById("tabs").innerHTML = [["list","文書の一覧<small>"+docs.length+"文書</small>"],["process","ISOの要求と書類<small>監査の準備・B-02</small>"],["reviews","見直し・確認の記録<small>"+reviews.length+"件</small>"],["bulk","一括登録<small>今までのPDF</small>"]]
     .map(([k,l]) => '<button class="'+(tab===k?"on":"")+'" onclick="setTab(\''+k+'\')">'+l+'</button>').join("");
   const b = document.getElementById("body");
   if (tab === "reviews") return renderReviews(b);
   if (tab === "bulk") return renderBulk(b);
+  if (tab === "process") return renderProcess(b);
   if (!docs.length){ b.innerHTML = '<div class="empty">読み込み中…(初めて開いたときは、文書の一覧を登録しています)</div>'; return; }
   const live = docs.filter(d => !d.abolished), abo = docs.length - live.length;
   const withFile = live.filter(d => EMS.filesOf(d.id).length).length;
@@ -236,6 +246,45 @@ function renderListOnly(){
 function toggle(c){ if (openCodes.has(c)) openCodes.delete(c); else openCodes.add(c); renderListOnly(); }
 
 /* ---------- 見直し・確認の記録(EMS-C-01 / C-17) ---------- */
+/* ===== ISOの要求と書類(EMSにおける各プロセスと関係文書 EMS-B-02) =====
+   ISO14001の項目ごとに「何が求められているか」「どの書類で」「アプリのどこで」「記録の状況」を1枚で見る。監査の準備にも使う */
+const PROCESS_MAP = [
+  ["4.1・4.2", "組織の課題と利害関係者の要求をつかむ", ["A-09"], ["plan:issues","plan:parties"]],
+  ["4.3", "適用範囲を決める", ["A-01"], ["company"]],
+  ["5.2", "環境方針", ["A-02"], ["company"]],
+  ["5.3", "役割・責任と権限", ["A-03"], ["plan:roles"]],
+  ["6.1.2", "環境側面と著しい環境側面", ["A-06","A-07","A-08","A-17","C-20"], ["plan:aspects","plan:sigAspects"]],
+  ["6.1.3", "順守義務(法令など)を決める", ["A-05","A-24","C-26","C-26-01"], ["plan:legal","horei"]],
+  ["6.1.4", "リスクと機会への取り組み", ["A-10"], ["plan:risks"]],
+  ["6.2", "環境目標と達成計画・進捗", ["A-12","A-13","A-22","A-14","A-15","A-16","A-27"], ["plan:objectives","clean","donation","metal","custlog"]],
+  ["6.3", "変更の管理", [], ["plan:changes"]],
+  ["7.2", "力量(資格・教育)", ["A-11"], ["skills"]],
+  ["7.3", "認識(自覚教育)", ["C-10"], ["safety"]],
+  ["7.4", "コミュニケーション(外部・内部)", ["C-08","C-13","C-15","C-16","C-19","C-28"], ["plan:comms","calendar","plan:minutes"]],
+  ["7.5", "文書化した情報の管理(作成・見直し・配布)", ["C-17","C-18","C-22"], ["docs","plan:distrib"]],
+  ["8.1", "運用の管理(手順書・委託先)", ["A-18","A-26","B-05","B-06"], ["manual","plan:vendors","kyoka","permit"]],
+  ["8.2", "緊急事態への準備と対応", ["C-11","C-12"], ["plan:emergency","plan:nearMiss","shokaki"]],
+  ["9.1.1", "監視・測定(水質・騒音・CO₂・エネルギー)", ["A-19","A-20","A-21","A-25","C-21","C-27","Z-02"], ["plan:monitoring","waterTest","noiseCheck","diesel","lifeline","freon","plan:calib"]],
+  ["9.1.2", "順守評価", ["A-05"], ["plan:legal"]],
+  ["9.2", "内部監査(計画・実施・結果)", ["C-01","C-02","C-03","C-06"], ["plan:auditPlan","kiroku"]],
+  ["9.3", "マネジメントレビュー", ["C-04","C-05"], ["plan:review","summary"]],
+  ["10.2", "不適合と是正処置", ["C-07"], ["kiroku"]]
+];
+function renderProcess(b){
+  const docOf = c => EMS.docs.find(d => d.id === c);
+  const st = k => linkStats && (linkStats[k] || (/^plan:/.test(k) ? { n:0, last:"" } : null));
+  const rows = PROCESS_MAP.map(([cl, what, codes, links]) => {
+    const ds = codes.map(c => { const d = docOf(c); return d ? '<div'+(d.abolished ? ' style="color:#9ca3af;text-decoration:line-through;"' : '')+'>EMS-'+esc(c)+' '+esc(d.name)+'</div>' : ''; }).join("");
+    const ls = links.map(k => { const s = st(k); const n = s ? s.n : null;
+      return '<div><a href="#" onclick="goLink(\''+k+'\');return false;">'+esc(linkName(k) || k)+'</a>'+(n == null ? '' : n ? ' <span class="st app">'+n+'件'+(s.last ? '・最終 '+esc(String(s.last).length === 7 ? Number(String(s.last).slice(5))+"月分" : fdj(String(s.last).slice(0,10))) : '')+'</span>' : ' <span class="st need">まだ記録なし</span>')+'</div>'; }).join("");
+    const empty = linkStats && links.every(k => { const s = st(k); return s && !s.n; });
+    return '<tr'+(empty ? ' style="background:#fff7ed;"' : '')+'><td style="white-space:nowrap;font-weight:700;">'+cl+'</td><td>'+esc(what)+'</td><td style="font-size:12px;">'+(ds || '<span style="color:#9ca3af;">(アプリの記録のみ)</span>')+'</td><td style="font-size:13px;">'+ls+'</td></tr>';
+  }).join("");
+  b.innerHTML = '<div class="note" style="margin:0 0 8px;">ISO14001で求められていることごとに、どの書類で・アプリのどこで記録しているかの一覧です(EMSにおける各プロセスと関係文書 EMS-B-02)。<b>オレンジの行</b>は、まだ記録が1件もないものです。監査の前に、ここを上から見ていけば準備になります。</div>'+
+    '<div class="bar noPrint" style="margin-bottom:8px;"><button class="btn" onclick="window.print()">この一覧を印刷</button></div>'+
+    '<div style="overflow-x:auto;"><table class="ptab"><tr><th>ISO</th><th>求められていること</th><th>書類(EMS文書)</th><th>アプリで記録する場所・記録の状況</th></tr>'+rows+'</table></div>';
+  if (!linkStats && !window._lsLoading){ window._lsLoading = true; loadLinkStats().then(() => { if (tab === "process") render(); }).catch(e => console.error(e)); }
+}
 function renderReviews(b){
   b.innerHTML = '<div class="bar"><button class="btn pri" onclick="openRev()">＋ 見直しを記録</button><button class="btn" onclick="window.print()">印刷・PDF</button></div>'+
     '<h2 style="font-size:16px;color:var(--navy);margin:6px 0;">文書見直し記録(日程決定記録兼文書見直記録)</h2>'+

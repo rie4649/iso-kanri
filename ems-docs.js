@@ -89,6 +89,14 @@ const EMS = (function(){
         await db.collection(DOCS).doc(code).update({ abolished:true, abolishedDate:date, abolishedReason:reason, abolishedBy:"環境管理責任者", replacedBy:rep, abolishReviewId:ref.id });
       }
     }
+    if (!flag.links2){   // 2026/10: 原本だけだった記録を、アプリの入力画面につなぐ(入力する場所が空のものだけ)
+      await flagRef.set({ links2:true }, { merge:true });
+      const L = {"C-01": "plan:auditPlan", "C-12": "plan:nearMiss", "C-13": "plan:comms", "C-14": "clean", "C-18": "plan:distrib", "C-19": "plan:minutes", "B-02": "process", "B-03": "ext:master", "B-04": "ext:master", "Z-03": "abolist"};
+      for (const [code, link] of Object.entries(L)){
+        const ex = await db.collection(DOCS).doc(code).get(); if (!ex.exists || ex.data().link) continue;
+        await db.collection(DOCS).doc(code).update({ link });
+      }
+    }
     if (!flag.emsMigrate1){ await migrateLegacy(); await flagRef.set({ emsMigrate1:true }, { merge:true }); }
     return did;
   }

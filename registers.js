@@ -318,6 +318,72 @@ const ISO_REGS = [
     ]
   },
   {
+    key:"auditPlan", icon:"🗓️", name:"内部監査の計画", clause:"9.2",
+    help:"内部監査の日程と分担を決めた記録です(監査日程決定記録 EMS-C-01・環境マニュアル9.2)。毎年10月〜2月の間に、どの部署・仕事を、誰が、いつ監査するかを決めます。監査員は自分の仕事は監査しません(客観性)。終わったら「実施日」を入れ、指摘や結果は「内部監査・是正処置」に記録します。",
+    title:"area", dated:"date",
+    fields:[
+      { k:"date", label:"監査の予定日", type:"date", req:true, list:true },
+      { k:"area", label:"監査する部署・仕事", type:"text", req:true, list:true, ph:"例: ヤード(積替え保管・選別)／事務所(記録類)／車両(収集運搬)" },
+      { k:"clause", label:"主に確認すること(環境マニュアルの項目)", type:"text", list:true, ph:"例: 6.1.2 環境側面・8.1 運用・9.1 監視測定" },
+      { k:"auditor", label:"監査員", type:"text", list:true },
+      { k:"auditee", label:"監査を受ける人", type:"text", list:true },
+      { k:"decidedOn", label:"日程を決めた日", type:"date", list:true },
+      { k:"decidedBy", label:"決めた人(承認)", type:"text", list:true, ph:"例: 環境管理責任者" },
+      { k:"done", label:"実施日", type:"date", list:true },
+      { k:"status", label:"状況", type:"select", options:[["予定","予定"],["実施済み","実施済み"],["延期","延期"]], list:true }
+    ],
+    examples:[
+      { area:"ヤード(積替え保管・選別)", clause:"6.1.2・8.1・8.2", status:"予定" },
+      { area:"事務所(記録類・委託契約)", clause:"6.1.3・7.5・8.1", status:"予定" },
+      { area:"車両(収集運搬・軽油)", clause:"8.1・9.1.1", status:"予定" }
+    ]
+  },
+  {
+    key:"nearMiss", icon:"⚠️", name:"ヒヤリハット報告", clause:"8.2 / 10.2",
+    help:"けがや事故・油漏れなどにはならなかったけれど「ヒヤッとした・ハッとした」ことの報告です(ヒヤリハット報告書 EMS-C-12)。小さいうちに原因と対策を決めて、同じことが起きないようにします。大きな問題になったときは「内部監査・是正処置」の是正処置にも記録します。",
+    title:"what", dated:"date",
+    fields:[
+      { k:"date", label:"起きた日", type:"date", req:true, list:true },
+      { k:"who", label:"報告した人", type:"text", list:true },
+      { k:"place", label:"場所", type:"text", list:true, ph:"例: ヤード東側・積替え保管場所" },
+      { k:"kind", label:"種類", type:"select", options:[["環境","環境(油漏れ・飛散・騒音など)"],["安全","安全(けがをしそうになった)"],["車両","車両・運転"],["その他","その他"]], list:true },
+      { k:"what", label:"何が起きたか(ヒヤッとしたこと)", type:"textarea", req:true, list:true, ph:"例: 重機の給油中にホースが外れ、油がこぼれそうになった" },
+      { k:"cause", label:"原因", type:"textarea", list:true },
+      { k:"measure", label:"対策(やったこと・やること)", type:"textarea", list:true, ph:"例: 給油時は受け皿を置く。朝礼で周知" },
+      { k:"share", label:"みんなへの周知", type:"text", list:true, ph:"例: 10/15 朝礼で周知" },
+      { k:"status", label:"状況", type:"select", options:[["対応中","対応中"],["完了","完了"]], list:true }
+    ]
+  },
+  {
+    key:"minutes", icon:"📝", name:"会議の議事録", clause:"7.4.2",
+    help:"環境管理会議・ISO推進委員会などの議事録です(議事録 EMS-C-19・環境マニュアル7.4.2)。環境管理会議は年7〜8回。話し合ったこと・決まったこと・宿題(誰が・いつまでに)を残すと、次の会議やマネジメントレビューで確認できます。",
+    title:"agenda", dated:"date",
+    fields:[
+      { k:"date", label:"開いた日", type:"date", req:true, list:true },
+      { k:"kind", label:"会議", type:"select", options:[["環境管理会議","環境管理会議"],["ISO推進委員会","ISO推進委員会"],["全体会議","全体会議"],["その他","その他"]], list:true },
+      { k:"members", label:"出席者", type:"text", list:true },
+      { k:"agenda", label:"議題", type:"textarea", req:true, list:true, ph:"例: 9月の環境目標の進み具合／内部監査の日程" },
+      { k:"content", label:"話し合った内容", type:"textarea", list:true },
+      { k:"decision", label:"決まったこと", type:"textarea", list:true },
+      { k:"todo", label:"宿題(誰が・いつまでに)", type:"textarea", list:true, ph:"例: 理絵 10/31までに 内部監査の日程表を作る" },
+      { k:"next", label:"次回の予定", type:"date", list:true }
+    ]
+  },
+  {
+    key:"distrib", icon:"📤", name:"文書の配布記録", clause:"7.5.3",
+    help:"新しい版の書類を、どこに・誰に配ったか(掲示したか)の記録です(文書配布記録 EMS-C-18・環境マニュアル7.5.3)。古い版は回収・廃棄して、間違って使われないようにします。アプリで共有しているものは「アプリで共有」を選びます。",
+    title:"name", dated:"date",
+    fields:[
+      { k:"date", label:"配布した日", type:"date", req:true, list:true },
+      { k:"code", label:"文書番号・版", type:"text", req:true, list:true, ph:"例: EMS-A-22-03" },
+      { k:"name", label:"文書名", type:"text", list:true, ph:"例: 環境目標兼活動計画書" },
+      { k:"to", label:"配布先・掲示場所", type:"text", list:true, ph:"例: 事務所掲示板・休憩所・各ドライバー" },
+      { k:"method", label:"配り方", type:"select", options:[["掲示","掲示"],["紙で配布","紙で配布"],["アプリで共有","アプリで共有"],["メール","メール"]], list:true },
+      { k:"old", label:"古い版", type:"select", options:[["",""],["回収・廃棄した","回収・廃棄した"],["なし","なし(初版)"]], list:true },
+      { k:"by", label:"配った人", type:"text", list:true }
+    ]
+  },
+  {
     key:"calib", icon:"📏", name:"測定機器の点検・校正", clause:"9.1",
     help:"測定に使う機器(トラックスケール・騒音計・pH計など)の点検や校正・検定の記録です。次回の日付を入れると期限切れが分かります。",
     title:"name", dated:"last",

@@ -65,6 +65,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="recby.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -181,6 +182,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// 記録者(管理者)と記録日を残す(recby.js)
+if (window.RecBy) RecBy.install(db, [ { modal:".upCard", before:"#upBtn", cols:["isoShokakiDocs"] } ]);
 
 const DOC_COL = "isoShokakiDocs";     // 書類の情報
 const CHUNK_COL = "isoShokakiChunks"; // 中身(分割base64)

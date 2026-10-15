@@ -44,6 +44,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="recby.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -55,6 +56,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// 記録者(管理者)と記録日を残す(recby.js)
+if (window.RecBy) RecBy.install(db, [ { modal:".wrap", before:"#body", cols:["isoCustMonthly"] } ]);
 /* 保存場所
    phoneRequests   … 電話依頼アプリの依頼(今あるもの。対応済みは2日後に消える)
    phoneRequestLog … 電話依頼アプリが「対応済み」にしたとき・消す前に残す控え(この記録のもと)

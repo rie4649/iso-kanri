@@ -11,6 +11,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="recby.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -1617,6 +1618,23 @@ window.addEventListener("error", (event) => {
   alert("エラーが発生しました: " + event.message);
 });
 const db = firebase.firestore();
+// 記録者(管理者)と記録日を、どの記録にも残す(recby.js)。入力画面に「記録者」欄が出て、保存すると recBy・recDate が入る
+if (window.RecBy) RecBy.install(db, [
+  { modal:"#eventModalOverlay", before:".modal-actions", cols:["isoEvents"], idInput:"#editId" },
+  { modal:"#waterTestModalOverlay", before:".modal-actions", cols:["waterTests"], idInput:"#waterTestEditId" },
+  { modal:"#noiseCheckModalOverlay", before:".modal-actions", cols:["noiseChecks"], idInput:"#noiseCheckEditId" },
+  { modal:"#metalModalOverlay", before:".modal-actions", cols:["metalRecords"], idInput:"#metalEditId" },
+  { modal:"#cleanModalOverlay", before:".modal-actions", cols:["cleanlinessChecks"], idInput:"#cleanEditId" },
+  { modal:"#dieselModalOverlay", before:".modal-actions", cols:["dieselRecords"], idInput:"#dieselEditId" },
+  { modal:"#lifelineModalOverlay", before:".modal-actions", cols:["lifelineRecords"], idInput:"#lifelineEditId" },
+  { modal:"#trainingModalOverlay", before:".modal-actions", cols:["trainingRecords"], idInput:"#trainingEditId" },
+  { modal:"#manualModalOverlay", before:".modal-actions", cols:["envManuals"], idInput:"#manualEditId" },
+  { modal:"#sdgsGoalModalOverlay", before:".modal-actions", cols:["sdgsGoals"], idInput:"#sdgsGoalEditId" },
+  { modal:"#sdgsProgressModalOverlay", before:".modal-actions", cols:["sdgsProgress"] },
+  { modal:"#freonModalOverlay", cols:["freonRecords"], idInput:"#freonEditId", useInput:"#freonInspector" },
+  { modal:"#safetyModalOverlay", cols:["safetyPatrols"], idInput:"#safetyEditId", useInput:"#safetyInspector" },
+  { modal:"#compModalOverlay", cols:["compressorInspections"], idInput:"#compEditId", useInput:"#compInspector" }
+]);
 let storageRef = null;
 try { storageRef = firebase.storage().ref(); } catch (e) { console.warn("Storage未初期化", e); }
 const EVENT_COLLECTION = "isoEvents";
@@ -4729,6 +4747,8 @@ const SECTION_DEFS = [
   { key: "skills", grp: "sup", cl: "7.2", name: "力量（資格の一覧）" },
   { key: "safety", grp: "sup", cl: "7.2 / 8.2", name: "安全災害対策（安全衛生パトロール・教育訓練）" },
   { key: "plan:comms", grp: "sup", cl: "7.4", name: "コミュニケーション・苦情" },
+  { key: "plan:minutes", grp: "sup", cl: "7.4.2", name: "会議の議事録（環境管理会議など）" },
+  { key: "plan:distrib", grp: "sup", cl: "7.5.3", name: "文書の配布記録" },
   { key: "docs", grp: "sup", cl: "7.5", name: "EMS文書管理（文書の一覧・原本PDF・見直しの記録）" },
   { key: "manual", grp: "sup", cl: "7.5 / 8.1", name: "環境手順書" },
   { key: "photos", grp: "sup", cl: "7.5", name: "写真の記録（車両・設備・保管・掲示・現場）" },
@@ -4736,6 +4756,7 @@ const SECTION_DEFS = [
   { key: "plan:vendors", grp: "op", cl: "8.1", name: "外部委託先の管理（許可・契約の期限・評価）" },
   { key: "survey", grp: "op", cl: "8.1", name: "委託先調査票の回答" },
   { key: "plan:emergency", grp: "op", cl: "8.2", name: "緊急事態の訓練・テスト" },
+  { key: "plan:nearMiss", grp: "op", cl: "8.2 / 10.2", name: "ヒヤリハット報告" },
   { key: "shokaki", grp: "op", cl: "8.2", name: "消火器・防火管理" },
   // 監視・測定(9.1)
   { key: "plan:monitoring", grp: "mon", cl: "9.1.1", name: "監視・測定の計画" },
@@ -4747,6 +4768,7 @@ const SECTION_DEFS = [
   { key: "plan:calib", grp: "mon", cl: "9.1", name: "測定機器の点検・校正" },
   { key: "calendar", grp: "mon", cl: "9.1", name: "カレンダー" },
   // 評価・改善(9.2〜10章)
+  { key: "plan:auditPlan", grp: "imp", cl: "9.2", name: "内部監査の計画（日程・分担）" },
   { key: "kiroku", grp: "imp", cl: "9.2 / 10.2", name: "内部監査・是正処置の記録" },
   { key: "summary", grp: "imp", cl: "9.3", name: "年間サマリー（マネジメントレビューの資料）" },
   { key: "plan:review", grp: "imp", cl: "9.3", name: "マネジメントレビュー（記録）" },
@@ -4777,7 +4799,7 @@ const FIND_INDEX = [
   ["緊急事態 訓練 テスト 地震 油漏れ", "緊急事態の訓練・テスト", "plan:emergency"],
   ["校正 測定機器 トラックスケール 台貫 計量器 騒音計", "測定機器の点検・校正", "plan:calib"],
   ["監視 測定 計画", "監視・測定の計画", "plan:monitoring"],
-  ["マネジメントレビュー 社長", "マネジメントレビュー", "plan:review"],
+  ["マネジメントレビュー 社長 報告書 資料 C-04 C-05", "マネジメントレビュー（資料を自動で作る・記録）", "plan:review"],
   ["水質 pH 計量証明書 分析証 油水分離槽", "水質検査（計量証明書は各検査の添付へ）", "waterTest"],
   ["騒音 圧縮機 定期点検 EMS-C-21", "騒音チェック・圧縮機定期点検", "noiseCheck"],
   ["軽油 給油 燃料 CO2", "軽油使用量", "diesel"],
@@ -4804,6 +4826,11 @@ const FIND_INDEX = [
   ["委託先調査票 調査票 アンケート 取引先", "委託先調査票の回答", "survey"],
   ["顧客対応 お客様 ニーズ 電話依頼 完了率 進捗記録", "顧客対応（進捗記録・電話依頼）", "custlog"],
   ["EMS 文書 原本 PDF 見直し 廃止 一覧", "EMS文書管理（原本PDF・見直しの記録）", "docs"],
+  ["内部監査 計画 日程 監査日程決定記録 EMS-C-01", "内部監査の計画（日程・分担）", "plan:auditPlan"],
+  ["ヒヤリハット ヒヤリ ハッと 事故 けが EMS-C-12", "ヒヤリハット報告", "plan:nearMiss"],
+  ["議事録 会議 環境管理会議 推進委員会 EMS-C-19", "会議の議事録", "plan:minutes"],
+  ["配布 掲示 文書配布記録 EMS-C-18", "文書の配布記録", "plan:distrib"],
+  ["ISOの要求 プロセス 関係文書 監査の準備 EMS-B-02", "ISOの要求と書類（監査の準備）", "docs"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
 let findDocs = null;
@@ -4888,7 +4915,9 @@ function homeYearPlan(o) {
   const test = inFy(o.tr, "date").filter(x => x.kind === "test").concat(inFy(o.rg.filter(x => x.reg === "emergency"), "date"));
   const manRev = docRev.filter(x => /手順/.test((x.title || "") + (x.detail || "")));
   const audit = inFy(o.au, "date"), mrv = inFy(o.mr, "date").concat(inFy(o.rg.filter(x => x.reg === "review"), "date"));
-  const meet = inFy(o.ev, "date").filter(x => /環境管理会議|推進委員会|ISO会議|ISO推進/.test((x.title || "") + " " + (x.notes || "")));
+  const meet = inFy(o.ev, "date").filter(x => /環境管理会議|推進委員会|ISO会議|ISO推進/.test((x.title || "") + " " + (x.notes || "")))
+    .concat(inFy(o.rg.filter(x => x.reg === "minutes" && /環境管理会議|ISO推進委員会/.test(x.kind || "")), "date"));
+  const aPlan = inFy(o.rg.filter(x => x.reg === "auditPlan" && !x.draft), "date");
   const highRisk = o.rg.filter(x => x.reg === "risks" && x.level === "高").length;
   // 年度の点検(ISOの計画のチェックシート)をした日
   const ycDates = reg => o.rg.filter(x => x.reg === reg && x.checks && x.checks[String(fy)]).map(x => ({ date: x.checks[String(fy)].d }));
@@ -4901,14 +4930,15 @@ function homeYearPlan(o) {
     Y("8月", "環境側面の見直し", "仕事が環境に与える影響の一覧（A-06〜A-08）を見直す。ISOの計画のチェックシートで点検（6.1.2）", "plan:aspects", done(aspRev, " 見直し") || (aspects.length ? notYet(8) : st(false, "未登録"))) +
     Y("8月", "取引先チェック表", "処分先・委託先を5項目（0〜2点）で採点してA/B/Cを付ける。B・Cは対応を記録（6.1.5）", "plan:vendors", vendors.length ? st(vEval.length >= vendors.length ? true : due(8) ? false : null, `${vEval.length} / ${vendors.length}社`) : st(null, "未登録")) +
     Y("8月", "委託契約状況集計表", "契約件数・処分先ごとの件数を集計して記録する。外部委託先の管理から作る（8.1・EMS-A-26）", "plan:vendors", done(docRev.filter(x => x.code === "A-26")) || notYet(8)) +
+    Y("9月", "内部監査の計画", "どの部署・仕事を、誰が、いつ監査するか決める（監査日程決定記録 C-01・9.2）", "plan:auditPlan", aPlan.length ? st(true, `${aPlan.length}件 計画済み`) : notYet(9)) +
     Y("10〜2月", "内部監査", "社内の監査員が、ルールどおりにできているかを確認する（9.2）", "kiroku", done(audit) || st(auditDue ? false : null, auditDue ? "まだ" : "10月〜2月に実施")) +
     Y("11月", "緊急事態の手順書の見直し・定期テスト", "油漏れ・火災・地震などの訓練をして、緊急時の手順書を見直す（8.2）", "safety", done(test) || notYet(11)) +
     Y("1月末", "半期末の目標の評価", "環境目標が半分まで進んでいるか確認。足りなければ是正処置（6.2）", "plan:objectives", st(null, "1月末")) +
-    Y("年7〜8回", "環境管理会議", "環境管理責任者とISO推進委員の会議。カレンダーにタイトル「環境管理会議」で記録（7.4.2）", "calendar", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
+    Y("年7〜8回", "環境管理会議", "環境管理責任者とISO推進委員の会議。「会議の議事録」に記録（7.4.2・C-19）", "plan:minutes", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
     Y("年1回", "法令の順守評価", "法律や条例を守れているかを確認する。法的要求事項特定書（A-05）のチェックシートで点検（9.1.2）", "plan:legal", done(hv) || st(null, "まだ")) +
     Y("年1回", "水質検査", "油水分離槽の水を検査し、計量証明書を添付する（9.1.1）", "waterTest", done(water) || st(null, "まだ")) +
     Y("年1回", "騒音チェック", "敷地境界の騒音を測って記録する（9.1.1）", "noiseCheck", done(noise) || st(null, "まだ")) +
-    Y("年1回", "マネジメントレビュー", "社長に1年の結果を報告して、指示をもらう（9.3）" + (highRisk ? `。優先度「高」のリスク ${highRisk}件も確認` : ""), "plan:review", done(mrv) || notYet(7)) +
+    Y("年1回", "マネジメントレビュー", "社長に1年の結果を報告して、指示をもらう。「資料を作る」で1年分の記録から報告書が自動でできる（9.3）" + (highRisk ? `。優先度「高」のリスク ${highRisk}件も確認` : ""), "plan:review", done(mrv) || notYet(7)) +
     Y("7月", "文書の見直し・環境活動計画の見直し", "書類が今のやり方に合っているか見直し、来年度の環境目標・活動計画を決める（7.5.3・6.2）", "docs", done(planRev.length ? planRev : docRev, docRev.length ? ` ほか${docRev.length}件` : "") || notYet(7)));
 }
 /* ===== ホーム(2026/10 作り直し) =====
@@ -4921,31 +4951,34 @@ const WORK_GROUPS = [
     ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
   ["📅", "年1回・決まった時期", "環境マニュアルで時期が決まっているもの", [
     ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
-    ["kiroku", "内部監査・是正処置", "10月〜2月"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
+    ["plan:auditPlan", "内部監査の計画（日程・分担）", "9月ごろ決める"], ["kiroku", "内部監査の結果・是正処置", "10月〜2月"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
     ["plan:legal", "法令の順守評価（A-05）", "年1回・チェックシート"], ["waterTest", "水質検査（計量証明書）", "年1回"], ["noiseCheck", "騒音チェック・圧縮機点検", "年1回"],
     ["plan:review", "マネジメントレビュー", "年1回・社長へ報告"], ["plan:calib", "測定機器の点検・校正", "年1回"], ["shokaki", "消火器・防火管理", "点検のとき"]]],
+  ["🚨", "何かあったとき", "起きたらすぐ記録する", [
+    ["plan:comms", "苦情・問い合わせ・提案", "お客様・近隣・行政から"], ["plan:nearMiss", "ヒヤリハット", "けが・油漏れにならなかったけど危なかった"],
+    ["kiroku", "事故・不適合 → 是正処置", "原因と対策を記録"], ["plan:changes", "何かが変わった（変更管理）", "設備・法律・人・委託先"],
+    ["calendar", "行政の立入検査・照会", "カレンダーに行政照会記録"], ["plan:minutes", "会議をした（議事録）", "環境管理会議・推進委員会"]]],
   ["🎯", "計画・ルール・書類", "何か変わったとき・見直すときに使う", [
-    ["plan", "ISOの計画（課題・利害関係者・リスク・目標など）", ""], ["plan:changes", "変更管理記録", "設備・法改正・人・委託先が変わったとき"],
-    ["docs", "EMS文書管理（書類の一覧・原本PDF）", ""], ["manual", "環境手順書", ""], ["plan:comms", "コミュニケーション・苦情", "苦情・提案・行政とのやりとり"],
+    ["plan", "ISOの計画（課題・利害関係者・リスク・目標など）", ""],
+    ["docs", "EMS文書管理（書類の一覧・原本PDF・ISOの要求と書類）", "監査の前は「ISOの要求と書類」タブ"], ["manual", "環境手順書", ""], ["plan:distrib", "文書の配布記録", "新しい版を掲示・配布したとき"],
     ["survey", "委託先調査票の回答", "取引先から届いたとき"], ["horei", "法規制一覧（法改正のお知らせ）", ""], ["kyoka", "許可一覧", ""], ["permit", "許可の内容", ""],
     ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
   ["👀", "見る・まとめる", "監査・会議・視察のとき", [
-    ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["summary", "年間サマリー", "マネジメントレビューの資料"],
+    ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["plan:review", "📊 マネジメントレビューの資料を作る", "1年分の記録から社長への報告書を自動で作る"], ["summary", "年間サマリー", "1年の記録の集計"],
     ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"]]]
 ];
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
   const wrow = ([to, n, sub]) => `<div class="hm-in" onclick="openSection('${to}')"><span class="nm">${n}${sub ? `<span style="display:block;font-size:11px;color:#6b7280;">${sub}</span>` : ""}</span><span class="to">›</span></div>`;
   const card = (ic, t, sub, body) => `<div class="hm-find hm-wk"><h3>${ic} ${t}</h3><div class="hm-wsub">${sub}</div>${body}</div>`;
-  const [g1, g2, g3, g4] = WORK_GROUPS;
+  const [g1, g2, gT, g3, g4] = WORK_GROUPS;
   document.getElementById("homeMenu").innerHTML =
     `<div class="hm-find"><input type="search" id="hmQ" placeholder="🔍 書類名・言葉で探す（例：リスク、計量証明書、許可証、EMS-A-10）" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
     `<div class="hm-find hm-now"><h3>✅ 今やること</h3><div id="hmNow"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
     `<div class="hm-sec">仕事から探す</div>` +
     `<div class="hm-two">` + card(g1[0], g1[1], g1[2], g1[3].map(wrow).join("")) + card(g2[0], g2[1], g2[2], g2[3].map(wrow).join("")) + `</div>` +
-    `<div class="hm-two">` + card("📥", "届いた書類を入れる", "書類ごとに入れる場所へ案内します", INCOMING.map(([n, to, how]) => wrow([to, n, how])).join("")) +
-      card(g3[0], g3[1], g3[2], g3[3].map(wrow).join("")) + `</div>` +
-    card(g4[0], g4[1], g4[2], `<div class="hm-look">${g4[3].map(wrow).join("")}</div>`) +
+    `<div class="hm-two">` + card(gT[0], gT[1], gT[2], gT[3].map(wrow).join("")) + card("📥", "届いた書類を入れる", "書類ごとに入れる場所へ案内します", INCOMING.map(([n, to, how]) => wrow([to, n, how])).join("")) + `</div>` +
+    `<div class="hm-two">` + card(g3[0], g3[1], g3[2], g3[3].map(wrow).join("")) + card(g4[0], g4[1], g4[2], g4[3].map(wrow).join("")) + `</div>` +
     `<details class="hm-det"><summary>📅 予定と状況をすべて見る（毎月・3か月ごと・今年度の予定）</summary><div id="hmTasks"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></details>` +
     `<details class="hm-det"><summary>📚 ISOの章ごとのメニュー（監査で「◯章はどこ？」と聞かれたとき）</summary>` +
       SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("") + `</details>`;

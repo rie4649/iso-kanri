@@ -86,6 +86,14 @@
 </div></div>
 <div id="formStage" style="position:fixed;left:-20000px;top:0;"></div>
 <div id="toast"></div>
+<div class="bg" id="mrBg" style="z-index:86;" onclick="if(event.target===this)closeMr()"><div class="modal" style="max-width:620px;">
+  <h2>マネジメントレビューの資料（報告書 EMS-C-04）を作る</h2>
+  <div class="note" id="mrSum" style="margin-top:0;"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><label for="mrDate">日付(作成日)</label><input id="mrDate" type="date"></div><div><label for="mrVer">版数</label><input id="mrVer" placeholder="例: 01"></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><label for="mrAuthor">作成者</label><input id="mrAuthor" value="環境管理責任者"></div><div><label for="mrChecker">確認者</label><input id="mrChecker"></div></div>
+  <div class="note">「先に見る」で中身を確認 →「PDFを作って登録」で EMS文書管理(C-04)に残ります。会議のあとは「レビューの記録に書き写す」で、社長の指示を書き足して保存します。</div>
+  <div class="mBtns"><button class="btn" onclick="previewMr()">先に見る・印刷</button><button class="btn" onclick="mrToRecord()">レビューの記録に書き写す</button><span style="flex:1"></span><button class="btn" onclick="closeMr()">閉じる</button><button class="btn pri" id="mrSave" onclick="makeMr()">PDFを作って登録</button></div>
+</div></div>
 <div class="bg" id="a26Bg" style="z-index:86;" onclick="if(event.target===this)closeA26()"><div class="modal" style="max-width:620px;">
   <h2>委託契約状況集計表（EMS-A-26）を作る</h2>
   <div class="note" style="margin-top:0;">共通マスタ管理の契約と、取引先チェック表(A-18)から自動で集計します。処分先の名前の書き方の違い(「(株)」の有無・「・」など)は、同じ会社としてまとめます。</div>
@@ -234,6 +242,7 @@
 })();
 </script>
 <script src="registers.js"></script>
+<script src="recby.js"></script>
 <script src="ems-seed.js"></script>
 <script src="plan-seed.js"></script>
 <script src="ems-docs.js"></script>
@@ -251,6 +260,12 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// 記録者(管理者)と記録日(recby.js)。表の1行の入力画面と、チェックシート(確認者の欄を使う)で保存したときに入る
+window.RECBY_NOTAG = true;
+if (window.RecBy) RecBy.install(db, [
+  { modal:"#editBg", before:"#editBg .mBtns", cols:["isoRegisters"], id: () => editId || "" },
+  { modal:"#ycView", cols:["isoRegisters","isoYearChecks"], useInput:"#shBy" }
+]);
 
 let rows = [], cur = (location.hash || "").replace("#", ""), editId = null;
 setTimeout(() => { if (cur === "vendors") vendorSeedOnce().catch(e => console.error(e)); if (cur === "objectives") custPlanOnce().catch(e => console.error(e)); }, 2500);
@@ -571,7 +586,7 @@ function render(){
   // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
   // タブ: 使う場面ごとに3つにまとめて、折り返して全部見えるように(2026/10)。下書きがあれば(下書き)を付ける
   const TAB_GROUPS = [["計画を立てる（6章）", ["issues","parties","roles","aspects","sigAspects","risks","legal","objectives"]],
-    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","comms","emergency"]], ["監視・評価（9章）", ["monitoring","calib","review"]]];
+    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","comms","nearMiss","emergency","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","review"]]];
   const inG = new Set(TAB_GROUPS.flatMap(g => g[1])), rest = ISO_REGS.map(r => r.key).filter(k => !inG.has(k));
   const chip = k => { const r = regOf(k); if (!r) return ""; const d = rows.filter(x => x.reg === k && x.draft).length;
     return '<button class="chipT'+(k===cur?" on":"")+'" onclick="setTab(\''+k+'\')">'+esc(r.name)+(d ? '<span class="dr">下書き'+d+'</span>' : '')+'</button>'; };
@@ -586,6 +601,14 @@ function render(){
     : '<div class="flow"><b>使い方</b><span>① 下の表で中身を確認・追加・訂正</span><span>→ ② 「📄 この表でPDFを作る」で新しい版に</span><span>→ ③ '+dn+' としてEMS文書管理に自動で残ります（前の版も残ります）</span></div>';
   if (reg.key === "objectives") h += custStepsCard();
   if (reg.yearCheck) h += yearCheckCard(reg);
+  if (reg.key === "review"){   // マネジメントレビューの資料を1年分の記録から自動で集める(mr-report.js)
+    const fyNow = ycFy(), m = new Date().getMonth() + 1, def = m >= 8 && m <= 9 ? fyNow - 1 : fyNow, c04 = EMS.filesOf("C-04")[0];
+    h += '<div class="card" style="border-left:4px solid #0d9488;"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);font-size:16px;">📊 マネジメントレビューの資料を自動で作る（社長への報告）</b>'+
+      '<select id="mrFy" style="width:auto;">'+[def + 1, def, def - 1].filter(y => y <= fyNow).map(y => '<option value="'+y+'"'+(y === def ? ' selected' : '')+'>'+y+'年度（'+y+'/8〜'+(y+1)+'/7）</option>').join("")+'</select>'+
+      (c04 ? '<button class="btn sm" onclick="EMS.view(\''+c04.id+'\')">前回の報告書（'+esc(fdj(c04.date))+'）</button>' : '')+
+      '<button class="btn pri" onclick="openMr()">資料を作る</button></div>'+
+      '<div class="note" style="margin:4px 0 0;">1年分の記録(環境目標・順守評価・内部監査・是正処置・ヒヤリハット・苦情・水質・騒音・フロン・軽油・リスク・取引先・訓練など)を集めて、社長に報告する「マネジメントレビュー報告書」を作ります(環境マニュアル9.3)。改善が必要なことも自動で拾います。</div></div>';
+  }
   if (reg.key === "vendors"){   // 共通マスタ管理の契約件数(会社名は出さない)
     const a26 = EMS.docs.find(d => d.id === "A-26"), a26f = EMS.filesOf("A-26")[0];
     h += '<div class="card" style="border-left:4px solid #0d9488;"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 委託契約状況集計表（EMS-A-26）　年1回・8月</b>'+
@@ -599,7 +622,7 @@ function render(){
   const lds = linkedDocs(reg.key);
   const tbl = '<div class="bar"><button class="btn pri" onclick="openEdit()">＋ 行を追加</button>'+
       (lds.length && list.length ? '<button class="btn" style="border-color:var(--navy);color:var(--navy);" onclick="openMakeVer()">📄 この表でPDFを作る（新しい版）</button><button class="btn" onclick="previewForm()">様式で見る・印刷</button>' : '')+'</div>'+
-      '<div class="note" style="margin:-6px 0 8px;">直したい行の「修正」を押すと書き換えられます。いらない行は「修正」→「削除」。'+(lds.length && list.length ? '直し終わったら「📄 この表でPDFを作る」で、会社の様式('+esc(lds.map(d => "EMS-"+d.id).join("・"))+')のPDFが新しい版として残ります。' : '')+'</div>'+
+      '<div class="note" style="margin:-6px 0 8px;">直したい行の「編集」を押すと書き換えられます。いらない行は「削除」。保存すると、その日の日付と記録者が残ります。'+(lds.length && list.length ? '直し終わったら「📄 この表でPDFを作る」で、会社の様式('+esc(lds.map(d => "EMS-"+d.id).join("・"))+')のPDFが新しい版として残ります。' : '')+'</div>'+
     (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
     list.map(r => cardHtml(reg, r)).join("");
   if (!reg.yearCheck){
@@ -1031,7 +1054,7 @@ function cardHtml(reg, r){
   return '<div class="card'+(r.draft ? ' draft' : '')+(sc && sc.sig ? ' sig' : '')+'"><div class="top"><div class="ttl">'+tags+esc((regLabel(titleF, r[reg.title]) || "(未入力)")+(reg.key === "review" ? " 実施" : ""))+'</div><div class="acts">'+
     (r.draft ? '<button class="btn sm fix" onclick="confirmRow(\''+r.id+'\')">確定</button>' : '')+
     '<button class="btn sm" onclick="openEdit(\''+r.id+'\')">編集</button><button class="btn sm del" onclick="delRow(\''+r.id+'\')">削除</button></div></div>'+
-    (dl ? '<dl>'+dl+'</dl>' : '')+(r.updatedAt && r.updatedAt.toDate ? '<div class="note" style="text-align:right;margin-top:4px;">最終更新 '+esc(fdTs(r.updatedAt))+'</div>' : '')+'</div>';
+    (dl ? '<dl>'+dl+'</dl>' : '')+(r.recBy || r.recDate || (r.updatedAt && r.updatedAt.toDate) ? '<div class="note" style="text-align:right;margin-top:4px;">最終更新 '+esc(r.recDate ? r.recDate.replace(/-/g, "/").replace(/\/0/g, "/") : fdTs(r.updatedAt))+(r.recBy ? '　記録者 '+esc(r.recBy) : '　<span style="color:#b45309;">記録者 未入力</span>')+'</div>' : '')+'</div>';
 }
 function fdTs(v){ const d = v.toDate ? v.toDate() : new Date(v); return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate(); }
 
@@ -1113,5 +1136,6 @@ async function addExamples(){
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeEdit(); });
 render();
 </script>
+<script src="mr-report.js"></script>
 </body>
 </html>
