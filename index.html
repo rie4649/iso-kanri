@@ -4737,6 +4737,7 @@ const SECTION_DEFS = [
   { key: "horei", grp: "plan", cl: "6.1.3", name: "法規制一覧（法改正のお知らせ）" },
   { key: "kyoka", grp: "plan", cl: "6.1.3", name: "許可一覧" },
   { key: "permit", grp: "plan", cl: "6.1.3", name: "許可の内容（事業の範囲・積替え保管場所・処理施設）" },
+  { key: "volumes", grp: "plan", cl: "6.1.2", name: "環境側面調査記録（取扱量の推移・EMS-A-17）" },
   { key: "plan:changes", grp: "plan", cl: "6.3", name: "変更管理記録（設備・法改正・人員・委託先の変更）" },
   { key: "sdgs", grp: "plan", cl: "6.2", name: "SDGs" },
   { key: "metal", grp: "plan", cl: "6.2", name: "金属拾い上げ（進捗記録）" },
@@ -4754,6 +4755,7 @@ const SECTION_DEFS = [
   { key: "photos", grp: "sup", cl: "7.5", name: "写真の記録（車両・設備・保管・掲示・現場）" },
   // 運用(8章)
   { key: "plan:vendors", grp: "op", cl: "8.1", name: "外部委託先の管理（許可・契約の期限・評価）" },
+  { key: "plan:routes", grp: "op", cl: "8.1", name: "産業廃棄物の行先経路" },
   { key: "survey", grp: "op", cl: "8.1", name: "委託先調査票の回答" },
   { key: "plan:emergency", grp: "op", cl: "8.2", name: "緊急事態の訓練・テスト" },
   { key: "plan:nearMiss", grp: "op", cl: "8.2 / 10.2", name: "ヒヤリハット報告" },
@@ -4769,6 +4771,9 @@ const SECTION_DEFS = [
   { key: "calendar", grp: "mon", cl: "9.1", name: "カレンダー" },
   // 評価・改善(9.2〜10章)
   { key: "plan:auditPlan", grp: "imp", cl: "9.2", name: "内部監査の計画（日程・分担）" },
+  { key: "plan:auditCheck", grp: "imp", cl: "9.2", name: "内部監査チェックシート" },
+  { key: "plan:auditSurvey", grp: "imp", cl: "9.2", name: "内部監査アンケート" },
+  { key: "plan:extAudit", grp: "imp", cl: "9.2 / 10.2", name: "外部審査の指摘と対応" },
   { key: "kiroku", grp: "imp", cl: "9.2 / 10.2", name: "内部監査・是正処置の記録" },
   { key: "summary", grp: "imp", cl: "9.3", name: "年間サマリー（マネジメントレビューの資料）" },
   { key: "plan:review", grp: "imp", cl: "9.3", name: "マネジメントレビュー（記録）" },
@@ -4831,6 +4836,13 @@ const FIND_INDEX = [
   ["議事録 会議 環境管理会議 推進委員会 EMS-C-19", "会議の議事録", "plan:minutes"],
   ["配布 掲示 文書配布記録 EMS-C-18", "文書の配布記録", "plan:distrib"],
   ["ISOの要求 プロセス 関係文書 監査の準備 EMS-B-02", "ISOの要求と書類（監査の準備）", "docs"],
+  ["内部監査 チェックシート 統合シート 報告書 EMS-C-02", "内部監査チェックシート", "plan:auditCheck"],
+  ["内部監査 アンケート EMS-C-03", "内部監査アンケート", "plan:auditSurvey"],
+  ["外部審査 審査 指摘 更新審査 維持審査 監査結果記録 EMS-C-06 MDF FJR", "外部審査の指摘と対応", "plan:extAudit"],
+  ["ゾーン報告 ゾーン EMS-C-14", "ヒヤリハット報告（ゾーン報告もここ）", "plan:nearMiss"],
+  ["顧客対応確認書 顧客対応確認表 EMS-C-15", "顧客対応の進捗（電話依頼）", "custlog"],
+  ["行先経路 行先 処分先 中間処理 品目 EMS-B-06", "産業廃棄物の行先経路", "plan:routes"],
+  ["環境側面調査記録 取扱量 インプット 産廃 非鉄 推移 傾向 EMS-A-17 C-20", "環境側面調査記録（取扱量の推移）", "volumes"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
 let findDocs = null;
@@ -4950,8 +4962,8 @@ const WORK_GROUPS = [
     ["lifeline", "ライフライン（電気・ガス・水道）", "毎月・前の月の分"], ["custlog", "顧客対応の進捗（電話依頼）", "数は自動。月1回 気づきを書き写す"],
     ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
   ["📅", "年1回・決まった時期", "環境マニュアルで時期が決まっているもの", [
-    ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
-    ["plan:auditPlan", "内部監査の計画（日程・分担）", "9月ごろ決める"], ["kiroku", "内部監査の結果・是正処置", "10月〜2月"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
+    ["volumes", "環境側面調査記録（取扱量の推移）", "8月・去年度の量を入れて考察（A-17）"], ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
+    ["plan:auditPlan", "内部監査の計画（日程・分担）", "9月ごろ決める"], ["plan:auditCheck", "内部監査チェックシート", "監査の日に項目を確認（C-02）"], ["plan:auditSurvey", "内部監査アンケート", "全員の回答を入れる（C-03）"], ["kiroku", "内部監査の結果・是正処置", "10月〜2月"], ["plan:extAudit", "外部審査の指摘と対応", "審査のあと（C-06）"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
     ["plan:legal", "法令の順守評価（A-05）", "年1回・チェックシート"], ["waterTest", "水質検査（計量証明書）", "年1回"], ["noiseCheck", "騒音チェック・圧縮機点検", "年1回"],
     ["plan:review", "マネジメントレビュー", "年1回・社長へ報告"], ["plan:calib", "測定機器の点検・校正", "年1回"], ["shokaki", "消火器・防火管理", "点検のとき"]]],
   ["🚨", "何かあったとき", "起きたらすぐ記録する", [
@@ -4960,7 +4972,7 @@ const WORK_GROUPS = [
     ["calendar", "行政の立入検査・照会", "カレンダーに行政照会記録"], ["plan:minutes", "会議をした（議事録）", "環境管理会議・推進委員会"]]],
   ["🎯", "計画・ルール・書類", "何か変わったとき・見直すときに使う", [
     ["plan", "ISOの計画（課題・利害関係者・リスク・目標など）", ""],
-    ["docs", "EMS文書管理（書類の一覧・原本PDF・ISOの要求と書類）", "監査の前は「ISOの要求と書類」タブ"], ["manual", "環境手順書", ""], ["plan:distrib", "文書の配布記録", "新しい版を掲示・配布したとき"],
+    ["docs", "EMS文書管理（書類の一覧・原本PDF・ISOの要求と書類）", "監査の前は「ISOの要求と書類」タブ"], ["manual", "環境手順書", ""], ["plan:distrib", "文書の配布記録", "新しい版を掲示・配布したとき"], ["plan:routes", "産業廃棄物の行先経路", "品目ごとの処分先（B-06）"],
     ["survey", "委託先調査票の回答", "取引先から届いたとき"], ["horei", "法規制一覧（法改正のお知らせ）", ""], ["kyoka", "許可一覧", ""], ["permit", "許可の内容", ""],
     ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
   ["👀", "見る・まとめる", "監査・会議・視察のとき", [
@@ -5001,6 +5013,7 @@ window.openSection = function(sec) {
   if (String(sec).startsWith("plan:")) { location.href = "plan.html#" + sec.slice(5); return; }
   if (sec === "survey") { location.href = "survey.html"; return; }
   if (sec === "custlog") { location.href = "custlog.html"; return; }
+  if (sec === "volumes") { location.href = "volumes.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
   if (sec === "kiroku") { location.href = "kiroku.html"; return; }

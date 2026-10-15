@@ -586,7 +586,7 @@ function render(){
   // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
   // タブ: 使う場面ごとに3つにまとめて、折り返して全部見えるように(2026/10)。下書きがあれば(下書き)を付ける
   const TAB_GROUPS = [["計画を立てる（6章）", ["issues","parties","roles","aspects","sigAspects","risks","legal","objectives"]],
-    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","comms","nearMiss","emergency","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","review"]]];
+    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","emergency","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
   const inG = new Set(TAB_GROUPS.flatMap(g => g[1])), rest = ISO_REGS.map(r => r.key).filter(k => !inG.has(k));
   const chip = k => { const r = regOf(k); if (!r) return ""; const d = rows.filter(x => x.reg === k && x.draft).length;
     return '<button class="chipT'+(k===cur?" on":"")+'" onclick="setTab(\''+k+'\')">'+esc(r.name)+(d ? '<span class="dr">下書き'+d+'</span>' : '')+'</button>'; };
@@ -598,7 +598,8 @@ function render(){
   const dn = esc(ldsTop.map(d => "EMS-"+d.id).join("・"));
   if (ldsTop.length) h += reg.yearCheck
     ? '<div class="flow"><b>使い方</b><span>① 「📋 チェックシートを開く」で中身を確認（文字はそのまま書き換え・行の追加もここ）</span><span>→ ② 右端の「今年の点検」を付けて 💾保存</span><span>→ ③ 「この表で新しい版(PDF)を作る」で '+dn+' がEMS文書管理に残ります</span></div>'
-    : '<div class="flow"><b>使い方</b><span>① 下の表で中身を確認・追加・訂正</span><span>→ ② 「📄 この表でPDFを作る」で新しい版に</span><span>→ ③ '+dn+' としてEMS文書管理に自動で残ります（前の版も残ります）</span></div>';
+    : '<div class="flow"><b>使い方</b><span>① 下の「✏️ ここで入力・直す」で中身を確認・追加・訂正</span><span>→ ② 「📄 この表でPDFを作る」で新しい版に</span><span>→ ③ '+dn+' としてEMS文書管理に自動で残ります（前の版も残ります）</span></div>';
+  h += emsDocsHtml(reg, list.length);   // 会社の書類(PDF)は「使い方」のすぐ下
   if (reg.key === "objectives") h += custStepsCard();
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "review"){   // マネジメントレビューの資料を1年分の記録から自動で集める(mr-report.js)
@@ -626,14 +627,13 @@ function render(){
     (list.length ? '<div class="count">'+list.length+'行(確定 '+list.filter(r => !r.draft).length+'・下書き '+list.filter(r => r.draft).length+')</div>' : '<div class="empty">まだ行がありません。「＋ 行を追加」から入力できます。</div>')+
     list.map(r => cardHtml(reg, r)).join("");
   if (!reg.yearCheck){
-    h += '<div class="card" style="padding:12px 14px;border-left:4px solid var(--navy);"><div style="font-weight:700;color:var(--navy);font-size:16px;margin-bottom:6px;">📝 '+esc(reg.name)+'の中身（表）　'+(list.length ? list.length+'行' : 'まだ行がありません')+'</div>'+
+    h += '<div class="card" style="padding:12px 14px;border-left:4px solid var(--navy);"><div style="font-weight:700;color:var(--navy);font-size:16px;margin-bottom:2px;">✏️ ここで入力・直す'+(lds.length ? '（'+esc(lds.map(d => "EMS-"+d.id+" "+d.name).join("・"))+' の中身）' : '')+'</div>'+
+      '<div class="note" style="margin:0 0 8px;">書類の1行が、ここの1件になります。'+(list.length ? '今 '+list.length+'件 入っています。' : '<b style="color:#b45309;">まだ1件も入っていません。</b>')+'</div>'+
       (list.some(r => r.fromDoc) ? '<div class="note" style="margin:0 0 8px;">受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・")||"去年のPDF")+')から書き写した内容が入っています。</div>' : '')+tbl+'</div>';
-    h += emsDocsHtml(reg);
     document.getElementById("body").innerHTML = h; return;
   }
   h += '<details class="card" style="padding:10px 14px;"'+(list.length && !reg.yearCheck ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">'+(reg.yearCheck ? '📝 1行ずつの画面（長い文をくわしく入力したいとき・PDFを作る）' : '📝 表で入力・修正する')+'（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
     '<div class="note" style="margin:4px 0 8px;">計画書の中身を1行ずつ入力すると、環境への取り組みで表として見せられ、1行ずつ直せます。'+(list.some(r => r.fromDoc) ? '受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・"))+')から書き写した内容が入っています。' : '')+'</div>'+tbl+'</details>';
-  h += emsDocsHtml(reg);
   document.getElementById("body").innerHTML = h;
 }
 /* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
@@ -656,6 +656,12 @@ const sdgNums = v => [...String(v || "").normalize("NFKC").matchAll(/(?:^|[／\/
 const sdgBadges = v => sdgNums(v).map(n => '<span style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin:2px;background:'+SDG_COLORS[n]+';color:#fff;font-weight:bold;font-size:18px;border-radius:2px;">'+n+'</span>').join("");
 const condHas = (r, n) => { const t = String(r.condAll || r.cond || ""); return n === "通常" ? t.replace(/非通常/g, "").includes("通常") : t.includes(n); };
 const FORM_DEFS = {
+  "A-09": { font:10, foot: () => "目的：利害関係者の要求事項を「リスク・チャンス」に分類し、EMS-A-10 リスク対応計画書に反映。　※「〇」は法令や契約に基づく順守義務、「△」は社会的期待や自主的取り組み。",
+    cols:[{k:"party",l:"利害関係者",w:11},{k:"needs",l:"利害関係者の要求事項",w:22},{v:r => (r.obligation === "する" ? "〇" : r.obligation === "しない" ? "△" : ""),l:"順守義務該当",w:5,c:1},{k:"obLaw",l:null,w:10},
+      {k:"risk",l:"リスク",w:21},{k:"chance",l:"チャンス",w:21},{v:r => r.checkDate ? String(r.checkDate).replace(/-/g, ".") : "",l:"確認日",w:8,c:1}] },
+  "C-06": { font:10.5, foot: () => "※区分 A：意図した成果を達成するMS能力に影響があり、是正処置が必要　B：影響はないが是正処置が必要　O：改善の機会(次回の審査で検討結果を確認)",
+    cols:[{v:r => String(r.date || "").replace(/-/g, "."),l:"審査日",w:9,c:1},{k:"no",l:"№",w:8,c:1},{k:"grade",l:"区分",w:5,c:1},{k:"finding",l:"総合所見",w:38},{k:"action",l:"改善内容",w:30},{k:"status",l:"状況",w:10,c:1}] },
+  "B-06": { font:10.5, cols:[{k:"item",l:"品名",w:20},{k:"carrier",l:"収集運搬",w:14},{k:"mid",l:"中間処理",w:22},{k:"final",l:"処分",w:30},{k:"note",l:"備考",w:14}] },
   "A-05": { group:"no", font:10, foot: m => "“順守・非該当・要改善” の3区分で整理しています。証拠は手順書・記録で確認。　　見直し日："+m.dateTxt+"　　次回見直し予定日："+(m.date ? (Number(m.date.slice(0,4))+1)+m.date.slice(4).replace(/-/g,".") : ""),
     cols:[{k:"no",l:"No.",w:3,c:1,m:1},{k:"name",l:"法規制等の名称",w:10,m:1},{k:"clause",l:"該当する条項",w:11},{k:"content",l:"内容",w:11},{k:"target",l:"対象設備・業務",w:19},
       {k:"esg",l:"気候変動・ESG関連",w:4,c:1,m:1},{k:"esgNote",l:null,w:10,m:1},{k:"parties",l:"地域・利害関係者との関連",w:9,m:1},{k:"method",l:"順守方法",w:15},{k:"eval",l:"順守状況の評価",w:6,c:1,m:1}] },
@@ -881,12 +887,13 @@ async function makeVer(){
   btn.disabled = false; btn.textContent = "PDFを作って登録";
 }
 function linkedDocs(regKey){ return EMS.docs.filter(d => d.link === "plan:"+regKey && !d.abolished); }   // 廃止した文書は出さない
-function emsDocsHtml(reg){
-  const ds = linkedDocs(reg.key);
-  return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 作ったPDF（版の記録）</b>'+
+function emsDocsHtml(reg, nRows){
+  const ds = linkedDocs(reg.key), anyFile = ds.some(d => EMS.filesOf(d.id).length);
+  return '<div class="card" style="border-left:4px solid var(--navy);"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b style="flex:1;color:var(--navy);">📄 会社の書類（PDF・版の記録）</b>'+
     (ds.length ? '<button class="btn sm" onclick="EMS.openForm({codes:'+esc(JSON.stringify(ds.map(d => d.id)))+'})">＋ 手元のPDFを登録</button>' : '')+'<button class="btn sm" onclick="location.href=\'docs.html\'">EMS文書管理へ</button></div>'+
-    (ds.length ? ds.map(d => '<div style="margin-top:8px;"><div style="font-weight:700;">EMS-'+esc(d.id)+'　'+esc(d.name)+'</div>'+EMS.versionsHtml(d.id).replace("原本(PDF)はまだありません", "まだPDFはありません。上の表の「📄 この表でPDFを作る」で作れます")+'</div>').join("")
-      : '<div class="note">この台帳に入れる計画書はまだ決まっていません。EMS文書管理で文書の「入力する場所」をこの台帳にすると、ここに出ます。</div>')+'</div>';
+    (ds.length ? ds.map(d => '<div style="margin-top:8px;"><div style="font-weight:700;">EMS-'+esc(d.id)+'　'+esc(d.name)+'</div>'+EMS.versionsHtml(d.id).replace("原本(PDF)はまだありません", "まだPDFはありません。下の「✏️ ここで入力・直す」にある「📄 この表でPDFを作る」で作れます")+'</div>').join("")
+      : '<div class="note">この台帳に入れる計画書はまだ決まっていません。EMS文書管理で文書の「入力する場所」をこの台帳にすると、ここに出ます。</div>')+
+    (anyFile && nRows === 0 ? '<div style="margin-top:8px;padding:8px 10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:13px;line-height:1.7;"><b>今の中身は、このPDFにだけ入っています。</b>アプリで直せるようにするには、PDFを「開く」で見ながら、下の「＋ 行を追加」で1件ずつ入れます。<br>(PDFをClaudeに送ってもらえれば、まとめて入力できる形にします)</div>' : '')+'</div>';
 }
 EMS.subscribe(() => render());
 EMS.ensureSeed().then(did => { if (did) toast("受け取った書類の中身を台帳に入れました"); }).catch(e => console.error(e));
@@ -918,6 +925,34 @@ async function planSeedOnce(){
   if (nl || ns || np) toast("去年の表を入れました(法的要求事項 "+nl+"行・著しい環境側面 "+ns+"行・環境側面の○印 "+np+"件)");
 }
 setTimeout(() => planSeedOnce().catch(e => console.error(e)), 1500);
+/* 最初の1回だけ(2026/10): 利害関係者とその要求事項(A-09)・産業廃棄物行先経路(B-06)のPDFの中身を入れる。もう行がある表には入れない */
+async function planSeed2Once(){
+  if (typeof PLAN_SEED2 === "undefined") return;
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().planSeed2) return;
+  await fr.set({ planSeed2:true }, { merge:true });
+  const col = db.collection(ISO_REG_COL), all = (await col.get()).docs.map(d => d.data()), t = Date.now();
+  let n = 0;
+  for (const [reg, src] of [["parties","EMS-A-09"],["routes","EMS-B-06"]]){
+    if (all.some(x => x.reg === reg && !x.fromExample)) continue;
+    const b = db.batch(); PLAN_SEED2[reg].forEach((r, i) => { b.set(col.doc(), { ...r, reg, draft:false, fromDoc:true, srcDoc:src, createdMs:t+i+n, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }); });
+    await b.commit(); n += PLAN_SEED2[reg].length;
+  }
+  if (n) toast("PDFの中身を表に入れました(利害関係者・行先経路 "+n+"件)");
+}
+setTimeout(() => planSeed2Once().catch(e => console.error(e)), 2200);
+/* 最初の1回だけ(2026/10): 外部審査の指摘(監査結果記録 EMS-C-06)の10件を入れる */
+async function planSeed3Once(){
+  if (typeof PLAN_SEED2 === "undefined" || !PLAN_SEED2.extAudit) return;
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().planSeed3) return;
+  await fr.set({ planSeed3:true }, { merge:true });
+  const col = db.collection(ISO_REG_COL), all = (await col.get()).docs.map(d => d.data()), t = Date.now();
+  if (all.some(x => x.reg === "extAudit")) return;
+  const b = db.batch(); PLAN_SEED2.extAudit.forEach((r, i) => b.set(col.doc(), { ...r, reg:"extAudit", draft:false, fromDoc:true, srcDoc:"EMS-C-06", createdMs:t+i, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }));
+  await b.commit(); toast("外部審査の指摘 "+PLAN_SEED2.extAudit.length+"件を入れました");
+}
+setTimeout(() => planSeed3Once().catch(e => console.error(e)), 2600);
 /* 最初の1回だけ: 取引先環境配慮チェック体制(2025.12.09)の10社を外部委託先の管理に入れる(同じ名前の会社があれば入れない)。
    法令遵守状況は「廃棄物処理体制 全社適正」なので2点、事故・不適合履歴は「なし」で2点 */
 const VENDOR_SEED = [["(株)サイトー","エコアクション21",2,2,2],["(株)ウェルサイクル","エコアクション21",2,2,2],["(有)ゼンユー","ISO14001",2,2,0],["(株)フロンティアスピリット","ISO14001",2,2,2],

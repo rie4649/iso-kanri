@@ -53,7 +53,7 @@ async function mrCollect(fy){
         auto: auto(k) || (/軽油|CO|燃料/.test(l.map(o => (o.goal || "")+(o.target || "")).join(" ")) ? auto("軽油") : "") }));
     })(),
     legal, horei: fyOf(L.isoHoreiEval, "date"),
-    audits, auditPlan: regFy("auditPlan"), fixes, near,
+    audits, auditPlan: regFy("auditPlan"), fixes, near, ext: regFy("extAudit"),
     comms, complaints, survey: fyOf(L.isoSurveySubmits, "date"),
     water, phs, noise, dbs, freon, freonNg: freon.filter(x => /異常/.test(x.result || "")).length,
     liters, litersP, dsl: dsl.length, cl: cl.length, clAvg, patrol: fyOf(L.safetyPatrols, "date").length, life: fyOf(L.lifelineRecords, "yearMonth").length,
@@ -65,6 +65,7 @@ async function mrCollect(fy){
   // 改善が必要なこと(自動の気づき)
   const todo = [];
   if (!d.audits.length) todo.push("内部監査の記録がありません(9.2)");
+  d.ext.filter(x => x.status !== "対応済み").forEach(x => todo.push("外部審査の指摘が"+(x.status || "未対応")+"："+(x.no ? x.no+" " : "")+(x.finding || "").slice(0, 36)));
   d.fixes.filter(x => x.status !== "done" && x.status !== "完了").forEach(x => todo.push("是正処置が対応中：" + (x.event || "").slice(0, 40)));
   d.near.filter(x => x.status !== "完了").forEach(x => todo.push("ヒヤリハットが対応中：" + (x.what || "").slice(0, 40)));
   d.complaints.filter(x => x.status !== "完了").forEach(x => todo.push("苦情が対応中：" + (x.content || "").slice(0, 40)));
@@ -92,6 +93,7 @@ function mrPages(d, meta){
   blocks.push(H(2, "環境目標の達成状況(6.2)") + tbl([["区分","16%"],["環境目標","40%"],["実績(記録から自動)","30%"],["状況","14%","center"]], d.objectives.map(o => [o.kubun, o.target, o.auto || "—", o.status]), "環境目標の登録がありません"));
   blocks.push(H(3, "順守義務の評価(6.1.3・9.1.2)") + P("法的要求事項特定書(A-05)の年度の点検："+(d.legal.n ? "全 "+d.legal.n+" 法令のうち 順守 "+d.legal.ok+"・非該当 "+d.legal.na+"・要改善 "+d.legal.ng.length+"・未点検 "+(d.legal.n - d.legal.ok - d.legal.na - d.legal.ng.length) : "記録なし")) + (d.legal.ng.length ? P("要改善："+d.legal.ng.join("／")) : ""));
   blocks.push(H(4, "内部監査の結果(9.2)") + tbl([["実施日","13%","center"],["範囲・対象","27%"],["指摘事項","35%"],["対応","25%"]], d.audits.map(a => [fdx(a.date), a.scope || "", a.findings || "", (a.action || "") + (a.status === "open" ? "\n(対応中)" : "")]), "この年度の内部監査の記録はありません"));
+  if (d.ext.length) blocks.push(H("4-2", "外部審査の指摘と対応") + tbl([["No.","12%","center"],["区分","7%","center"],["所見","45%"],["対応・状況","36%"]], d.ext.map(x => [x.no || "", x.grade || "", x.finding || "", (x.action || "") + (x.status ? "\n(" + x.status + ")" : "")])));
   blocks.push(H(5, "不適合・是正処置・ヒヤリハット(10.2)") + tbl([["日付","12%","center"],["何が起きたか","38%"],["原因・対策","38%"],["状況","12%","center"]],
     d.fixes.map(x => [fdx(x.date), x.event || "", [x.cause, x.action].filter(Boolean).join("\n→ "), x.status === "done" || x.status === "完了" ? "完了" : "対応中"])
       .concat(d.near.map(x => [fdx(x.date), "(ヒヤリハット) "+(x.what || ""), [x.cause, x.measure].filter(Boolean).join("\n→ "), x.status || ""])), "記録なし"));

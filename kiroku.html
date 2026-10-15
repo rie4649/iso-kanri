@@ -75,9 +75,12 @@
     </div>
 
     <div class="only-fix" style="display:none;">
+      <label>是正・不適合の種類(EMS-C-07)</label><select id="fKind"><option value="">選んでください</option><option>期末における環境目標の未達成</option><option>内部監査における指摘事項</option><option>外部監査における指摘事項</option><option>緊急事態の発生</option><option>社外より受け付けた環境上の苦情</option><option>点検等で明らかとなった環境手順書違反</option><option>行政機関の立入検査における指摘事項</option><option>その他</option></select>
       <label>何が起きたか(苦情・事故・ヒヤリ)</label><textarea id="fEvent" placeholder="例: 近隣から重機の騒音について電話があった"></textarea>
       <label>原因</label><textarea id="fCause" placeholder="例: 早朝から圧縮機を稼働していた"></textarea>
       <label>対策(やったこと)</label><textarea id="fAction2" placeholder="例: 稼働開始を8時以降に変更、朝礼で周知"></textarea>
+      <label>水平展開(ほかの仕事・設備でも同じことがないか。必要なときだけ)</label><textarea id="fSpread" placeholder="例: ほかの油ますも同じように点検した"></textarea>
+      <label>環境手順書の改訂</label><select id="fManual"><option value="">―</option><option value="要">要(文書の見直しをする)</option><option value="否">否</option></select>
       <label>効果の確認(任意)</label><input type="text" id="fVerify" placeholder="例: 1か月後、再発なしを確認(10/15)">
       <label>状態</label>
       <select id="fStatus2"><option value="open">⏳ 対応中</option><option value="done">✅ 完了</option></select>
@@ -284,6 +287,7 @@ function openModal(id){
     document.getElementById("fCause").value = r?.cause||"";
     document.getElementById("fAction2").value = r?.action||"";
     document.getElementById("fVerify").value = r?.verify||"";
+    document.getElementById("fKind").value = r?.kind||""; document.getElementById("fSpread").value = r?.spread||""; document.getElementById("fManual").value = r?.manualRev||"";
     document.getElementById("fStatus2").value = r?.status||"open";
   }
   document.getElementById("delBtn").style.display = r ? "block" : "none";
@@ -307,6 +311,7 @@ async function saveRec(){
     d.cause = document.getElementById("fCause").value.trim();
     d.action = document.getElementById("fAction2").value.trim();
     d.verify = document.getElementById("fVerify").value.trim();
+    d.kind = document.getElementById("fKind").value; d.spread = document.getElementById("fSpread").value.trim(); d.manualRev = document.getElementById("fManual").value;
     d.status = document.getElementById("fStatus2").value;
     if(!d.event){ toast("何が起きたかを入れてください"); return; }
   }

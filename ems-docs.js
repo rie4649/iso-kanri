@@ -97,6 +97,63 @@ const EMS = (function(){
         await db.collection(DOCS).doc(code).update({ link });
       }
     }
+    if (!flag.links3){   // 2026/10: 内部監査チェックシート(C-02)・アンケート(C-03)・行先経路(B-06)を、それぞれの入力画面につなぐ
+      await flagRef.set({ links3:true }, { merge:true });
+      const L = {"C-02": ["plan:auditCheck", "kiroku"], "C-03": ["plan:auditSurvey", "kiroku"], "B-06": ["plan:routes", "permit"]};
+      for (const [code, [link, old]] of Object.entries(L)){
+        const ex = await db.collection(DOCS).doc(code).get(); if (!ex.exists) continue;
+        const cur = ex.data().link || ""; if (cur === "" || cur === old) await db.collection(DOCS).doc(code).update({ link });
+      }
+    }
+    if (!flag.aboMaster1){   // 2026/10/15 相談で決定: ほかのアプリで管理していて、ISO管理に別の書類としていらないものを廃止(一覧から消える。記録は残る)
+      await flagRef.set({ aboMaster1:true }, { merge:true });
+      const date = "2026-10-15", L = [
+        ["B-05", "許可の期限は共通マスタ管理の「許可証」で登録・更新し、ISO管理の「許可一覧」に自動で出るため廃止。", "共通マスタ管理(許可証)／ISO管理 許可一覧"],
+        ["B-03", "車両の担当は共通マスタ管理の「車両」で管理するため廃止。", "共通マスタ管理(車両)"],
+        ["B-04", "車両の管理(車検・保険など)は共通マスタ管理・業務管理アプリで管理するため廃止。", "共通マスタ管理(車両)・業務管理"],
+        ["Z-03", "廃止した文書は、EMS文書管理の「廃止文書も表示」で一覧になるため、別の書類としては廃止。", "EMS文書管理(廃止文書の一覧)"]];
+      for (const [code, reason, rep] of L){
+        const ex = await db.collection(DOCS).doc(code).get(); if (!ex.exists || ex.data().abolished) continue;
+        const ref = await db.collection(REVIEWS).add({ code, title:"", date, kind:"廃止", by:"環境管理責任者", detail:reason+"(代わり："+rep+")", createdMs:Date.now() });
+        await db.collection(DOCS).doc(code).update({ abolished:true, abolishedDate:date, abolishedReason:reason, abolishedBy:"環境管理責任者", replacedBy:rep, abolishReviewId:ref.id });
+      }
+    }
+    if (!flag.revImport2 && typeof EMS_SEED_REV2 !== "undefined"){   // 2026/10: 日程決定記録兼文書見直記録(C-01-01)の見直しを記録に入れる(同じ文書・同じ日のものは入れない)
+      await flagRef.set({ revImport2:true }, { merge:true });
+      const have = new Set((await db.collection(REVIEWS).get()).docs.map(d => { const x = d.data(); return x.code+"|"+x.date; }));
+      let i = 0; for (const r of EMS_SEED_REV2){ if (have.has(r.code+"|"+r.date)) continue; await db.collection(REVIEWS).add({ ...r, createdMs: Date.now() + (i++) }); }
+    }
+    if (!flag.links4){   // 2026/10: ゾーン報告書(C-14)→ヒヤリハット、顧客対応確認書(C-15)→顧客対応の進捗(電話依頼)、監査結果記録(C-06)→外部審査の指摘
+      await flagRef.set({ links4:true }, { merge:true });
+      for (const [code, link, old] of [["C-14","plan:nearMiss","clean"],["C-15","custlog","plan:comms"],["C-06","plan:extAudit","kiroku"]]){
+        const ex = await db.collection(DOCS).doc(code).get(); if (!ex.exists) continue;
+        const cur = ex.data().link || ""; if (cur === "" || cur === old) await db.collection(DOCS).doc(code).update({ link });
+      }
+    }
+    if (!flag.aboUnneeded1){   // 2026/10/15 相談で決定: アプリで自動でまとまる「まとめ」と、ほかの書類と中身が同じものを廃止(一覧から消える。記録は残る)
+      await flagRef.set({ aboUnneeded1:true }, { merge:true });
+      const date = "2026-10-15", L = [
+        ["A-20", "騒音チェック・圧縮機の点検記録(C-21)から、アプリの画面で年ごとに自動でまとまるため、別の「まとめ」は廃止。", "C-21 騒音チェック・圧縮機定期点検記録(アプリ)"],
+        ["A-21", "安全衛生パトロールの記録(C-25)から、アプリの画面で月ごと・年ごとに自動でまとまるため、別の「まとめ」は廃止。", "C-25 安全衛生パトロールチェック表(アプリ)"],
+        ["C-24", "5Sの月々の進捗は、クリーン度チェックの記録からアプリが自動で集計し、A-14(進捗記録兼評価表 クリーン度チェック)と中身が同じため廃止。", "A-14 進捗記録兼評価表 クリーン度チェック(アプリ)"],
+        ["C-26-01", "法令の条文の写しで記録ではないため廃止。守ることと順守方法は A-05(法的要求事項特定書)に、改正の情報は法規制一覧(e-Gov から自動取得)にあるため。", "A-05 法的要求事項特定書／法規制一覧"]];
+      for (const [code, reason, rep] of L){
+        const ex = await db.collection(DOCS).doc(code).get(); if (!ex.exists || ex.data().abolished) continue;
+        const ref = await db.collection(REVIEWS).add({ code, title:"", date, kind:"廃止", by:"環境管理責任者", detail:reason+"(代わり："+rep+")", createdMs:Date.now() });
+        await db.collection(DOCS).doc(code).update({ abolished:true, abolishedDate:date, abolishedReason:reason, abolishedBy:"環境管理責任者", replacedBy:rep, abolishReviewId:ref.id });
+      }
+    }
+    if (!flag.vol1){   // 2026/10/15: 環境側面調査記録(A-17)をアプリの「取扱量の推移」にし、月の集計表(C-20)はA-17にまとめて廃止
+      await flagRef.set({ vol1:true }, { merge:true });
+      const a17 = await db.collection(DOCS).doc("A-17").get();
+      if (a17.exists && (!a17.data().link || a17.data().link === "plan:aspects")) await db.collection(DOCS).doc("A-17").update({ link:"volumes" });
+      const c20 = await db.collection(DOCS).doc("C-20").get();
+      if (c20.exists && !c20.data().abolished){
+        const reason = "環境側面の取扱量は、年度ごとの数字をA-17(環境側面調査記録・アプリの「取扱量の推移」)に入れることにしたため、月ごとの集計表は廃止。インプット・アウトプットの形もやめ、受け入れ量(インプット)の推移と考察にまとめた。", rep = "A-17 環境側面調査記録(取扱量の推移)";
+        const ref = await db.collection(REVIEWS).add({ code:"C-20", title:"", date:"2026-10-15", kind:"廃止", by:"環境管理責任者", detail:reason+"(代わり："+rep+")", createdMs:Date.now() });
+        await db.collection(DOCS).doc("C-20").update({ abolished:true, abolishedDate:"2026-10-15", abolishedReason:reason, abolishedBy:"環境管理責任者", replacedBy:rep, abolishReviewId:ref.id });
+      }
+    }
     if (!flag.emsMigrate1){ await migrateLegacy(); await flagRef.set({ emsMigrate1:true }, { merge:true }); }
     return did;
   }

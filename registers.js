@@ -63,7 +63,11 @@ const ISO_REGS = [
       { k:"party", label:"利害関係者", type:"text", req:true, list:true },
       { k:"needs", label:"求めていること(ニーズ・期待)", type:"textarea", list:true },
       { k:"obligation", label:"順守義務", type:"select", options:[["する","〇 順守義務(法令・契約)"],["しない","△ 社会的期待・自主的取り組み"]], list:true },
-      { k:"action", label:"会社の対応", type:"textarea", list:true }
+      { k:"obLaw", label:"順守義務の根拠(法令・契約)", type:"text", list:true, ph:"例: 労働安全衛生法／委託契約" },
+      { k:"risk", label:"リスク", type:"textarea", list:true },
+      { k:"chance", label:"チャンス", type:"textarea", list:true },
+      { k:"action", label:"会社の対応", type:"textarea", list:true },
+      { k:"checkDate", label:"確認日", type:"date", list:true }
     ],
     examples:[
       { party:"行政機関", needs:"法令順守、報告義務、気候変動対応", obligation:"する", action:"許可一覧で期限を管理し、法規制の順守評価を行う。立入検査・指導は行政照会記録に残す" },
@@ -284,6 +288,8 @@ const ISO_REGS = [
       { k:"kind", label:"種類(7.4.3の区分)", type:"select", options:[["法令","法令・条例対応(情報収集・報告・火災・事故時)"],["行政","行政対応(立入検査・指導・問い合わせ・視察)"],["顧客","顧客対応(顧客からの要求事項・監査)"],["苦情","苦情対応"],["業界","業界情報"],["技術","技術情報提供"],["是正","是正処置"],["気候","気候変動対応情報"],["提案","提案情報(改善提案・要望)"],["問い合わせ","問い合わせ"],["要望","要望"],["報告","報告"],["その他","その他"]], list:true },
       { k:"content", label:"内容", type:"textarea", req:true, list:true },
       { k:"response", label:"対応", type:"textarea", list:true },
+      { k:"answerDate", label:"相手への回答日", type:"date", list:true },
+      { k:"fixNeed", label:"是正処置", type:"select", options:[["",""],["要","要(是正処置に記録する)"],["否","否"]], list:true },
       { k:"status", label:"状況", type:"select", options:[["対応中","対応中"],["完了","完了"]], list:true }
     ]
   },
@@ -346,7 +352,8 @@ const ISO_REGS = [
       { k:"date", label:"起きた日", type:"date", req:true, list:true },
       { k:"who", label:"報告した人", type:"text", list:true },
       { k:"place", label:"場所", type:"text", list:true, ph:"例: ヤード東側・積替え保管場所" },
-      { k:"kind", label:"種類", type:"select", options:[["環境","環境(油漏れ・飛散・騒音など)"],["安全","安全(けがをしそうになった)"],["車両","車両・運転"],["その他","その他"]], list:true },
+      { k:"kind", label:"種類", type:"select", options:[["環境","環境(油漏れ・飛散・騒音など)"],["安全","安全(けがをしそうになった)"],["車両","車両・運転・引き取り作業"],["ゾーン","ゾーン報告(5S・置場の問題)"],["その他","その他"]], list:true },
+      { k:"zone", label:"ゾーン", type:"text", list:true, ph:"例: Bゾーン(分離槽周辺)" },
       { k:"what", label:"何が起きたか(ヒヤッとしたこと)", type:"textarea", req:true, list:true, ph:"例: 重機の給油中にホースが外れ、油がこぼれそうになった" },
       { k:"cause", label:"原因", type:"textarea", list:true },
       { k:"measure", label:"対策(やったこと・やること)", type:"textarea", list:true, ph:"例: 給油時は受け皿を置く。朝礼で周知" },
@@ -378,9 +385,88 @@ const ISO_REGS = [
       { k:"code", label:"文書番号・版", type:"text", req:true, list:true, ph:"例: EMS-A-22-03" },
       { k:"name", label:"文書名", type:"text", list:true, ph:"例: 環境目標兼活動計画書" },
       { k:"to", label:"配布先・掲示場所", type:"text", list:true, ph:"例: 事務所掲示板・休憩所・各ドライバー" },
-      { k:"method", label:"配り方", type:"select", options:[["掲示","掲示"],["紙で配布","紙で配布"],["アプリで共有","アプリで共有"],["メール","メール"]], list:true },
+      { k:"method", label:"配り方", type:"select", options:[["掲示","掲示"],["回覧","回覧"],["紙で配布","紙で配布"],["指定場所","指定場所に置く"],["ホワイトボード","ホワイトボード"],["アプリで共有","アプリで共有"],["メール","メール"]], list:true },
       { k:"old", label:"古い版", type:"select", options:[["",""],["回収・廃棄した","回収・廃棄した"],["なし","なし(初版)"]], list:true },
       { k:"by", label:"配った人", type:"text", list:true }
+    ]
+  },
+  {
+    key:"auditCheck", icon:"✅", name:"内部監査チェックシート", clause:"9.2",
+    help:"内部監査で、決まった項目を1つずつ確認するチェックシートと結果の報告書です(ISO14001 内部監査 統合シート EMS-C-02)。確認できた項目にチェックを付け、総評・不適合・改善の機会を書きます。不適合があれば「内部監査・是正処置」の是正処置にも記録します。",
+    title:"dept", dated:"date",
+    fields:[
+      { k:"date", label:"監査日", type:"date", req:true, list:true },
+      { k:"auditor", label:"監査員", type:"text", list:true },
+      { k:"dept", label:"被監査部門", type:"text", req:true, list:true, ph:"例: ヤード・事務所" },
+      { k:"scope", label:"監査範囲", type:"text", list:true, ph:"環境側面、順守義務、目的・目標、運用管理、緊急対応、記録管理" },
+      { k:"ok", label:"確認できた項目(チェックを付ける。付いていないものは要確認)", type:"checks", list:true, options:[
+        "A-1 環境側面：EMS-A-06/07/08 が最新で整合している","A-2 環境側面：著しい環境側面の管理が適切に実施されている","A-3 環境側面：判定基準が明文化され、運用されている",
+        "B-1 順守義務：適用法令一覧が最新","B-2 順守義務：法令遵守評価が実施されている","B-3 順守義務：法令に関わる手順書が整備されている",
+        "C-1 目的・目標：目的・目標が設定されている","C-2 目的・目標：進捗が記録されている","C-3 目的・目標：必要に応じて見直しが行われている",
+        "D-1 運用管理：著しい環境側面に対応する手順書が整備されている","D-2 運用管理：廃棄物の受入・運搬・保管・排出の管理が適切","D-3 運用管理：フロン・PCB・油水分離槽など法令系の点検記録がある",
+        "E-1 緊急事態：緊急対応手順書(油漏れ・火災・地震など)が整備","E-2 緊急事態：年1回以上の訓練記録がある","E-3 緊急事態：緊急時連絡網が最新",
+        "F-1 教育・力量：教育訓練記録がある","F-2 教育・力量：必要資格(フォークリフト等)が有効","F-3 教育・力量：新人教育・環境教育が実施されている",
+        "G-1 監視・測定：台貫校正記録","G-2 監視・測定：油水分離槽点検記録","G-3 監視・測定：フロン点検記録",
+        "H-1 内部監査・MR：内部監査が計画通り実施されている","H-2 内部監査・MR：是正処置が適切に管理されている","H-3 内部監査・MR：マネジメントレビュー報告書がある"] },
+      { k:"overall", label:"総評", type:"select", options:[["",""],["適合","適合"],["軽微な不適合","軽微な不適合"],["不適合","不適合"],["改善の機会あり","改善の機会あり"]], list:true },
+      { k:"nc", label:"不適合事項(要求事項／事実／是正処置)", type:"textarea", list:true, ph:"例: 1. 8.2 緊急事態／訓練記録が1年以上ない／11月に油漏れ訓練を行う" },
+      { k:"ofi", label:"改善の機会(OFI)", type:"textarea", list:true },
+      { k:"due", label:"是正処置の期限", type:"date", list:true }
+    ]
+  },
+  {
+    key:"auditSurvey", icon:"🗳️", name:"内部監査アンケート", clause:"9.2",
+    help:"内部監査のときに全員に書いてもらうアンケートの回答です(EMS-C-03)。1人の回答が1件です。困りごと・ヒヤリハット・お客様に頼まれたことなどを集めて、改善やヒヤリハット報告・顧客対応の記録につなげます。",
+    title:"name", dated:"date",
+    fields:[
+      { k:"date", label:"日付", type:"date", req:true, list:true },
+      { k:"name", label:"氏名", type:"text", req:true, list:true },
+      { k:"q1", label:"1. 担当ゾーンで整理整頓がしにくい場所／これがあれば便利なもの", type:"textarea", list:true },
+      { k:"q2", label:"2. 気候変動(大雨・猛暑など)に備えて、私たちが出来ること", type:"textarea", list:true, ph:"例: 電気の無駄を減らす" },
+      { k:"q3", label:"3. マニフェストで困ったこと", type:"textarea", list:true, ph:"例: 電子マニフェストが分からない" },
+      { k:"q4", label:"4. 修理・点検が必要なトラック・設備・道具", type:"textarea", list:true, ph:"例: 事務所のすきま風" },
+      { k:"q5", label:"5. お客様のニーズの声掛け", type:"select", options:[["",""],["してる","してる"],["してない","してない"]], list:true },
+      { k:"q5b", label:"5. お客様に頼まれたこと", type:"textarea", list:true, ph:"例: ドラム缶のふたを作ってほしい" },
+      { k:"h1", label:"6. 最近ヒヤッとしたことがあった", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"h2", label:"6. 危険だと思う作業がある", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"h3", label:"6. 改善したい安全面がある", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"h4", label:"6. 事故につながりそうな場所がある", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"h5", label:"6. 使いにくい・危険を感じる道具がある", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"h6", label:"6. 足元が滑りやすい・つまずきやすい場所がある", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"hWhy", label:"6.「ある」の理由・場所", type:"textarea", list:true },
+      { k:"q7", label:"7. 前回の改善(来客用の白線・バックミラー)は役に立っている？", type:"select", options:[["",""],["なってる","なってる"],["なってない","なってない"]], list:true },
+      { k:"q7b", label:"7.「なってない」の理由", type:"textarea", list:true },
+      { k:"q8", label:"8. 社内でトラックをバックするときの危険な場所", type:"select", options:[["",""],["ある","ある"],["ない","ない"]], list:true },
+      { k:"q8b", label:"8. 危険な場所と改善策", type:"textarea", list:true },
+      { k:"q9", label:"9. その他、思っていること", type:"textarea", list:true }
+    ]
+  },
+  {
+    key:"routes", icon:"🚛", name:"産業廃棄物の行先経路", clause:"8.1",
+    help:"品目ごとに、どこで中間処理して、最後にどこで処分(売却)するかの一覧です(産業廃棄物行先経路 EMS-B-06)。委託先が変わったら直して、変更管理記録にも残します。",
+    title:"item",
+    fields:[
+      { k:"item", label:"品名", type:"text", req:true, list:true },
+      { k:"carrier", label:"収集運搬", type:"text", list:true, ph:"(株)関根商店" },
+      { k:"mid", label:"中間処理", type:"text", list:true },
+      { k:"final", label:"処分・売却先", type:"text", list:true },
+      { k:"kind", label:"種類", type:"select", options:[["",""],["処分委託","処分委託"],["売却","売却(有価物)"],["一般廃棄物","一般廃棄物"]], list:true },
+      { k:"note", label:"備考", type:"text", list:true }
+    ]
+  },
+  {
+    key:"extAudit", icon:"🏅", name:"外部審査の指摘と対応", clause:"9.2 / 10.2",
+    help:"審査機関の審査(更新審査・維持審査)で受けた指摘と、その対応の記録です(監査結果記録 EMS-C-06)。区分 A・B は是正処置が必要、O は改善の機会(次の審査で検討結果を確認される)。対応が終わったら状況を「対応済み」にします。",
+    title:"finding", dated:"date",
+    fields:[
+      { k:"date", label:"審査日", type:"date", list:true },
+      { k:"kind", label:"審査", type:"text", list:true, ph:"例: ISO14001:2015 更新審査" },
+      { k:"auditor", label:"審査員", type:"text", list:true },
+      { k:"no", label:"No.", type:"text", list:true, ph:"例: MDF-02" },
+      { k:"grade", label:"区分", type:"select", options:[["",""],["A","A(是正処置が必要・影響あり)"],["B","B(是正処置が必要・影響なし)"],["O","O(改善の機会)"]], list:true },
+      { k:"finding", label:"所見(指摘の内容)", type:"textarea", req:true, list:true },
+      { k:"action", label:"改善内容(会社の対応)", type:"textarea", list:true },
+      { k:"status", label:"状況", type:"select", options:[["検討中","検討中"],["対応中","対応中"],["対応済み","対応済み"]], list:true }
     ]
   },
   {
