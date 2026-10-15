@@ -154,6 +154,11 @@ const EMS = (function(){
         await db.collection(DOCS).doc("C-20").update({ abolished:true, abolishedDate:"2026-10-15", abolishedReason:reason, abolishedBy:"環境管理責任者", replacedBy:rep, abolishReviewId:ref.id });
       }
     }
+    if (!flag.links5){   // 2026/10: ゾーン報告書(C-14)を専用の「ゾーン報告」の入力画面につなぐ
+      await flagRef.set({ links5:true }, { merge:true });
+      const ex = await db.collection(DOCS).doc("C-14").get();
+      if (ex.exists && ["", "plan:nearMiss", "clean"].includes(ex.data().link || "")) await db.collection(DOCS).doc("C-14").update({ link:"plan:zoneReport" });
+    }
     if (!flag.emsMigrate1){ await migrateLegacy(); await flagRef.set({ emsMigrate1:true }, { merge:true }); }
     return did;
   }

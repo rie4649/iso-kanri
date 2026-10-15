@@ -257,13 +257,14 @@ const ISO_REGS = [
   },
   {
     key:"monitoring", icon:"📈", name:"監視・測定の計画", clause:"9.1.1",
-    help:"何を・どの方法で・どのくらいの頻度で測り、どんな基準で判断するかの一覧です。審査では「監視・測定の対象と頻度、判断基準」を聞かれます。結果の記録は各ページ(水質検査・騒音チェックなど)にあります。",
+    help:"環境マニュアル9.1.1の「管理項目の設定」の表を、くわしくしたものです。何を・どの方法で・どの基準で・いつ測り、いつ結果を分析・評価するか。結果はそれぞれの記録画面に残り、マネジメントレビュー前に評価します。ここは計画なので、EMS文書の番号はいりません(結果の記録が証拠になります)。",
     title:"item",
     fields:[
-      { k:"item", label:"監視・測定する項目", type:"text", req:true, list:true },
-      { k:"method", label:"方法", type:"text", list:true },
-      { k:"freq", label:"頻度", type:"text", list:true },
-      { k:"criteria", label:"判断基準", type:"text", list:true },
+      { k:"item", label:"監視・測定対象", type:"text", req:true, list:true },
+      { k:"method", label:"監視・測定方法", type:"text", list:true },
+      { k:"criteria", label:"評価基準及び適切な指標", type:"text", list:true },
+      { k:"freq", label:"監視及び測定時期", type:"text", list:true },
+      { k:"review", label:"結果の分析及び評価時期", type:"text", list:true, ph:"例: マネジメントレビュー前" },
       { k:"owner", label:"担当", type:"text", list:true },
       { k:"record", label:"記録の場所", type:"text", list:true }
     ],
@@ -346,18 +347,35 @@ const ISO_REGS = [
   },
   {
     key:"nearMiss", icon:"⚠️", name:"ヒヤリハット報告", clause:"8.2 / 10.2",
-    help:"けがや事故・油漏れなどにはならなかったけれど「ヒヤッとした・ハッとした」ことの報告です(ヒヤリハット報告書 EMS-C-12)。小さいうちに原因と対策を決めて、同じことが起きないようにします。大きな問題になったときは「内部監査・是正処置」の是正処置にも記録します。",
+    help:"けがや事故・油漏れなどにはならなかったけれど「ヒヤッとした・ハッとした」ことの報告です(ヒヤリハット報告書 EMS-C-12)。紙の様式の ①社内での作業中 ②引き取り作業中 ③気付いた危険個所 のどれかを選んで、危険だと思ったことと、その対応・改善対策を書きます。大きな問題になったときは「内部監査・是正処置」の是正処置にも記録します。",
     title:"what", dated:"date",
     fields:[
-      { k:"date", label:"起きた日", type:"date", req:true, list:true },
-      { k:"who", label:"報告した人", type:"text", list:true },
-      { k:"place", label:"場所", type:"text", list:true, ph:"例: ヤード東側・積替え保管場所" },
-      { k:"kind", label:"種類", type:"select", options:[["環境","環境(油漏れ・飛散・騒音など)"],["安全","安全(けがをしそうになった)"],["車両","車両・運転・引き取り作業"],["ゾーン","ゾーン報告(5S・置場の問題)"],["その他","その他"]], list:true },
-      { k:"zone", label:"ゾーン", type:"text", list:true, ph:"例: Bゾーン(分離槽周辺)" },
-      { k:"what", label:"何が起きたか(ヒヤッとしたこと)", type:"textarea", req:true, list:true, ph:"例: 重機の給油中にホースが外れ、油がこぼれそうになった" },
-      { k:"cause", label:"原因", type:"textarea", list:true },
-      { k:"measure", label:"対策(やったこと・やること)", type:"textarea", list:true, ph:"例: 給油時は受け皿を置く。朝礼で周知" },
+      { k:"date", label:"日付", type:"date", req:true, list:true },
+      { k:"who", label:"氏名(報告した人)", type:"text", req:true, list:true },
+      { k:"kind", label:"どんなとき", type:"select", options:[["社内","1) 社内での作業中"],["引取","2) 引き取り作業中"],["危険個所","3) 気付いた危険個所(社内外)"],["環境","環境(油漏れ・飛散・騒音など)"],["安全","安全(その他)"],["車両","車両・運転"],["その他","その他"]], list:true },
+      { k:"place", label:"場所", type:"text", list:true, ph:"例: ヤード東側・積替え保管場所／○○様の現場" },
+      { k:"what", label:"危険だと思ったこと(ヒヤッとしたこと)", type:"textarea", req:true, list:true, ph:"例: 重機の給油中にホースが外れ、油がこぼれそうになった" },
+      { k:"measure", label:"それに対しての対応または改善対策", type:"textarea", list:true, ph:"例: 給油時は受け皿を置く。朝礼で周知" },
+      { k:"cause", label:"原因(わかれば)", type:"textarea", list:true },
       { k:"share", label:"みんなへの周知", type:"text", list:true, ph:"例: 10/15 朝礼で周知" },
+      { k:"checker", label:"確認者(環境管理責任者)", type:"text", list:true },
+      { k:"status", label:"状況", type:"select", options:[["対応中","対応中"],["完了","完了"]], list:true }
+    ]
+  },
+  {
+    key:"zoneReport", icon:"🧹", name:"ゾーン報告", clause:"8.1 / 10.2",
+    help:"ゾーン(A〜F・駐車場)で起きた問題(置場の乱れ・油漏れ・飛散・指定外の品物など)の報告と、その対応の記録です(ゾーン報告書 EMS-C-14)。発生したことと対応結果を書き、環境管理責任者・ISO推進委員が確認します。",
+    title:"content", dated:"date",
+    fields:[
+      { k:"date", label:"発生した日", type:"date", req:true, list:true },
+      { k:"who", label:"報告者", type:"text", req:true, list:true },
+      { k:"zone", label:"状況ゾーン", type:"select", options:[["",""],["A","Aゾーン"],["B","Bゾーン"],["C","Cゾーン"],["D","Dゾーン"],["E","Eゾーン"],["F","Fゾーン"],["駐車場","駐車場"],["その他","その他"]], list:true },
+      { k:"content", label:"発生内容", type:"textarea", req:true, list:true, ph:"例: Bゾーンの非鉄置場で油漏れ" },
+      { k:"doneDate", label:"対応した日", type:"date", list:true },
+      { k:"doneBy", label:"対応者", type:"text", list:true },
+      { k:"action", label:"今後の対策・改善対応", type:"textarea", list:true },
+      { k:"chkMgr", label:"確認者(環境管理責任者)", type:"text", list:true },
+      { k:"chkIso", label:"確認者(ISO推進委員)", type:"text", list:true },
       { k:"status", label:"状況", type:"select", options:[["対応中","対応中"],["完了","完了"]], list:true }
     ]
   },
@@ -392,7 +410,7 @@ const ISO_REGS = [
   },
   {
     key:"auditCheck", icon:"✅", name:"内部監査チェックシート", clause:"9.2",
-    help:"内部監査で、決まった項目を1つずつ確認するチェックシートと結果の報告書です(ISO14001 内部監査 統合シート EMS-C-02)。確認できた項目にチェックを付け、総評・不適合・改善の機会を書きます。不適合があれば「内部監査・是正処置」の是正処置にも記録します。",
+    help:"内部監査で、決まった項目を1つずつ確認するチェックシートと結果の報告書です(内部監査チェックシート EMS-C-02・監査結果記録)。環境マニュアル9.2: 結果を社長と環境管理責任者に報告し、社長の指示を「経営者意見・指示内容」に書き、2か月後に是正されたか確認します。確認できた項目にチェックを付け、総評・不適合・改善の機会を書きます。不適合があれば「内部監査・是正処置」の是正処置にも記録します。",
     title:"dept", dated:"date",
     fields:[
       { k:"date", label:"監査日", type:"date", req:true, list:true },
@@ -411,7 +429,11 @@ const ISO_REGS = [
       { k:"overall", label:"総評", type:"select", options:[["",""],["適合","適合"],["軽微な不適合","軽微な不適合"],["不適合","不適合"],["改善の機会あり","改善の機会あり"]], list:true },
       { k:"nc", label:"不適合事項(要求事項／事実／是正処置)", type:"textarea", list:true, ph:"例: 1. 8.2 緊急事態／訓練記録が1年以上ない／11月に油漏れ訓練を行う" },
       { k:"ofi", label:"改善の機会(OFI)", type:"textarea", list:true },
-      { k:"due", label:"是正処置の期限", type:"date", list:true }
+      { k:"due", label:"是正処置の期限", type:"date", list:true },
+      { k:"reportDate", label:"社長・環境管理責任者へ報告した日", type:"date", list:true },
+      { k:"presInstr", label:"経営者意見・指示内容(社長から)", type:"textarea", list:true },
+      { k:"check2m", label:"2か月後の是正の確認日", type:"date", list:true },
+      { k:"check2mRes", label:"2か月後の確認結果", type:"select", options:[["",""],["是正済み","是正済み"],["未是正","未是正(環境管理責任者へ指示)"]], list:true }
     ]
   },
   {

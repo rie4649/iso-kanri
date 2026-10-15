@@ -586,7 +586,7 @@ function render(){
   // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
   // タブ: 使う場面ごとに3つにまとめて、折り返して全部見えるように(2026/10)。下書きがあれば(下書き)を付ける
   const TAB_GROUPS = [["計画を立てる（6章）", ["issues","parties","roles","aspects","sigAspects","risks","legal","objectives"]],
-    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","emergency","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
+    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","zoneReport","emergency","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
   const inG = new Set(TAB_GROUPS.flatMap(g => g[1])), rest = ISO_REGS.map(r => r.key).filter(k => !inG.has(k));
   const chip = k => { const r = regOf(k); if (!r) return ""; const d = rows.filter(x => x.reg === k && x.draft).length;
     return '<button class="chipT'+(k===cur?" on":"")+'" onclick="setTab(\''+k+'\')">'+esc(r.name)+(d ? '<span class="dr">下書き'+d+'</span>' : '')+'</button>'; };
@@ -661,6 +661,8 @@ const FORM_DEFS = {
       {k:"risk",l:"リスク",w:21},{k:"chance",l:"チャンス",w:21},{v:r => r.checkDate ? String(r.checkDate).replace(/-/g, ".") : "",l:"確認日",w:8,c:1}] },
   "C-06": { font:10.5, foot: () => "※区分 A：意図した成果を達成するMS能力に影響があり、是正処置が必要　B：影響はないが是正処置が必要　O：改善の機会(次回の審査で検討結果を確認)",
     cols:[{v:r => String(r.date || "").replace(/-/g, "."),l:"審査日",w:9,c:1},{k:"no",l:"№",w:8,c:1},{k:"grade",l:"区分",w:5,c:1},{k:"finding",l:"総合所見",w:38},{k:"action",l:"改善内容",w:30},{k:"status",l:"状況",w:10,c:1}] },
+  "C-12": { font:10.5, cols:[{v:r => String(r.date || "").replace(/-/g, "."),l:"日付",w:9,c:1},{k:"who",l:"氏名",w:10},{v:r => ({ 社内:"社内での作業中", 引取:"引き取り作業中", 危険個所:"気付いた危険個所" }[r.kind] || r.kind || ""),l:"どんなとき",w:11},{k:"place",l:"場所",w:12},{k:"what",l:"危険だと思った事",w:24},{k:"measure",l:"対応または改善対策",w:22},{k:"status",l:"状況",w:6,c:1},{k:"checker",l:"確認者",w:6}] },
+  "C-14": { font:10.5, cols:[{v:r => String(r.date || "").replace(/-/g, "."),l:"発生日",w:8,c:1},{k:"who",l:"報告者",w:8},{v:r => r.zone ? (/^[A-F]$/.test(r.zone) ? r.zone+"ゾーン" : r.zone) : "",l:"ゾーン",w:7,c:1},{k:"content",l:"発生内容",w:22},{v:r => String(r.doneDate || "").replace(/-/g, "."),l:"対応日",w:8,c:1},{k:"doneBy",l:"対応者",w:8},{k:"action",l:"今後の対策・改善対応",w:21},{k:"chkMgr",l:"環境管理責任者",w:8},{k:"chkIso",l:"ISO推進委員",w:8}] },
   "B-06": { font:10.5, cols:[{k:"item",l:"品名",w:20},{k:"carrier",l:"収集運搬",w:14},{k:"mid",l:"中間処理",w:22},{k:"final",l:"処分",w:30},{k:"note",l:"備考",w:14}] },
   "A-05": { group:"no", font:10, foot: m => "“順守・非該当・要改善” の3区分で整理しています。証拠は手順書・記録で確認。　　見直し日："+m.dateTxt+"　　次回見直し予定日："+(m.date ? (Number(m.date.slice(0,4))+1)+m.date.slice(4).replace(/-/g,".") : ""),
     cols:[{k:"no",l:"No.",w:3,c:1,m:1},{k:"name",l:"法規制等の名称",w:10,m:1},{k:"clause",l:"該当する条項",w:11},{k:"content",l:"内容",w:11},{k:"target",l:"対象設備・業務",w:19},
@@ -953,6 +955,18 @@ async function planSeed3Once(){
   await b.commit(); toast("外部審査の指摘 "+PLAN_SEED2.extAudit.length+"件を入れました");
 }
 setTimeout(() => planSeed3Once().catch(e => console.error(e)), 2600);
+/* 最初の1回だけ(2026/10): 監視・測定の計画を環境マニュアル9.1.1の表+実際の記録に合わせて入れる(もう行があれば入れない) */
+async function planSeed4Once(){
+  if (typeof PLAN_SEED2 === "undefined" || !PLAN_SEED2.monitoring) return;
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().planSeed4) return;
+  await fr.set({ planSeed4:true }, { merge:true });
+  const col = db.collection(ISO_REG_COL), all = (await col.get()).docs.map(d => d.data()), t = Date.now();
+  if (all.some(x => x.reg === "monitoring" && !x.fromExample)) return;
+  const b = db.batch(); PLAN_SEED2.monitoring.forEach((r, i) => b.set(col.doc(), { ...r, reg:"monitoring", draft:false, fromDoc:true, srcDoc:"環境マニュアル9.1.1", createdMs:t+i, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }));
+  await b.commit(); toast("監視・測定の計画 "+PLAN_SEED2.monitoring.length+"件を入れました");
+}
+setTimeout(() => planSeed4Once().catch(e => console.error(e)), 3000);
 /* 最初の1回だけ: 取引先環境配慮チェック体制(2025.12.09)の10社を外部委託先の管理に入れる(同じ名前の会社があれば入れない)。
    法令遵守状況は「廃棄物処理体制 全社適正」なので2点、事故・不適合履歴は「なし」で2点 */
 const VENDOR_SEED = [["(株)サイトー","エコアクション21",2,2,2],["(株)ウェルサイクル","エコアクション21",2,2,2],["(有)ゼンユー","ISO14001",2,2,0],["(株)フロンティアスピリット","ISO14001",2,2,2],
