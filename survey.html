@@ -20,6 +20,7 @@
   .onChk input { width:18px; height:18px; }
   .saveBar { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px 12px; display:flex; gap:10px; align-items:center; justify-content:center; z-index:20; }
   .saveBar .cnt { font-size:13px; font-weight:700; color:var(--navy); }
+  @media (max-width:640px){ .saveBar { flex-wrap:wrap; } }
   .btn.dirty { background:var(--danger); border-color:var(--danger); color:#fff; }
   .tpls { display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:8px; margin-bottom:12px; }
   .tpl { border:2px solid var(--navy); background:#fff; border-radius:8px; padding:10px 12px; cursor:pointer; text-align:left; font-family:inherit; color:var(--navy); }
@@ -99,6 +100,7 @@
 #subView th { background:#eef2f7; white-space:nowrap; }
 </style>
 <div class="saveBar"><span class="cnt" id="cnt"></span>
+  <label for="saveBy" style="margin:0;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap;">保存する人</label><input id="saveBy" placeholder="例: 関根 理絵" style="width:130px;padding:7px 8px;">
   <button class="btn" id="undoBtn" onclick="undoAll()">変更を取り消す</button>
   <button class="btn pri" id="saveBtn" onclick="saveAll()">保存</button></div>
 <div id="toast"></div>
@@ -142,6 +144,8 @@ let added = [];   // 自分で追加した会社 isoSurveyTemplates/added
 const TPLS = () => SURVEY_TEMPLATES.concat(added.filter(a => !a.deleted).map(a => { const src = SURVEY_TEMPLATES.find(t => t.id === a.copyOf) || {};
   return { id:a.id, name:a.name, form:a.form || src.form || "（この会社の様式）", kind:a.kind || src.kind || "調査票", base:src.base || "", items:src.items || [], docNote:src.docNote || "", copyOf:a.copyOf || "", added:true, createdMs:a.createdMs }; }));
 let savedAt = {}, totals = {};
+let lastSavedBy = "";
+try { document.getElementById("saveBy").value = localStorage.getItem("isoRecBy") || ""; } catch(e){}
 let names = {}, bank = {}, subs = [], customQs = [], ITEMS = [], saved = null, ans = {}, filter = "all", dirty = false, lastSavedAt = null, counts = {};
 const T = () => TPLS().find(t => t.id === tpl) || SURVEY_TEMPLATES[0];
 const tplName = id => names[id] || (TPLS().find(t => t.id === id) || {}).name || id;
@@ -225,7 +229,7 @@ async function openTpl(id, first){
     if (!c.exists && CUSTOM_SEED[tpl]){ await customRef(tpl).set({ items: CUSTOM_SEED[tpl] }); customQs = CUSTOM_SEED[tpl].slice(); }
     else customQs = c.exists ? (c.data().items || []) : [];
     saved = d.exists ? (d.data().items || {}) : null;
-    const u = d.exists && d.data().updatedAt; lastSavedAt = u && u.toDate ? u.toDate() : null;
+    const u = d.exists && d.data().updatedAt; lastSavedAt = u && u.toDate ? u.toDate() : null; lastSavedBy = d.exists ? (d.data().recBy || "") : "";
   } catch(e){ toast("読み込みエラー: "+e.message); saved = null; customQs = []; }
   buildItems(); initAns(saved); showLastSaved(); renderTpls(); renderInfo(); renderSubs(); render();
 }
@@ -250,7 +254,7 @@ function renderInfo(){
         l.map(it => '<div style="font-size:13px;padding:2px 0;">・'+esc(it.label)+'　'+esc(it.q)+'</div>').join(""); }).join("")+
     '<button class="btn sm" style="margin-top:8px;" onclick="printPrep()">この一覧を印刷</button></div></details>' : "";
 }
-function showLastSaved(){ const el = document.getElementById("lastSaved"); if (el) el.textContent = lastSavedAt ? "最終保存 "+lastSavedAt.getFullYear()+"/"+(lastSavedAt.getMonth()+1)+"/"+lastSavedAt.getDate()+" "+String(lastSavedAt.getHours()).padStart(2,"0")+":"+String(lastSavedAt.getMinutes()).padStart(2,"0") : "まだ保存されていません"; }
+function showLastSaved(){ const el = document.getElementById("lastSaved"); if (el) el.textContent = lastSavedAt ? "最終保存 "+lastSavedAt.getFullYear()+"/"+(lastSavedAt.getMonth()+1)+"/"+lastSavedAt.getDate()+" "+String(lastSavedAt.getHours()).padStart(2,"0")+":"+String(lastSavedAt.getMinutes()).padStart(2,"0")+(lastSavedBy ? "　保存した人 "+lastSavedBy : "") : "まだ保存されていません"; }
 function setFilter(f){ filter = f; render(); }
 function render(){
   const all = ITEMS, n = all.filter(it => answered(ans[it.id])).length;
@@ -293,13 +297,18 @@ function updCnt(){
   document.getElementById("undoBtn").disabled = !dirty;
 }
 async function saveAll(){
+  // 保存する人(記録者)は必須。名前はこの端末に覚えておく
+  const by = document.getElementById("saveBy").value.trim();
+  if (!by){ toast("「保存する人」に名前を入れてください"); document.getElementById("saveBy").focus(); return; }
+  try { localStorage.setItem("isoRecBy", by); } catch(e){}
+  const now = new Date(), recDate = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
   const items = {}, bankUpd = {};
   ITEMS.forEach(it => { const a = ans[it.id]; items[it.id] = { ans:a.ans||"", num:a.num||"", on:!!a.on };
     if (it.key && answered(a)) bankUpd[it.key] = { ans:a.ans||"", num:a.num||"", good: (it.opts||[]).length ? a.ans === it.opts[0] : null, fromTpl:tpl, fromName:tplName(tpl), cross:true, updatedMs:Date.now() }; });
   try {
-    await ansRef(tpl).set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await ansRef(tpl).set({ items, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), recBy: by, recDate });
     if (Object.keys(bankUpd).length){ bank = { ...bank, ...bankUpd }; await BANK_REF.set({ items: bank }, { merge:true }); }
-    saved = items; dirty = false; ITEMS.forEach(it => { ans[it.id].isPre = false; ans[it.id].com = false; }); lastSavedAt = new Date(); showLastSaved();
+    saved = items; dirty = false; ITEMS.forEach(it => { ans[it.id].isPre = false; ans[it.id].com = false; }); lastSavedAt = new Date(); lastSavedBy = by; showLastSaved();
     counts[tpl] = Object.values(items).filter(answered).length; renderTpls();
     render(); toast("保存しました"+(Object.keys(bankUpd).length ? "(共通の答え "+Object.keys(bankUpd).length+"件をほかの会社にも反映)" : ""));
   } catch(e){ toast("保存できませんでした: "+e.message); }
