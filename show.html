@@ -144,6 +144,12 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 .dc.y { background:#fffbeb; border-color:#fcd34d; } .dc.y .v { color:#b45309; }
 .dc.r { background:#fef2f2; border-color:#fca5a5; } .dc.r .v { color:#b91c1c; }
 .dc.n .v { color:#1e3a5f; }
+.facts { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:18px; }
+.fc { background:#1e3a5f; color:#fff; border-radius:14px; padding:12px 14px; cursor:pointer; }
+.fc:hover { background:#2c4f7c; }
+.fc .k { font-size:14px; font-weight:700; opacity:.9; } .fc .v { font-size:32px; font-weight:900; line-height:1.15; margin-top:2px; } .fc .v small { font-size:15px; margin-left:2px; }
+.fc .s { font-size:12px; opacity:.85; margin-top:2px; line-height:1.5; }
+.factHead { font-size:16px; font-weight:900; color:#1e3a5f; margin:0 0 8px; }
 .policy { max-width:1000px; margin:10px auto; font-size:24px; line-height:2; font-weight:bold; color:#1e3a5f; white-space:pre-wrap; }
 /* 環境方針: 見出し・項目名だけ太字、説明はふつうの太さ */
 .pol { max-width:1000px; margin:6px auto 0; color:#1e3a5f; }
@@ -201,7 +207,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
   .pslide:last-child { page-break-after:auto; }
   .slide { box-shadow:none; border-radius:0; padding:0; min-height:0; max-width:none; }
   .per button, .openBtn, .tile, .course { display:none !important; }
-  .dash { grid-template-columns:repeat(3,1fr); } .dc .v { font-size:22pt; }
+  .dash { grid-template-columns:repeat(3,1fr); } .dc .v { font-size:22pt; } .facts { grid-template-columns:repeat(5,1fr); } .fc { background:#fff !important; color:#1e3a5f; border:2px solid #1e3a5f; } .fc .v { font-size:18pt; }
   .eqg { grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px; } .eqn { font-size:12pt; } .eqs { font-size:9pt; } .eqSum { font-size:13pt; }
   .policy { font-size:15pt; } .policySign { font-size:13pt; } .kv { font-size:12pt; }
   .pol .ph { font-size:16pt; margin:10px 0 6px; } .pol .pt, .pol .pe { font-size:11pt; } .pol .pc b { font-size:11.5pt; } .pol .pc span { font-size:10pt; } .pol .pc { padding:6px 10px; }
@@ -516,7 +522,27 @@ async function renderDash(p){
   const t0 = todayYmd(), t30 = (() => { const d = new Date(); d.setDate(d.getDate()+30); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); })();
   const up = ev.filter(x => x.date >= t0 && x.date <= t30).sort((a,b) => String(a.date).localeCompare(String(b.date)));
   card("n", "📅 これから30日の予定", up.length+"件", up.slice(0,3).map(x => fd(x.date)+" "+esc(x.title)).join("<br>") || "予定はありません", "calendar");
-  return await head(p, fyLabel(fy)+"("+fySub(fy)+")・押すとそのページへ") + '<div class="dash">'+cards.join("")+'</div>';
+  return await head(p, fyLabel(fy)+"("+fySub(fy)+")・押すとそのページへ") + await dashFacts(lim.length) + '<div class="factHead">記録の状況</div><div class="dash">'+cards.join("")+'</div>';
+}
+/* 会社のいま(数字)：マスタ管理の従業員・車両、沿革、許可、委託先、設備から自動で数える。入力はそれぞれの画面で */
+async function dashFacts(permits){
+  const [h, emps, vs, cm, fe, rg, ct] = await Promise.all([docGet("companyInfo","history"), col("employees"), col("master_vehicles"), col("compressorMachines"), col("freonEquipments"), col(ISO_REG_COL), col("master_contracts")]);
+  const f = [];
+  const fact = (k, v, u, sub, go) => f.push('<div class="fc" onclick="goKey(\''+go+'\')"><div class="k">'+k+'</div><div class="v">'+v+'<small>'+u+'</small></div>'+(sub ? '<div class="s">'+sub+'</div>' : '')+'</div>');
+  const yearsFrom = d => { const m = String(d||"").match(/(昭和|平成|令和)(\d+|元)年/); return m ? new Date().getFullYear() - ({ 昭和:1925, 平成:1988, 令和:2018 }[m[1]] + (m[2] === "元" ? 1 : Number(m[2]))) : null; };
+  const items = (h && h.items) || [];
+  const staff = emps.filter(e => e.name), qual = staff.filter(e => (Array.isArray(e.qualifications) ? e.qualifications.length : String(e.qualifications||"").trim())).length;
+  fact("👷 従業員", staff.length, "名", qual ? "資格を持つ人 "+qual+"名" : "マスタ管理の従業員", "skills");
+  fact("🚛 保有車両", vs.length, "台", "マスタ管理の車両", "equip");
+  fact("🏭 主な設備", cm.length + fe.length, "台", "圧縮機 "+cm.length+"台・フロン機器 "+fe.length+"台", "equip");
+  fact("📜 許可", permits, "件", "期限のある許可", "kyoka");
+  const vd = rg.filter(r => r.reg === "vendors" && !r.draft).length;
+  fact("🤝 委託先", vd, "社", "処分・運搬の委託先", "vendors");
+  if (ct.length) fact("📝 契約", ct.length, "件", "マスタ管理の契約", "vendors");
+  const y0 = items[0] ? yearsFrom(items[0].date) : null; if (y0 != null) fact("🏢 創業から", y0, "年", esc(items[0].date)+" 設立", "history");
+  const iso = items.find(x => /ISO/.test(x.text||"")), yi = iso ? yearsFrom(iso.date) : null; if (yi != null) fact("🏅 ISO14001", yi, "年", esc(iso.date)+" 取得", "history");
+  const wh = items.filter(x => /倉庫/.test(x.text||"")).length; if (wh) fact("🏠 倉庫", wh, "か所", "本社のほか（沿革から）", "history");
+  return '<div class="factHead">会社のいま</div><div class="facts">'+f.join("")+'</div>';
 }
 function goKey(k){ const c = courseFor(k); if (!c) return; course = c; go(coursePages().findIndex(x => x.key === k)); }
 
