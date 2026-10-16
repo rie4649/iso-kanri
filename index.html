@@ -4769,18 +4769,19 @@ window.openEditEvent = function(id) {
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   eventOverlay.classList.add("open");
 };
-document.getElementById("eventDeleteBtnInModal").addEventListener("click", () => {
+document.getElementById("eventDeleteBtnInModal").addEventListener("click", async () => {
   const id = document.getElementById("editId").value;
   if (!id) return;
   if (!confirm("この出来事を削除しますか？（この出来事のために入れた写真・書類も消えます）")) return;
-  delEventFiles(id);
-  db.collection(EVENT_COLLECTION).doc(id).delete();
+  // 削除が終わってから閉じる(年間サマリーから来たときは、閉じるとすぐ画面が移るので、先に閉じると削除が届かない)
+  try { await delEventFiles(id); await db.collection(EVENT_COLLECTION).doc(id).delete(); }
+  catch (e) { alert("削除できませんでした: " + e.message); return; }
   eventOverlay.classList.remove("open");
 });
-window.deleteEvent = function(id) {
+window.deleteEvent = async function(id) {
   if (!confirm("この出来事を削除しますか？（この出来事のために入れた写真・書類も消えます）")) return;
-  delEventFiles(id);
-  db.collection(EVENT_COLLECTION).doc(id).delete();
+  await delEventFiles(id);
+  await db.collection(EVENT_COLLECTION).doc(id).delete();
   renderDayEventsList();
 };
 
@@ -4956,7 +4957,10 @@ window.addEventListener("load", () => {
       if (edit) { openSection("calendar"); openEditEvent(evId); } else openEventSource(evId);
       if (back === "summary") setTimeout(() => {   // 開いた画面を閉じたら(キャンセル・保存)、年間サマリーに戻る
         document.querySelectorAll(".modal-overlay.open, .open[id$='Overlay']").forEach(ov => {
-          new MutationObserver((ms, ob) => { if (!ov.classList.contains("open")) { ob.disconnect(); location.href = "summary.html#ev=" + encodeURIComponent(evId); } }).observe(ov, { attributes: true, attributeFilter: ["class"] });
+          new MutationObserver((ms, ob) => { if (!ov.classList.contains("open")) { ob.disconnect();
+            // 保存・削除がサーバーに届いてから年間サマリーへ戻る(届く前に移ると消えないことがある)
+            const go = () => { location.href = "summary.html#ev=" + encodeURIComponent(evId); };
+            Promise.race([db.waitForPendingWrites ? db.waitForPendingWrites() : Promise.resolve(), new Promise(r => setTimeout(r, 8000))]).then(go, go); } }).observe(ov, { attributes: true, attributeFilter: ["class"] });
         });
       }, 800);
     }; setTimeout(tick, 600); return; }
