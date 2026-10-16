@@ -49,6 +49,10 @@
     body { background:#fff; }
     .stat, .card { box-shadow:none; border:1px solid #ccc; }
   }
+  .evRow { display:block; padding:9px 26px 9px 8px; border-bottom:1px solid #e5e7eb; color:#111827; text-decoration:none; position:relative; line-height:1.6; }
+  .evRow:hover { background:#f0fdfa; } .evRow:last-child { border-bottom:none; }
+  .evGo { position:absolute; right:8px; top:50%; transform:translateY(-50%); color:#0f766e; font-size:20px; font-weight:800; }
+  .evClip { margin-left:6px; background:#e0f2fe; color:#075985; border-radius:999px; padding:1px 7px; font-size:12px; font-weight:700; }
 </style>
 </head>
 <body>
@@ -363,10 +367,11 @@ function renderEventYear(){
   </div>`;
 
   const shown = markFilter ? list.filter(e=>(e.mark||"未分類")===markFilter) : list;
-  box.innerHTML = chips + `<div class="card"><div class="sub">${shown.map(e=>{
+  box.innerHTML = chips + `<div class="card"><div class="sub" style="font-size:14px;">押すと、その記録（写真・資料もいっしょに）が開きます</div>${shown.map(e=>{
     const m = markOf(e.mark);
-    return `${dot(m&&m.color)}<b>${esc(e.date)}</b>　${esc(e.title||"")}${e.mark?`<span style="font-size:11px;color:#71717a;">〔${esc(e.mark)}〕</span>`:""}${e.notes?`<span style="color:#71717a;"> — ${esc(e.notes)}</span>`:""}`;
-  }).join("<br>")}</div></div>`;
+    const n = (e.attachments||[]).length;
+    return `<a class="evRow" href="index.html#ev=${encodeURIComponent(e.id)}">${dot(m&&m.color)}<b>${esc(e.date)}</b>　${esc(e.title||"")}${e.mark?`<span style="font-size:11px;color:#71717a;">〔${esc(e.mark)}〕</span>`:""}${n?`<span class="evClip">📎${n}</span>`:""}${e.notes?`<span style="color:#71717a;"> — ${esc(e.notes)}</span>`:""}<span class="evGo">›</span></a>`;
+  }).join("")}</div>`;
 }
 window.setMarkFilter = function(n){ markFilter = n; renderEventYear(); };
 

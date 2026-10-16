@@ -33,6 +33,13 @@
   .help details.hmore summary { cursor:pointer; color:var(--navy); font-size:12px; font-weight:700; margin-top:2px; } .help details.hmore[open] summary { margin-bottom:2px; }
   .flow { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px 12px; margin-bottom:12px; font-size:13.5px; color:#1e3a5f; font-weight:600; }
   .flow b { background:var(--navy); color:#fff; border-radius:4px; padding:1px 8px; font-size:12px; }
+  .apCard.ok { border-left:4px solid #16a34a; } .apCard.stale { border-left:4px solid #dc2626; } .apCard { border-left:4px solid #d97706; }
+  .apRow { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:8px; }
+  .apStep { display:flex; gap:8px; align-items:center; border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:#f8fafc; }
+  .apStep.done { background:#f0fdf4; border-color:#bbf7d0; } .apStep > div:nth-child(2) { flex:1; }
+  .apN { font-size:18px; font-weight:800; color:var(--navy); } .apW { font-size:12px; color:#475569; }
+  .apLine { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px; padding-top:6px; border-top:1px dashed var(--line); }
+  .apChip { font-size:12px; background:#dcfce7; color:#15803d; border-radius:5px; padding:2px 8px; font-weight:700; }
 </style>
 </head>
 <body>
@@ -567,6 +574,42 @@ async function custClose(){
 }
 function setTab(k){ if (k === "objectives") setTimeout(() => custPlanOnce().catch(e => console.error(e)), 400); if (k === "vendors") setTimeout(() => vendorSeedOnce().catch(e => console.error(e)), 300); cur = k; try { history.replaceState(null, "", "#"+k); } catch(e){} render(); window.scrollTo({ top:0 }); }
 
+/* ===== 承認の段階(2026/10) =====
+   ・表まるごと(計画書・特定表など EMS文書になるもの): ① 作成・更新 → ② 確認 → ③ 承認。isoSettings/approvals の {表のキー: {chkBy,chkDate,apBy,apDate}}
+     承認したあとに表を直すと「承認のあと直されています」になり、もう一度 確認・承認 する
+   ・1件ずつの報告(苦情・ヒヤリハット・ゾーン報告・監査など): 行ごとに 確認・承認(行の chkBy/chkDate/apBy/apDate)。行を直すと消える
+   ※ログインのしくみはないので、押した人の名前と日付を残す形(誰が押したかは記録に残る) */
+const REC_APPROVE = ["comms","nearMiss","zoneReport","auditCheck","extAudit","changes","emergency","minutes","review","distrib","auditPlan","auditSurvey"];
+let apv = {};
+db.collection("isoSettings").doc("approvals").onSnapshot(s => { apv = s.exists ? s.data() : {}; render(); }, () => {});
+function apName(role){ const def = (window.RecBy && RecBy.getName()) || ""; const v = prompt(role+"の名前（例: 環境管理責任者 関根理絵／代表取締役 関根健巳）", def); return v === null ? null : v.trim(); }
+function lastEdit(list){ return list.reduce((m, r) => { const d = r.recDate || (r.updatedAt && r.updatedAt.toDate ? (d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"))(r.updatedAt.toDate()) : ""); return d > m.d ? { d, by:r.recBy || "" } : m; }, { d:"", by:"" }); }
+function approvalCard(reg, list){
+  if (REC_APPROVE.includes(reg.key) || !list.length) return "";
+  const a = apv[reg.key] || {}, le = lastEdit(list), stale = a.apDate && le.d && le.d > a.apDate, chkStale = a.chkDate && le.d && le.d > a.chkDate;
+  const step = (n, ttl, who, date, btn) => '<div class="apStep'+(who ? " done" : "")+'"><div class="apN">'+n+'</div><div><b>'+ttl+'</b><div class="apW">'+(who ? esc(who)+'　'+esc(String(date || "").replace(/-/g, "/")) : 'まだ')+'</div></div>'+(btn || "")+'</div>';
+  return '<div class="card apCard'+(stale ? " stale" : a.apBy ? " ok" : "")+'"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;"><b style="flex:1;color:var(--navy);font-size:15px;">✍️ この表の承認（作成 → 確認 → 承認）</b>'+
+      (stale ? '<span class="tag sig">承認のあと直されています。もう一度 確認・承認 してください</span>' : a.apBy ? '<span class="tag ok">承認済み</span>' : '<span class="tag gray">承認待ち</span>')+'</div>'+
+    '<div class="apRow">'+step("①", "作成・更新", le.by || (le.d ? "(記録者なし)" : ""), le.d, "")+
+      step("②", "確認", chkStale ? "" : a.chkBy, a.chkDate, '<button class="btn sm" onclick="approveDoc(\''+reg.key+'\',\'chk\')">'+(a.chkBy && !chkStale ? "確認し直す" : "確認した")+'</button>')+
+      step("③", "承認", stale ? "" : a.apBy, a.apDate, '<button class="btn sm pri" onclick="approveDoc(\''+reg.key+'\',\'ap\')"'+((a.chkBy && !chkStale) ? '' : ' disabled title="先に確認してください"')+'>'+(a.apBy && !stale ? "承認し直す" : "承認する")+'</button>')+'</div>'+
+    '<div class="note" style="margin:6px 0 0;">表を見て中身がよければ、確認者が「確認した」、承認者（社長・環境管理責任者）が「承認する」を押します。PDFを作るときは確認者の名前が様式に入ります。</div></div>';
+}
+async function approveDoc(key, k){
+  const nm = apName(k === "chk" ? "確認者" : "承認者"); if (!nm) return;
+  try { await db.collection("isoSettings").doc("approvals").set({ [key]: { ...(apv[key] || {}), [k+"By"]:nm, [k+"Date"]:today(), ...(k === "chk" ? { apBy:"", apDate:"" } : {}) } }, { merge:true }); toast(k === "chk" ? "確認しました" : "承認しました"); }
+  catch(e){ toast("保存できませんでした: "+e.message); }
+}
+function rowApproval(reg, r){
+  if (!REC_APPROVE.includes(reg.key) || r.draft) return "";
+  const b = (k, lbl) => r[k+"By"] ? '<span class="apChip done">'+lbl+' '+esc(r[k+"By"])+' '+esc(String(r[k+"Date"] || "").slice(5).replace("-", "/"))+'</span>' : '<button class="btn sm'+(k === "ap" ? " pri" : "")+'" onclick="approveRow(\''+r.id+'\',\''+k+'\')"'+(k === "ap" && !r.chkBy ? ' disabled title="先に確認してください"' : '')+'>'+lbl+'する</button>';
+  return '<div class="apLine">'+(r.apBy ? '<span class="tag ok">承認済み</span>' : '<span class="tag gray">承認待ち</span>')+b("chk", "確認")+b("ap", "承認")+'</div>';
+}
+async function approveRow(id, k){
+  const nm = apName(k === "chk" ? "確認者" : "承認者"); if (!nm) return;
+  try { await db.collection(ISO_REG_COL).doc(id).update({ [k+"By"]:nm, [k+"Date"]:today() }); toast(k === "chk" ? "確認しました" : "承認しました"); }
+  catch(e){ toast("保存できませんでした: "+e.message); }
+}
 function sorted(reg){
   const list = rows.filter(r => r.reg === reg.key);
   if (reg.dated) return list.sort((a,b) => String(b[reg.dated]||"").localeCompare(String(a[reg.dated]||"")) || (a.createdMs||0) - (b.createdMs||0));
@@ -600,6 +643,7 @@ function render(){
     ? '<div class="flow"><b>使い方</b><span>① 「📋 チェックシートを開く」で中身を確認（文字はそのまま書き換え・行の追加もここ）</span><span>→ ② 右端の「今年の点検」を付けて 💾保存</span><span>→ ③ 「この表で新しい版(PDF)を作る」で '+dn+' がEMS文書管理に残ります</span></div>'
     : '<div class="flow"><b>使い方</b><span>① 下の「✏️ ここで入力・直す」で中身を確認・追加・訂正</span><span>→ ② 「📄 この表でPDFを作る」で新しい版に</span><span>→ ③ '+dn+' としてEMS文書管理に自動で残ります（前の版も残ります）</span></div>';
   h += emsDocsHtml(reg, list.length);   // 会社の書類(PDF)は「使い方」のすぐ下
+  h += approvalCard(reg, list);
   if (reg.key === "objectives") h += custStepsCard();
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "review"){   // マネジメントレビューの資料を1年分の記録から自動で集める(mr-report.js)
@@ -851,7 +895,7 @@ function openMakeVer(code, memo){
     if (last && last.author) document.getElementById("mvAuthor").value = last.author; };
   if (code && lds.some(d => d.id === code)) document.getElementById("mvCode").value = code;
   document.getElementById("mvCode").onchange = setVer; setVer();
-  document.getElementById("mvDate").value = today(); document.getElementById("mvMemo").value = memo || ""; document.getElementById("mvChecker").value = "";
+  document.getElementById("mvDate").value = today(); document.getElementById("mvMemo").value = memo || ""; document.getElementById("mvChecker").value = ((apv[cur] || {}).chkBy) || "";
   document.getElementById("mvBg").classList.add("show");
 }
 function closeMakeVer(){ document.getElementById("mvBg").classList.remove("show"); }
@@ -1103,7 +1147,7 @@ function cardHtml(reg, r){
   return '<div class="card'+(r.draft ? ' draft' : '')+(sc && sc.sig ? ' sig' : '')+'"><div class="top"><div class="ttl">'+tags+esc((regLabel(titleF, r[reg.title]) || "(未入力)")+(reg.key === "review" ? " 実施" : ""))+'</div><div class="acts">'+
     (r.draft ? '<button class="btn sm fix" onclick="confirmRow(\''+r.id+'\')">確定</button>' : '')+
     '<button class="btn sm" onclick="openEdit(\''+r.id+'\')">編集</button><button class="btn sm del" onclick="delRow(\''+r.id+'\')">削除</button></div></div>'+
-    (dl ? '<dl>'+dl+'</dl>' : '')+(r.recBy || r.recDate || (r.updatedAt && r.updatedAt.toDate) ? '<div class="note" style="text-align:right;margin-top:4px;">最終更新 '+esc(r.recDate ? r.recDate.replace(/-/g, "/").replace(/\/0/g, "/") : fdTs(r.updatedAt))+(r.recBy ? '　記録者 '+esc(r.recBy) : '　<span style="color:#b45309;">記録者 未入力</span>')+'</div>' : '')+'</div>';
+    (dl ? '<dl>'+dl+'</dl>' : '')+rowApproval(reg, r)+(r.recBy || r.recDate || (r.updatedAt && r.updatedAt.toDate) ? '<div class="note" style="text-align:right;margin-top:4px;">最終更新 '+esc(r.recDate ? r.recDate.replace(/-/g, "/").replace(/\/0/g, "/") : fdTs(r.updatedAt))+(r.recBy ? '　記録者 '+esc(r.recBy) : '　<span style="color:#b45309;">記録者 未入力</span>')+'</div>' : '')+'</div>';
 }
 function fdTs(v){ const d = v.toDate ? v.toDate() : new Date(v); return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate(); }
 
@@ -1153,6 +1197,7 @@ async function saveEdit(){
     if (g) (reg.groupFields || []).forEach(k => { if (!data[k]) data[k] = g[k] || ""; }); }
   data.draft = document.getElementById("editDraft").checked;
   data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+  if (editId && REC_APPROVE.includes(reg.key)){ const old = rows.find(x => x.id === editId) || {}; if (old.chkBy || old.apBy){ data.chkBy = ""; data.chkDate = ""; data.apBy = ""; data.apDate = ""; } }   // 直したら確認・承認はやり直し
   try {
     if (editId) await db.collection(ISO_REG_COL).doc(editId).update(data);
     else await db.collection(ISO_REG_COL).add({ ...data, reg:reg.key, createdMs:Date.now() });

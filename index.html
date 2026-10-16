@@ -321,6 +321,9 @@
   .hm-sec { font-size:14px; font-weight:700; color:#1e3a5f; margin:6px 2px 8px; }
   .hm-wsub { font-size:12px; color:#6b7280; margin:-4px 0 6px; }
   .hm-now { border:2px solid #fca5a5; } .hm-now h3 { color:#b91c1c; }
+  .hm-open { border:2px solid #fcd34d; } .hm-open h3 { color:#92400e; }
+  .hm-info { display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:9px 14px; margin-bottom:12px; font-size:14px; color:#1e3a5f; }
+  .hm-info-sub { font-size:12px; color:#475569; }
   .hm-two > .hm-find { margin-bottom:0; }
   .hm-look { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); column-gap:16px; }
   .hm-det { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:10px 14px; margin-bottom:12px; }
@@ -339,7 +342,7 @@
   .hm-task { display:flex; gap:8px; align-items:center; padding:6px 4px; border-bottom:1px solid #f1f5f9; cursor:pointer; font-size:14px; }
   .hm-task:hover { background:#f8fafc; } .hm-task .nm { flex:1; } .hm-task .sub { font-size:11px; color:#6b7280; display:block; }
   .hm-st { font-size:12px; font-weight:700; border-radius:5px; padding:2px 8px; white-space:nowrap; }
-  .hm-st.ok { background:#dcfce7; color:#15803d; } .hm-st.ng { background:#fee2e2; color:#b91c1c; } .hm-st.na { background:#f3f4f6; color:#6b7280; }
+  .hm-st.ok { background:#dcfce7; color:#15803d; } .hm-st.ng { background:#fee2e2; color:#b91c1c; } .hm-st.na { background:#f3f4f6; color:#6b7280; } .hm-st.wa { background:#fef3c7; color:#92400e; }
   .hm-per { font-size:12px; font-weight:700; color:#1e3a5f; margin:8px 0 2px; }
   .hm-in { display:flex; gap:8px; align-items:center; padding:7px 4px; border-bottom:1px solid #f1f5f9; cursor:pointer; font-size:14px; }
   .hm-in:hover { background:#f8fafc; } .hm-in .nm { flex:1; } .hm-in .to { font-size:12px; color:#1e3a5f; white-space:nowrap; }
@@ -1118,6 +1121,13 @@
       <div class="field">
         <label>内容・メモ</label>
         <textarea id="eventNotes" placeholder="詳しい内容"></textarea>
+      </div>
+      <div class="field">
+        <label>📎 写真・書類（視察の写真、監査の資料、案内状など）</label>
+        <div class="attach-list" id="evAttachList"></div>
+        <label class="attach-pick">＋ ファイルを選ぶ（写真・PDF、複数OK）<input type="file" id="evAttachInput" accept="application/pdf,image/*" multiple style="display:none;"></label>
+        <div class="field-hint" style="margin-top:4px;color:#8b8b9e;font-size:12px;">「保存」を押したときに保存されます。写真は自動で小さくします。PDFは1ファイル約700KBまで。</div>
+        <div id="evSrcLink" style="margin-top:8px;"></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="eventCancelBtn">キャンセル</button>
@@ -2050,7 +2060,8 @@ function renderEventList() {
         ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
         <div class="event-title">${escapeHtml(ev.title)}</div>
         ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
-        <div class="event-actions">${ev.surveySubId ? `<button class="btn-edit" onclick="location.href='survey.html#${escapeHtml(ev.surveyTpl || "astemo")}/${escapeHtml(ev.surveySubId)}'">📋 調査票の控え</button>` : ""}
+        ${(ev.attachments || []).length ? `<div class="event-notes">${ev.attachments.map(a => `<a href="#" onclick="openInlineAttachment('${a.fileId}','${EV_FILE_COL}');return false;" style="margin-right:8px;">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}${escapeHtml(a.name)}</a>`).join("")}</div>` : ""}
+        <div class="event-actions">${ev.surveySubId ? `<button class="btn-edit" onclick="location.href='survey.html#${escapeHtml(ev.surveyTpl || "astemo")}/${escapeHtml(ev.surveySubId)}'">📋 調査票の控え</button>` : (eventSource(ev.id) ? `<button class="btn-edit" onclick="openEventSource('${ev.id}')">↗ もとの記録</button>` : "")}
           <button class="btn-edit" onclick="openEditEvent('${ev.id}')">編集</button>
           <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
         </div>
@@ -3798,10 +3809,10 @@ function attachLinkHtml(a) {
   return `<a href="${a.url}" target="_blank" rel="noopener" style="${st}">${icon}<span>${escapeHtml(a.name)}</span></a>`;
 }
 // Firestoreに入れた添付(base64)を開く
-window.openInlineAttachment = async function(fileId) {
+window.openInlineAttachment = async function(fileId, col) {
   const w = window.open("", "_blank"); // 先に開いておく(スマホのポップアップ制限対策)
   try {
-    const d = await db.collection(WATERTEST_FILE_COLLECTION).doc(fileId).get();
+    const d = await db.collection(col || WATERTEST_FILE_COLLECTION).doc(fileId).get();
     if (!d.exists) throw new Error("ファイルが見つかりません");
     const f = d.data();
     const bin = atob(f.data);
@@ -4591,6 +4602,44 @@ document.getElementById("jpegBtnActivitySummary").addEventListener("click", () =
 // ---- 出来事追加/編集モーダル ----
 const eventOverlay = document.getElementById("eventModalOverlay");
 const eventFormEl = document.getElementById("eventForm");
+/* 出来事(カレンダー・年間記録)の添付(2026/10)。中身は isoEventFiles(base64)、出来事には attachments:[{name,fileId,type,size}] */
+const EV_FILE_COL = "isoEventFiles";
+let evAttach = [], evNewFiles = [], evRemoved = [];
+function renderEvAttach() {
+  const el = document.getElementById("evAttachList"); if (!el) return;
+  const saved = evAttach.filter(a => !evRemoved.includes(a.fileId));
+  el.innerHTML = saved.map(a => `<span class="attach-chip"><a href="#" onclick="openInlineAttachment('${a.fileId}','${EV_FILE_COL}');return false;" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(a.name)}</span></a><button type="button" class="attach-x" title="削除" onclick="evRemoved.push('${a.fileId}');renderEvAttach()">✕</button></span>`).join("") +
+    evNewFiles.map((f, i) => `<span class="attach-chip pending">${f.type && f.type.startsWith("image/") ? "🖼️" : "📄"}<span>${escapeHtml(f.name)}</span><small>(未保存)</small><button type="button" class="attach-x" onclick="evNewFiles.splice(${i},1);renderEvAttach()">✕</button></span>`).join("") ||
+    '<div class="field-hint" style="color:#8b8b9e;font-size:12px;">まだ添付はありません</div>';
+}
+document.getElementById("evAttachInput").addEventListener("change", (e) => { Array.from(e.target.files || []).forEach(f => evNewFiles.push(f)); e.target.value = ""; renderEvAttach(); });
+async function saveEvAttach(evId) {
+  const errors = [], list = evAttach.filter(a => !evRemoved.includes(a.fileId));
+  for (const fid of evRemoved) { try { await db.collection(EV_FILE_COL).doc(fid).delete(); } catch (e) {} }
+  for (const f of evNewFiles) {
+    const { blob, name, type } = await shrinkImageIfNeeded(f);
+    if (blob.size > INLINE_FILE_MAX) { errors.push(`${name}(${Math.round(blob.size / 1024)}KB)は大きすぎます。約700KB以下にしてください`); continue; }
+    const data = await blobToBase64(blob);
+    const ref = await db.collection(EV_FILE_COL).add({ eventId: evId, name, type, size: blob.size, data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    list.push({ name, fileId: ref.id, type, size: blob.size, uploadedAt: Date.now() });
+  }
+  if (errors.length) alert("一部の添付を保存できませんでした:\n" + errors.join("\n"));
+  return list;
+}
+/* この出来事のもとの記録(金属拾い上げ・圧縮機点検・パトロール・水質・騒音・調査票)を探す */
+function eventSource(evId) {
+  const ev = allEvents.find(x => x.id === evId) || {};
+  const S = [[allMetalRecords, "metal", "openEditMetal", "金属拾い上げの記録"], [allCompRecords, "noiseCheck", "openEditComp", "圧縮機定期点検の記録"], [allSafetyPatrols, "safety", "openEditSafety", "安全衛生パトロールの記録"],
+    [allWaterTests, "waterTest", "openEditWaterTest", "水質検査の記録"], [allNoiseChecks, "noiseCheck", "openEditNoiseCheck", "騒音チェックの記録"]];
+  for (const [arr, sec, fn, label] of S) { const r = (arr || []).find(x => x.eventId === evId); if (r) return { sec, fn, id: r.id, label }; }
+  if (ev.surveySubId) return { url: "survey.html#" + (ev.surveyTpl || "astemo") + "/" + ev.surveySubId, label: "委託先調査票の控え" };
+  return null;
+}
+window.openEventSource = function(evId) {
+  const s = eventSource(evId); if (!s) { openEditEvent(evId); return; }
+  if (s.url) { location.href = s.url; return; }
+  openSection(s.sec); setTimeout(() => { if (typeof window[s.fn] === "function") window[s.fn](s.id); }, 300);
+};
 
 function openAddEventModal(prefillDate) {
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
@@ -4598,6 +4647,7 @@ function openAddEventModal(prefillDate) {
   document.getElementById("editId").value = "";
   document.getElementById("eventModalTitle").textContent = "出来事を追加";
   document.getElementById("eventDeleteBtnInModal").style.display = "none";
+  evAttach = []; evNewFiles = []; evRemoved = []; renderEvAttach(); document.getElementById("evSrcLink").innerHTML = "";
   populateMarkSelect("");
   if (prefillDate) document.getElementById("eventDate").value = prefillDate;
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
@@ -4617,6 +4667,9 @@ window.openEditEvent = function(id) {
   document.getElementById("eventNotes").value = ev.notes || "";
   document.getElementById("eventModalTitle").textContent = "出来事を編集";
   document.getElementById("eventDeleteBtnInModal").style.display = "block";
+  evAttach = (ev.attachments || []).slice(); evNewFiles = []; evRemoved = []; renderEvAttach();
+  const src = eventSource(id);
+  document.getElementById("evSrcLink").innerHTML = src ? `<button type="button" class="btn-edit" onclick="eventOverlay.classList.remove('open');openEventSource('${id}')">↗ ${escapeHtml(src.label)}を開く</button>` : "";
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   eventOverlay.classList.add("open");
 };
@@ -4644,12 +4697,15 @@ eventFormEl.addEventListener("submit", async (e) => {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
+    let evId = id;
     if (id) {
       await db.collection(EVENT_COLLECTION).doc(id).update(data);
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection(EVENT_COLLECTION).add(data);
+      evId = (await db.collection(EVENT_COLLECTION).add(data)).id;
     }
+    if (evNewFiles.length || evRemoved.length) { const list = await saveEvAttach(evId); await db.collection(EVENT_COLLECTION).doc(evId).update({ attachments: list }); }
+    evNewFiles = []; evRemoved = [];
     eventOverlay.classList.remove("open");
   } catch (err) {
     alert("保存エラー: " + err.message);
@@ -4786,6 +4842,9 @@ const SECTION_GROUPS = [
 
 // 他のページ(EMS文書管理など)から「index.html#sec=水質検査のキー」で、その画面を開いて来られるようにする
 window.addEventListener("load", () => {
+  const me = location.hash.match(/^#ev=(.+)$/);
+  if (me) { const evId = decodeURIComponent(me[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    let n = 0; const tick = () => { if (allEvents.some(x => x.id === evId) || n++ > 25) openEventSource(evId); else setTimeout(tick, 300); }; setTimeout(tick, 600); return; }
   const m = location.hash.match(/^#sec=(.+)$/);
   if (m) { const k = decodeURIComponent(m[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {} setTimeout(() => openSection(k), 300); }
 });
@@ -4844,6 +4903,9 @@ const FIND_INDEX = [
   ["顧客対応確認書 顧客対応確認表 EMS-C-15", "顧客対応の進捗（電話依頼）", "custlog"],
   ["行先経路 行先 処分先 中間処理 品目 EMS-B-06", "産業廃棄物の行先経路", "plan:routes"],
   ["環境側面調査記録 取扱量 インプット 産廃 非鉄 推移 傾向 EMS-A-17 C-20", "環境側面調査記録（取扱量の推移）", "volumes"],
+  ["使い方 ヘルプ 質問 わからない どこ", "❓ 使い方（よくある質問）", "help"],
+  ["バックアップ 保存 ダウンロード 控え", "💾 バックアップ", "backup"],
+  ["承認 確認 承認者 確認者 ハンコ", "❓ 使い方：承認のしかた", "help"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
 let findDocs = null;
@@ -4881,7 +4943,8 @@ async function renderHomeTasks() {
   const thisM = ym(now), prevM = ym(new Date(now.getFullYear(), now.getMonth() - 1, 1)), y = String(now.getFullYear());
   const fyStart = now.getMonth() + 1 >= 8 ? now.getFullYear() + "-08" : (now.getFullYear() - 1) + "-08";
   const get = c => db.collection(c).get().then(s => s.docs.map(d => ({ _id: d.id, ...d.data() }))).catch(() => []);
-  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au, tr, rg, rv, ev, plog, plive, cmo] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits","trainingRecords","isoRegisters","emsDocReviews","isoEvents","phoneRequestLog","phoneRequests","isoCustMonthly"].map(get));
+  const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au, tr, rg, rv, ev, plog, plive, cmo, cor] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits","trainingRecords","isoRegisters","emsDocReviews","isoEvents","phoneRequestLog","phoneRequests","isoCustMonthly","isoCorrectives"].map(get));
+  db.collection("companyInfo").doc("profile").get().then(d => renderHomeInfo(d.exists ? d.data() : {})).catch(() => {});
   const has = (l, k, v) => l.some(x => String(x[k] || "").startsWith(v));
   const last = (l, k) => l.map(x => String(x[k] || "")).filter(Boolean).sort().pop() || "";
   const fdy = s => { const p = String(s).split("-"); return p.length >= 3 ? Number(p[1]) + "/" + Number(p[2]) : p.length === 2 ? Number(p[1]) + "月分" : s; };
@@ -4908,6 +4971,50 @@ async function renderHomeTasks() {
     T("フロン排出抑制法簡易点検", qMonths.join("・") + "月の間に全機器", "freon", st(fe.length ? frDone >= fe.length : null, `${frDone} / ${fe.length}台`)) +
     '';
     homeYearPlan({ now, fyStart, wt, nc, hv, mr, au, tr, rg, rv, ev, st, fdy });
+    renderHomeOpen(rg, cor).catch(e => console.error(e));
+}
+/* 環境管理責任者が毎日見るもの: 終わっていないこと(対応中)と、期限が近いもの・過ぎたもの */
+async function renderHomeOpen(rg, cor) {
+  const el = document.getElementById("hmOpen"); if (!el) return;
+  const t = new Date(), ymd = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const today = ymd(t), soon = ymd(new Date(t.getTime() + 45 * 86400000));
+  const R = k => rg.filter(x => x.reg === k && !x.draft), fd = s => String(s || "").slice(5, 10).replace("-", "/").replace(/^0/, "");
+  const items = [];   // [並び順, 見出し, 説明, 開く場所, バッジ文字, 色]
+  const add = (o, ttl, sub, to, badge, cls) => items.push([o, ttl, sub, to, badge, cls]);
+  R("comms").filter(x => x.status === "対応中").forEach(x => add(2, "苦情・問い合わせ：" + (x.party || ""), (x.content || "").slice(0, 40), "plan:comms", "対応中", "ng"));
+  cor.filter(x => x.status === "open").forEach(x => add(1, "是正処置：" + (x.event || "").slice(0, 24), (x.action || "対策をまだ書いていません").slice(0, 40), "kiroku", "対応中", "ng"));
+  R("nearMiss").filter(x => x.status !== "完了").forEach(x => add(3, "ヒヤリハット：" + (x.who || ""), (x.what || "").slice(0, 40), "plan:nearMiss", "対応中", "ng"));
+  R("zoneReport").filter(x => x.status !== "完了").forEach(x => add(3, "ゾーン報告：" + (x.zone ? x.zone + "ゾーン" : ""), (x.content || "").slice(0, 40), "plan:zoneReport", "対応中", "ng"));
+  R("changes").filter(x => x.status === "対応中").forEach(x => add(4, "変更管理：" + (x.content || "").slice(0, 24), "直す書類：" + (x.update || "").slice(0, 34), "plan:changes", "対応中", "ng"));
+  R("extAudit").filter(x => x.status !== "対応済み").forEach(x => add(4, "外部審査の指摘：" + (x.no || ""), (x.finding || "").slice(0, 40), "plan:extAudit", x.status || "未対応", "ng"));
+  R("auditCheck").filter(x => /不適合/.test(x.overall || "") && x.check2mRes !== "是正済み").forEach(x => add(1, "内部監査の不適合：" + (x.dept || ""), x.due ? "是正の期限 " + fd(x.due) : "是正の期限を決めてください", "plan:auditCheck", x.due && x.due < today ? "期限切れ" : "是正待ち", "ng"));
+  R("calib").filter(x => x.next && x.next <= soon).forEach(x => add(0, "測定機器：" + (x.name || ""), "次回の点検・検定 " + fd(x.next), "plan:calib", x.next < today ? "期限切れ" : "もうすぐ", x.next < today ? "ng" : "wa"));
+  R("vendors").forEach(x => [["permitExp", "許可"], ["contractExp", "契約"]].forEach(([k, l]) => { if (x[k] && x[k] <= soon) add(0, "委託先の" + l + "期限：" + (x.name || ""), l + "の期限 " + String(x[k]).replace(/-/g, "/"), "plan:vendors", x[k] < today ? "期限切れ" : "もうすぐ", x[k] < today ? "ng" : "wa"); }));
+  // 承認待ち(1件ずつの報告は件数、表まるごとは個数)とバックアップ
+  const REC = { comms:"苦情・コミュニケーション", nearMiss:"ヒヤリハット", zoneReport:"ゾーン報告", auditCheck:"内部監査チェックシート", extAudit:"外部審査の指摘", changes:"変更管理", emergency:"緊急事態の訓練", minutes:"議事録", review:"マネジメントレビュー", distrib:"文書の配布記録", auditPlan:"内部監査の計画", auditSurvey:"内部監査アンケート" };
+  Object.entries(REC).forEach(([k, nm]) => { const n = R(k).filter(x => x.recBy && !x.apBy).length; if (n) add(5, "承認待ち：" + nm, n + "件　確認・承認を押してください", "plan:" + k, "承認待ち", "wa"); });
+  const docRegs = [...new Set(rg.filter(x => !x.draft && x.reg && !REC[x.reg]).map(x => x.reg))];
+  const sx = await Promise.all([db.collection("isoSettings").doc("approvals").get().catch(() => null), db.collection("isoSettings").doc("backup").get().catch(() => null)]);
+  const apv = sx[0] && sx[0].exists ? sx[0].data() : {}, bk = sx[1] && sx[1].exists ? sx[1].data() : {};
+  const waitDocs = docRegs.filter(k => { const a = apv[k] || {}; if (!a.apBy) return true; const le = R(k).map(x => x.recDate || "").sort().pop() || ""; return le > a.apDate; });
+  if (waitDocs.length) add(5, "表の承認待ち：" + waitDocs.length + "つ", "計画書・特定表などの表。それぞれの画面の「✍️ この表の承認」から", "plan:" + waitDocs[0], "承認待ち", "wa");
+  const bkOld = !bk.lastDate || bk.lastDate < ymd(new Date(t.getTime() - 31 * 86400000));
+  if (bkOld) add(6, "バックアップ", bk.lastDate ? "最後のバックアップ " + String(bk.lastDate).replace(/-/g, "/") + "（月に1回がおすすめ）" : "まだ一度もとっていません（月に1回がおすすめ）", "backup", "まだ", "wa");
+  items.sort((a, b) => a[0] - b[0]);
+  el.innerHTML = items.length
+    ? `<div class="hm-wsub">対応が終わっていないものと、45日以内に期限がくるものです（${items.length}件）。終わったら、その記録の「状況」を「完了」にすると消えます。</div>` +
+      items.slice(0, 12).map(([, ttl, sub, to, badge, cls]) => `<div class="hm-task" onclick="openSection('${to}')"><span class="nm">${escapeHtml(ttl)}<span class="sub">${escapeHtml(sub)}</span></span><span class="hm-st ${cls}">${escapeHtml(badge)}</span></div>`).join("") +
+      (items.length > 12 ? `<div class="hm-wsub" style="margin-top:6px;">ほか ${items.length - 12} 件</div>` : "")
+    : '<div style="font-size:14px;color:#15803d;font-weight:700;padding:4px 2px;">終わっていないこと・期限が近いものはありません 👍</div>';
+}
+/* 審査の予定と登録の有効期限(会社情報の「認証」) */
+function renderHomeInfo(pf) {
+  const el = document.getElementById("hmInfo"); if (!el) return;
+  const bits = [];
+  if (pf.nextAudit) bits.push(`<span>🏅 次の審査：<b>${escapeHtml(pf.nextAudit)}</b></span>`);
+  if (pf.certExpiry) bits.push(`<span>📜 登録の有効期限：<b>${escapeHtml(pf.certExpiry)}</b></span>`);
+  el.innerHTML = bits.length ? bits.join("") + `<span class="hm-info-sub">（会社情報 → 認証で直せます）</span>` : "";
+  el.style.display = bits.length ? "flex" : "none";
 }
 /* 環境マニュアル(EMS-A-01 第10版)で決まっている「年度(8月〜翌7月)」の予定と実施状況 */
 function homeYearPlan(o) {
@@ -4978,7 +5085,8 @@ const WORK_GROUPS = [
     ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
   ["👀", "見る・まとめる", "監査・会議・視察のとき", [
     ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["plan:review", "📊 マネジメントレビューの資料を作る", "1年分の記録から社長への報告書を自動で作る"], ["summary", "年間サマリー", "1年の記録の集計"],
-    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"]]]
+    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"],
+    ["help", "❓ 使い方（よくある質問）", "「これはどこ？」と聞かれたらここ"], ["backup", "💾 バックアップ", "月に1回、全部の記録をファイルに保存"]]]
 ];
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
@@ -4987,7 +5095,18 @@ function renderHomeMenu() {
   const [g1, g2, gT, g3, g4] = WORK_GROUPS;
   document.getElementById("homeMenu").innerHTML =
     `<div class="hm-find"><input type="search" id="hmQ" placeholder="🔍 書類名・言葉で探す（例：リスク、計量証明書、許可証、EMS-A-10）" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
-    `<div class="hm-find hm-now"><h3>✅ 今やること</h3><div id="hmNow"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
+    `<div class="hm-info" id="hmInfo" style="display:none;"></div>` +
+    `<details class="hm-det"><summary>📘 はじめての人へ：ISO管理の使い方（ここを押すと開きます）</summary><div style="font-size:14px;line-height:1.9;color:#1f2937;">` +
+      `<b>① 毎日・毎週</b>：下の「✅ 今やること」と「📌 終わっていないこと・期限」を見て、赤いものから片づけます。押すと入力する画面が開きます。<br>` +
+      `<b>② 何か起きたら</b>：「🚨 何かあったとき」から記録します（苦情・ヒヤリハット・ゾーン報告・事故・変更・行政の立入）。<br>` +
+      `<b>③ 書類が届いたら</b>：「📥 届いた書類を入れる」で、入れる場所に案内します。<br>` +
+      `<b>④ 年に1回</b>：「📅 年1回・決まった時期」の順番で（8月 見直し → 10〜2月 内部監査 → 7月 マネジメントレビュー）。<br>` +
+      `<b>⑤ 監査の前</b>：「EMS文書管理」→「ISOの要求と書類」タブで、オレンジの行（記録がないもの）をなくします。<br>` +
+      `<b>決まりごと</b>：どの記録にも「記録者」と日付が残ります。直したいときは「編集」、いらないときは「削除」。書類（PDF）は「この表でPDFを作る」で版として残り、「確認」「承認」を押して確定します。<br>` +
+      `<button class="btn-save" style="margin-top:8px;padding:8px 14px;border-radius:8px;" onclick="location.href='help.html'">❓ 使い方（よくある質問）を全部見る</button>` +
+    `</div></details>` +
+    `<div class="hm-two"><div class="hm-find hm-now"><h3>✅ 今やること（時期が来ている記録）</h3><div id="hmNow"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
+    `<div class="hm-find hm-open"><h3>📌 終わっていないこと・期限</h3><div id="hmOpen"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div></div>` +
     `<div class="hm-sec">仕事から探す</div>` +
     `<div class="hm-two">` + card(g1[0], g1[1], g1[2], g1[3].map(wrow).join("")) + card(g2[0], g2[1], g2[2], g2[3].map(wrow).join("")) + `</div>` +
     `<div class="hm-two">` + card(gT[0], gT[1], gT[2], gT[3].map(wrow).join("")) + card("📥", "届いた書類を入れる", "書類ごとに入れる場所へ案内します", INCOMING.map(([n, to, how]) => wrow([to, n, how])).join("")) + `</div>` +
@@ -5015,6 +5134,8 @@ window.openSection = function(sec) {
   if (sec === "survey") { location.href = "survey.html"; return; }
   if (sec === "custlog") { location.href = "custlog.html"; return; }
   if (sec === "volumes") { location.href = "volumes.html"; return; }
+  if (sec === "backup") { location.href = "backup.html"; return; }
+  if (sec === "help") { location.href = "help.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
   if (sec === "kiroku") { location.href = "kiroku.html"; return; }

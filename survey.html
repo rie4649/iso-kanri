@@ -194,6 +194,7 @@ async function loadAll(){
     await seedOnce();
   } catch(e){ console.error(e); }
   try { await seedOnce2(); } catch(e){ console.error(e); }
+  try { await seedOnce3(); } catch(e){ console.error(e); }
   await openTpl(tpl, true);
   db.collection(SUB_COL).onSnapshot(sn => { subs = sn.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)); renderTpls(); renderSubs();
     if (openSubId && !window._openedSub && subs.some(x => x.id === openSubId)){ window._openedSub = true; const x = subs.find(y => y.id === openSubId); if ((x.tpl||"astemo") !== tpl) openTpl(x.tpl||"astemo", true).then(() => viewSub(openSubId)); else viewSub(openSubId); } }, e => console.error(e));
@@ -228,6 +229,16 @@ async function seedOnce2(){
     if (Object.values(cur).some(answered)) continue;   // もう答えがある会社はさわらない
     await r.set({ items: { ...cur, ...items }, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), recBy:"自動入力(要確認)", recDate: todayYmd() }, { merge:true });
   }
+}
+/* 2026/10: TDKの新しい様式（監査アンケート tdk2）に、用意した答えを入れる(1回だけ・まだ答えがないときだけ) */
+async function seedOnce3(){
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().surveySeed3) return;
+  await fr.set({ surveySeed3:true }, { merge:true });
+  const items = SURVEY_SEED_ANSWERS.tdk2; if (!items) return;
+  const r = ansRef("tdk2"), d = await r.get(), cur = d.exists ? (d.data().items || {}) : {};
+  if (Object.values(cur).some(answered)) return;
+  await r.set({ items: { ...cur, ...items }, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), recBy:"自動入力(要確認)", recDate: todayYmd() }, { merge:true });
 }
 async function loadCounts(){
   for (const t of TPLS()){ try { const [d, c] = await Promise.all([ansRef(t.id).get(), customRef(t.id).get()]);

@@ -111,9 +111,10 @@ const LINKS = [["",""],["company","会社情報(沿革・組織図・環境方�
   ["plan:legal","法的要求事項特定書(A-05)"],["plan:sigAspects","著しい環境側面特定表(A-08)"],["plan:changes","変更管理記録"],["plan:vendors","外部委託先の管理"],["plan:comms","コミュニケーション・苦情"],["plan:emergency","緊急事態の訓練・テスト"],["plan:monitoring","監視・測定の計画"],["plan:calib","測定機器の点検・校正"],
   ["skills","力量(資格の一覧)"],["safety","安全災害対策(パトロール・教育訓練)"],["manual","環境手順書"],["sdgs","SDGs"],["clean","クリーン度チェック"],["metal","金属拾い上げ"],
   ["donation","地域貢献"],["custlog","顧客対応の進捗記録(電話依頼)"],["freon","フロン排出抑制法簡易点検"],["noiseCheck","騒音チェック・圧縮機定期点検"],["waterTest","水質検査"],["diesel","軽油使用量"],["lifeline","ライフライン"],
-  ["calendar","カレンダー"],["plan:roles","役割・責任と権限"],["plan:review","マネジメントレビュー(記録)"],["docs","EMS文書管理(この画面)"],["plan:auditPlan","内部監査の計画(C-01)"],["plan:auditCheck","内部監査チェックシート(C-02)"],["plan:auditSurvey","内部監査アンケート(C-03)"],["plan:routes","産業廃棄物の行先経路(B-06)"],["plan:extAudit","外部審査の指摘と対応(C-06)"],["volumes","環境側面調査記録(取扱量の推移・A-17)"],["plan:zoneReport","ゾーン報告(C-14)"],["plan:nearMiss","ヒヤリハット報告(C-12)"],["plan:minutes","会議の議事録(C-19)"],["plan:distrib","文書の配布記録(C-18)"],["custlog","顧客対応の進捗記録"],["process","ISOの要求と書類(この画面のタブ)"],["abolist","廃止文書の一覧(この画面)"],["ext:master","マスター管理(車両・担当)"],["kiroku","内部監査・是正処置"],["summary","年間サマリー・マネジメントレビュー"],["shokaki","消火器・防火管理"],["photos","写真の記録"]];
+  ["calendar","カレンダー"],["plan:roles","役割・責任と権限"],["plan:review","マネジメントレビュー(記録)"],["docs","EMS文書管理(この画面)"],["plan:auditPlan","内部監査の計画(C-01)"],["plan:auditCheck","内部監査チェックシート(C-02)"],["plan:auditSurvey","内部監査アンケート(C-03)"],["plan:routes","産業廃棄物の行先経路(B-06)"],["plan:extAudit","外部審査の指摘と対応(C-06)"],["volumes","環境側面調査記録(取扱量の推移・A-17)"],["backup","バックアップ"],["help","使い方(よくある質問)"],["plan:zoneReport","ゾーン報告(C-14)"],["plan:nearMiss","ヒヤリハット報告(C-12)"],["plan:minutes","会議の議事録(C-19)"],["plan:distrib","文書の配布記録(C-18)"],["custlog","顧客対応の進捗記録"],["process","ISOの要求と書類(この画面のタブ)"],["abolist","廃止文書の一覧(この画面)"],["ext:master","マスター管理(車両・担当)"],["kiroku","内部監査・是正処置"],["summary","年間サマリー・マネジメントレビュー"],["shokaki","消火器・防火管理"],["photos","写真の記録"]];
 const linkName = k => (LINKS.find(l => l[0] === k) || ["",""])[1];
 function goLink(k){
+  if (k === "backup" || k === "help"){ location.href = k + ".html"; return; }
   if (k === "process"){ setTab("process"); return; }
   if (k === "abolist"){ showAbo = true; setTab("list"); setTimeout(() => { const el = document.querySelector(".grpH.abo"); if (el) el.scrollIntoView({ behavior:"smooth" }); }, 200); return; }
   if (k === "ext:master"){ window.open("https://rie4649.github.io/sekine-master/", "_blank"); return; }
@@ -261,7 +262,7 @@ const PROCESS_MAP = [
   ["7.2", "力量(資格・教育)", ["A-11"], ["skills"]],
   ["7.3", "認識(自覚教育)", ["C-10"], ["safety"]],
   ["7.4", "コミュニケーション(外部・内部)", ["C-08","C-13","C-15","C-16","C-19","C-28"], ["plan:comms","custlog","calendar","plan:minutes"]],
-  ["7.5", "文書化した情報の管理(作成・見直し・配布)", ["C-17","C-18","C-22"], ["docs","plan:distrib"]],
+  ["7.5", "文書化した情報の管理(作成・見直し・配布・保管)", ["C-17","C-18","C-22"], ["docs","plan:distrib","backup"]],
   ["8.1", "運用の管理(手順書・委託先)", ["A-18","A-26","B-06"], ["manual","plan:vendors","plan:routes","kyoka","permit"]],
   ["8.2", "緊急事態への準備と対応", ["C-11","C-12","C-14"], ["plan:emergency","plan:nearMiss","plan:zoneReport","shokaki"]],
   ["9.1.1", "監視・測定(水質・騒音・CO₂・エネルギー)", ["A-19","A-25","C-21","C-25","C-27","Z-02"], ["plan:monitoring","waterTest","noiseCheck","diesel","lifeline","freon","plan:calib"]],

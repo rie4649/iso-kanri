@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バックアップ | ISO管理</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .big { font-size:17px; padding:14px 18px; }
+  .log { background:#0f172a; color:#e2e8f0; border-radius:6px; padding:10px 12px; font-size:12.5px; line-height:1.7; max-height:260px; overflow:auto; white-space:pre-wrap; display:none; }
+  table.bk { border-collapse:collapse; width:100%; font-size:13px; background:#fff; } table.bk th, table.bk td { border:1px solid var(--line); padding:5px 8px; text-align:left; } table.bk th { background:var(--navyBg); color:var(--navy); }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>バックアップ（記録をまとめて保存）</h1>
+  <div class="sub">ISO管理の記録を全部、1つのファイル（ZIP）にしてパソコンに保存します。月に1回と、審査の前に取っておくと安心です</div></div>
+</header>
+<div class="wrap">
+  <div class="card" style="border-left:4px solid var(--navy);">
+    <b style="color:var(--navy);font-size:16px;">💾 バックアップを取る</b>
+    <div class="note" style="margin:6px 0 10px;line-height:1.8;">
+      ボタンを押すと「ISO管理バックアップ_日付.zip」がダウンロードされます。中には次のものが入ります。<br>
+      ・<b>Excelで開ける表（CSV）</b>：記録の種類ごとに1つずつ。人が読んで確かめる用<br>
+      ・<b>backup.json</b>：全部の記録をそのまま。万一のときに元に戻す用（戻すときはClaudeに渡せば戻せます）<br>
+      保存したZIPは、会社のパソコンやUSBなど、<b>このアプリとは別の場所</b>に置いてください。</div>
+    <label style="display:flex;gap:6px;align-items:center;font-weight:normal;margin:0 0 10px;"><input type="checkbox" id="withFiles" style="width:auto;"> PDF・写真の中身も入れる（ファイルが大きくなり、時間がかかります。年に1回くらいでOK）</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><label for="by" style="margin:0;font-weight:700;color:var(--navy);">取った人</label><input id="by" style="width:auto;" placeholder="例: 関根 理絵">
+      <button class="btn pri big" id="goBtn" onclick="run()">💾 バックアップを取る</button></div>
+    <div class="note" id="last" style="margin-top:8px;"></div>
+  </div>
+  <div class="log" id="log"></div>
+  <div class="card"><b style="color:var(--navy);">これまでのバックアップ</b><div id="hist" style="margin-top:6px;"><div class="note">読み込み中…</div></div></div>
+</div>
+<div id="toast"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* ===== バックアップ(2026/10) =====
+   ISO管理が使うコレクションを全部読み、CSV(種類ごと)と backup.json をZIPにしてダウンロードする。
+   PDF・写真の中身(分割base64)は大きいので、チェックを付けたときだけ入れる。取った日と人は isoSettings/backup に残す */
+const COLS = [
+  ["isoRegisters","ISOの計画・記録の表(全種類)"],["isoYearChecks","年度の点検(チェックシート)"],["isoSettings","設定・承認"],
+  ["emsDocs","EMS文書の一覧"],["emsDocFiles","EMS文書の版(PDFの情報)"],["emsDocReviews","見直し・確認の記録"],
+  ["isoEvents","カレンダー・年間記録"],["eventMarks","カレンダーのマーク"],["waterTests","水質検査"],["waterTestItems","水質検査の項目"],["testLocations","検査場所"],
+  ["noiseChecks","騒音チェック"],["compressorInspections","圧縮機定期点検"],["compressorMachines","圧縮機"],["compressorCheckItems","圧縮機の点検項目"],
+  ["metalRecords","金属拾い上げ"],["metalItems","金属の品目"],["metalSettings","金属の設定"],["cleanlinessChecks","クリーン度チェック"],["cleanlinessZones","ゾーン"],
+  ["dieselRecords","軽油使用量"],["dieselVehicles","軽油の車両"],["dieselTargets","軽油の目標"],["gasStands","給油所"],["lifelineRecords","ライフライン"],["lifelineTypes","ライフラインの種類"],
+  ["freonRecords","フロン簡易点検"],["freonEquipments","フロン機器"],["freonCheckItems","フロン点検項目"],["safetyPatrols","安全衛生パトロール"],["safetyPatrolItems","パトロール項目"],
+  ["trainingRecords","教育訓練"],["activityTypes","活動の種類"],["sdgsGoals","SDGs目標"],["sdgsProgress","SDGs進捗"],["sdgsLevels","SDGs取組レベル"],
+  ["envManuals","環境手順書"],["companyInfo","会社情報"],["envPolicies","環境方針の版"],["sectionPurposes","目的・管理"],
+  ["isoAudits","内部監査"],["isoCorrectives","是正処置"],["isoMgmtReviews","マネジメントレビュー(年間サマリー)"],["isoHoreiEval","順守評価(法規制一覧)"],
+  ["isoShokakiDocs","消火器・防火の書類"],["isoPhotos","写真の記録"],["isoPhotoSettings","写真の設定"],["isoPermitScopes","許可の内容"],
+  ["isoSurveyAnswers","委託先調査票の回答"],["isoSurvey","委託先調査票(Astemo)"],["isoSurveyCustom","調査票の追加の質問"],["isoSurveyTemplates","調査票の会社"],["isoSurveyCommon","調査票の共通の答え"],["isoSurveySubmits","調査票の提出の記録"],
+  ["isoCustMonthly","顧客対応の月ごとの記録"],["phoneRequestLog","電話依頼の控え"],["isoVolumes","環境側面調査記録(取扱量)"]
+];
+const FILE_COLS = [["emsDocChunks","EMS文書のPDFの中身"],["waterTestFiles","水質検査の添付"],["trainingFiles","教育訓練の添付"],["envManualFiles","手順書の添付"],["isoPhotoFiles","写真(大きいもの)"],["isoShokakiChunks","消火器書類の中身"],["sdgsGoalChunks","SDGs資料の中身"]];
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const today = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+let tt; function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 2800); }
+function log(m){ const l = $("log"); l.style.display = "block"; l.textContent += m + "\n"; l.scrollTop = l.scrollHeight; }
+try { $("by").value = localStorage.getItem("isoRecBy") || ""; } catch(e){}
+// Firestoreの値をJSONにできる形にする(日時は文字に)
+function plain(v){
+  if (v == null) return v;
+  if (typeof v.toDate === "function") { try { return v.toDate().toISOString(); } catch(e){ return String(v); } }
+  if (Array.isArray(v)) return v.map(plain);
+  if (typeof v === "object"){ const o = {}; Object.entries(v).forEach(([k, x]) => o[k] = plain(x)); return o; }
+  return v;
+}
+function toCsv(rows){
+  const keys = []; rows.forEach(r => Object.keys(r).forEach(k => { if (!keys.includes(k)) keys.push(k); }));
+  const cell = v => { if (v == null) return ""; const s = typeof v === "object" ? JSON.stringify(v) : String(v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return "﻿" + [keys.map(cell).join(","), ...rows.map(r => keys.map(k => cell(r[k])).join(","))].join("\r\n");   // 先頭のBOMでExcelでも文字化けしない
+}
+async function run(){
+  const by = $("by").value.trim(); if (!by){ toast("「取った人」に名前を入れてください"); $("by").focus(); return; }
+  try { localStorage.setItem("isoRecBy", by); } catch(e){}
+  if (typeof JSZip === "undefined"){ toast("ZIPを作る部品を読み込めませんでした。ネットにつながっているか確認してください"); return; }
+  const btn = $("goBtn"); btn.disabled = true; btn.textContent = "保存中…"; $("log").textContent = "";
+  const zip = new JSZip(), all = {}, list = COLS.concat($("withFiles").checked ? FILE_COLS : []);
+  let total = 0;
+  try {
+    for (const [c, nm] of list){
+      const s = await db.collection(c).get().catch(e => { log("× " + nm + "（" + c + "）読めませんでした: " + e.message); return null; });
+      if (!s) continue;
+      const rows = s.docs.map(d => ({ _id:d.id, ...plain(d.data()) }));
+      all[c] = rows; total += rows.length;
+      if (rows.length && !FILE_COLS.some(f => f[0] === c)) zip.file("表(Excelで開ける)/" + nm.replace(/[\\/:*?"<>|]/g, "・") + "_" + c + ".csv", toCsv(rows.map(r => { const o = { ...r }; delete o.thumb; delete o.data; return o; })));
+      log("○ " + nm + "：" + rows.length + "件");
+    }
+    zip.file("backup.json", JSON.stringify({ app:"ISO管理", company:"株式会社関根商店", date:new Date().toISOString(), by, withFiles:$("withFiles").checked, collections:all }));
+    zip.file("はじめに読んでください.txt", "ISO管理のバックアップ（" + today() + "　" + by + "）\r\n\r\n・「表(Excelで開ける)」フォルダ：記録の種類ごとの表です。Excelで開けます。\r\n・backup.json：全部の記録です。アプリの記録が消えたときに、これを使って元に戻せます（Claudeに渡せば戻す方法を作れます）。\r\n" + ($("withFiles").checked ? "・PDF・写真の中身も入っています。\r\n" : "・PDF・写真の中身は入っていません（入れるときは、チェックを付けて取り直します）。\r\n"));
+    log("ZIPを作っています…");
+    const blob = await zip.generateAsync({ type:"blob", compression:"DEFLATE" });
+    const a = document.createElement("a"), name = "ISO管理バックアップ_" + today() + ".zip";
+    a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    const mb = (blob.size / 1024 / 1024).toFixed(1);
+    await db.collection("isoSettings").doc("backup").set({ lastDate:today(), lastBy:by, lastCount:total, lastMB:Number(mb), withFiles:$("withFiles").checked, history: firebase.firestore.FieldValue.arrayUnion({ date:today(), by, count:total, mb:Number(mb), files:$("withFiles").checked }) }, { merge:true });
+    log("できました：" + name + "（" + total + "件・" + mb + "MB）"); toast("バックアップを保存しました（" + total + "件）"); loadHist();
+  } catch(e){ console.error(e); log("できませんでした: " + e.message); toast("できませんでした: " + e.message); }
+  btn.disabled = false; btn.textContent = "💾 バックアップを取る";
+}
+async function loadHist(){
+  try {
+    const d = await db.collection("isoSettings").doc("backup").get(), b = d.exists ? d.data() : {};
+    $("last").textContent = b.lastDate ? "最後のバックアップ：" + b.lastDate.replace(/-/g, "/") + "　" + (b.lastBy || "") + "（" + (b.lastCount || 0) + "件）" : "まだ一度もバックアップを取っていません";
+    const h = (b.history || []).slice().sort((x, y) => String(y.date).localeCompare(String(x.date)));
+    $("hist").innerHTML = h.length ? '<table class="bk"><tr><th>日付</th><th>取った人</th><th>件数</th><th>大きさ</th><th>PDF・写真</th></tr>' + h.map(x => '<tr><td>' + esc(String(x.date).replace(/-/g, "/")) + '</td><td>' + esc(x.by) + '</td><td>' + esc(x.count) + '件</td><td>' + esc(x.mb) + 'MB</td><td>' + (x.files ? "入れた" : "—") + '</td></tr>').join("") + '</table>' : '<div class="note">まだありません</div>';
+  } catch(e){ $("hist").innerHTML = '<div class="note">読み込めませんでした</div>'; }
+}
+loadHist();
+</script>
+</body>
+</html>
