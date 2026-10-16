@@ -13,7 +13,7 @@
 </head>
 <body>
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>バックアップ（記録をまとめて保存）</h1>
   <div class="sub">ISO管理の記録を全部、1つのファイル（ZIP）にしてパソコンに保存します。月に1回と、審査の前に取っておくと安心です</div></div>
 </header>

@@ -49,7 +49,7 @@
 </header>
 
 <div class="wrap">
-<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+<button class="backBtn" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
 <div class="tabs">
   <div class="tab act" id="tab-audit" onclick="switchTab('audit')">🔍 内部監査</div>
   <div class="tab" id="tab-fix" onclick="switchTab('fix')">🛠 是正処置</div>

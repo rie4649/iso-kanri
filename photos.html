@@ -51,7 +51,7 @@
 <body>
 
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>写真の記録</h1>
   <div class="sub">車両・設備の写真と、保管・掲示・現場の様子の写真。ここで登録した写真が「環境への取り組み」の関係するページに表示されます</div></div>
 </header>
@@ -134,6 +134,9 @@
   <label for="editSel">振り分け先</label>
   <select id="editSel" onchange="document.getElementById('editOther').style.display=this.value==='other'?'':'none'"></select>
   <input id="editOther" placeholder="新しい名前" style="display:none;margin-top:6px;">
+  <label for="editEv">つなぐ出来事（カレンダー）</label>
+  <select id="editEv"></select>
+  <div class="note" style="margin-top:2px;">選ぶと、カレンダー・年間サマリー・環境への取り組みの年間の活動で、その出来事の写真として出ます。</div>
   <label for="editDate">撮影日</label>
   <input id="editDate" type="date">
   <label for="editMemo">メモ</label>
@@ -600,23 +603,28 @@ async function delPhoto(id){
 }
 
 /* ---------- 出来事(カレンダー)に添付した写真・資料：見るだけ。中身は isoEventFiles ---------- */
-let evs = [];
-db.collection("isoEvents").onSnapshot(s => { evs = s.docs.map(d => ({ id:d.id, ...d.data() })).filter(e => (e.attachments || []).length); if (mode === "ev") render(); }, e => console.error(e));
+/* 出来事(カレンダー)の写真：写真の記録(isoPhotos)のうち eventId があるもの。書類(PDF)は出来事の attachments(isoEventFiles) */
 function renderEv(){
-  const n = evs.reduce((t, e) => t + e.attachments.length, 0);
+  const byEv = {}; photos.filter(p => p.eventId).forEach(p => (byEv[p.eventId] = byEv[p.eventId] || []).push(p));
+  const docsOf = e => (e.attachments || []).filter(a => a.store !== "photo");
+  const list = evAll.filter(e => byEv[e.id] || docsOf(e).length).sort((a, b) => String(b.date||"").localeCompare(String(a.date||"")));
+  const n = list.reduce((t, e) => t + (byEv[e.id] || []).length + docsOf(e).length, 0);
   document.getElementById("tabs").innerHTML = '<button class="on">すべて<small>'+n+'件</small></button>';
-  const list = evs.slice().sort((a, b) => String(b.date||"").localeCompare(String(a.date||"")));
-  document.getElementById("list").innerHTML = list.length ? list.map(e => '<div class="tgt"><div class="ttl">'+esc(fdj(e.date))+'　'+esc(e.title||"")+(e.mark ? '<small>'+esc(e.mark)+'</small>' : '')+'<small>'+e.attachments.length+'件</small>'+
+  document.getElementById("list").innerHTML = list.length ? list.map(e => { const ps = (byEv[e.id] || []).sort((a, b) => (a.createdMs||0) - (b.createdMs||0)), ds = docsOf(e);
+    return '<div class="tgt"><div class="ttl">'+esc(fdj(e.date))+'　'+esc(e.title||"")+(e.mark ? '<small>'+esc(e.mark)+'</small>' : '')+'<small>写真 '+ps.length+'枚'+(ds.length ? '・書類 '+ds.length+'件' : '')+'</small>'+
       '<button class="btn sm" style="float:right;" onclick="location.href=\'summary.html#ev='+e.id+'\'">出来事を開く ›</button></div><div class="ph">'+
-      e.attachments.map(a => '<div class="pc">'+(String(a.type||"").startsWith("image/") ? '<img src="'+(a.thumb||"")+'"'+(a.thumb ? '' : ' data-fid="'+a.fileId+'" data-col="'+evCol(a)+'"')+' alt="" style="min-height:90px;background:#e5e7eb;" onclick="openEvFile(\''+a.fileId+'\',true,\''+esc(e.title||"")+'\',\''+evCol(a)+'\')">'
+      ps.map(p => '<div class="pc"><img src="'+(p.thumb||"")+'" alt="" onclick="openLb(\''+p.id+'\')">'+
+        '<div class="memo">'+(p.kind && p.kind !== "event" ? '<span class="tag gray">'+esc(p.targetName)+'</span>' : '')+(p.shotDate ? '<span class="tag gray">'+esc(fdj(p.shotDate))+' 撮影</span>' : '')+esc(p.memo || "")+'</div>'+
+        '<div class="btns"><button class="btn sm" onclick="openEdit(\''+p.id+'\')">編集</button><button class="btn sm del" onclick="askDel(\''+p.id+'\')">削除</button></div></div>').join("")+
+      ds.map(a => '<div class="pc">'+(String(a.type||"").startsWith("image/") ? '<img src="'+(a.thumb||"")+'" data-fid="'+a.fileId+'" alt="" style="min-height:90px;background:#e5e7eb;" onclick="openEvFile(\''+a.fileId+'\',true,\''+esc(e.title||"")+'\',\'isoEventFiles\')">'
         : '<div onclick="openEvFile(\''+a.fileId+'\',false)" style="height:120px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#fef2f2;cursor:pointer;">📄</div>')+
-        '<div class="memo">'+esc(a.name)+'</div></div>').join("")+'</div></div>').join("")
-    : '<div class="empty">まだありません。カレンダーの出来事に写真・資料を入れるとここにも並びます</div>';
-  document.querySelectorAll("#list img[data-fid]").forEach(async im => { try { const d = await db.collection(im.dataset.col || "isoEventFiles").doc(im.dataset.fid).get(); if (d.exists) im.src = evUrl(d.data()); } catch(e){} });
+        '<div class="memo">'+esc(a.name)+'</div></div>').join("")+'</div></div>'; }).join("")
+    : '<div class="empty">まだありません。上の「出来事に写真・資料を入れる」か、カレンダーの出来事から入れられます</div>';
+  document.querySelectorAll("#list img[data-fid]").forEach(async im => { if (im.getAttribute("src")) return; try { const d = await db.collection("isoEventFiles").doc(im.dataset.fid).get(); if (d.exists) im.src = evUrl(d.data()); } catch(e){} });
 }
 /* 出来事に入れる(カレンダーと同じ場所：isoEvents の attachments ＋ 中身は isoEventFiles) */
 let evAll = [], evMarks = [], evPend = [];
-db.collection("isoEvents").onSnapshot(s => { evAll = s.docs.map(d => ({ id:d.id, ...d.data() })); if (mode === "ev") buildEvSel(); }, () => {});
+db.collection("isoEvents").onSnapshot(s => { evAll = s.docs.map(d => ({ id:d.id, ...d.data() })); if (mode === "ev"){ buildEvSel(); render(); } }, () => {});
 db.collection("eventMarks").onSnapshot(s => { evMarks = s.docs.map(d => d.data().name).filter(Boolean); if (mode === "ev") buildEvSel(); }, () => {});
 function buildEvSel(){
   const sel = document.getElementById("evSel"), cur = sel.value;
@@ -646,7 +654,7 @@ async function evUpload(){
       if (!title || !date) { toast("新しい出来事の日付と名前を入れてください"); btn.disabled = false; return; }
       evId = (await db.collection("isoEvents").add({ date, title, mark: document.getElementById("evNewMark").value, notes:"", recBy: by, recDate: todayYmd(), createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() })).id;
     }
-    const ev = evAll.find(e => e.id === evId) || {}, list = (ev.attachments || []).slice(), bad = [];
+    const ev = evAll.find(e => e.id === evId) || {}, list = (ev.attachments || []).filter(a => a.store !== "photo"), bad = [];
     let k = 0;
     for (const f of evPend) {
       btn.textContent = "保存中… " + (++k) + "/" + evPend.length;
@@ -657,8 +665,7 @@ async function evUpload(){
         const ref = db.collection(PHOTO_COL).doc();
         await db.collection(FILE_COL).doc(ref.id).set({ data: full, type: "image/jpeg", name, eventId: evId });
         await ref.set({ kind:"event", targetId:"ev:"+evId, targetName: evd.title || "", eventId: evId, memo: name, thumb, shotDate: evd.date || "", isMain:false, createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-        list.push({ name, fileId: ref.id, type: "image/jpeg", size: Math.round(full.length * 3 / 4), uploadedAt: Date.now(), thumb, store: "photo" });
-        continue;
+        continue;   // 出来事とは eventId でつながる(出来事の添付には書類だけ残す)
       }
       if (f.size > 720 * 1024) { bad.push(name); continue; } data = await fileB64(f);
       const ref = await db.collection("isoEventFiles").add({ eventId: evId, name, type, size: Math.round(data.length * 3 / 4), data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
@@ -705,6 +712,13 @@ function openEdit(id){
   document.getElementById("editDate").value = p.shotDate || "";
   document.getElementById("editImg").src = p.thumb;
   document.getElementById("editTtl").textContent = "写真の編集 ― " + p.targetName;
+  // 出来事の写真は振り分け先の代わりに「つなぐ出来事」を使う。ほかの写真も出来事につなげられる(撮影日に近い出来事から並べる)
+  const isEv = p.kind === "event";
+  document.getElementById("editSel").style.display = isEv ? "none" : ""; document.querySelector('label[for="editSel"]').style.display = isEv ? "none" : "";
+  const near = d => p.shotDate ? Math.abs(new Date(d) - new Date(p.shotDate)) : -new Date(d || 0);
+  const evl = evAll.filter(e => e.date).sort((a, b) => near(a.date) - near(b.date)).slice(0, 120);
+  document.getElementById("editEv").innerHTML = (isEv ? '' : '<option value="">つなげない</option>') + evl.map(e => '<option value="'+e.id+'"'+(e.id === p.eventId ? ' selected' : '')+'>'+esc(fdj(e.date))+'　'+esc(e.title||"")+'</option>').join("");
+  if (p.eventId && !evl.some(e => e.id === p.eventId)) document.getElementById("editEv").insertAdjacentHTML("afterbegin", '<option value="'+esc(p.eventId)+'" selected>(今の出来事)</option>');
   document.getElementById("editBg").classList.add("show");
 }
 function closeEdit(){ document.getElementById("editBg").classList.remove("show"); editId = null; }
@@ -712,12 +726,21 @@ function editDel(){ const id = editId; closeEdit(); askDel(id); }
 async function saveEdit(){
   const p = photos.find(x => x.id === editId); if (!p) return closeEdit();
   const sel = document.getElementById("editSel").value, other = document.getElementById("editOther").value;
+  const evSel = document.getElementById("editEv").value, memo0 = document.getElementById("editMemo").value.trim();
+  if (p.kind === "event"){   // 出来事の写真
+    if (!evSel){ toast("つなぐ出来事を選んでください"); return; }
+    const ev = evAll.find(e => e.id === evSel) || {};
+    try { await db.collection(PHOTO_COL).doc(p.id).update({ memo: memo0, shotDate: document.getElementById("editDate").value || "", eventId: evSel, targetId: "ev:"+evSel, targetName: ev.title || p.targetName });
+      closeEdit(); toast("写真の情報を保存しました"); } catch(e){ toast("保存に失敗: "+e.message); }
+    return;
+  }
   const m = p.kind === "record" ? "rec" : "veh";
   const saveMode = mode; mode = m;   // targetOf は mode を見るので一時的に合わせる
   const tg = sel ? targetOf({ sel, other }) : null; mode = saveMode;
   if (!tg){ toast("振り分け先を選んでください"); return; }
   const memo = document.getElementById("editMemo").value.trim();
-  const upd = { memo, shotDate: document.getElementById("editDate").value || "", kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName };
+  const upd = { memo, shotDate: document.getElementById("editDate").value || "", kind:tg.kind, targetId:tg.targetId, targetName:tg.targetName,
+    eventId: evSel || firebase.firestore.FieldValue.delete() };
   const b = db.batch();
   if (tg.targetId !== p.targetId){
     // 移動先に代表がなければ代表にする。移動元の代表だった場合は、残りの一番古い写真を代表にする

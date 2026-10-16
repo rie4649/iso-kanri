@@ -39,7 +39,7 @@
 <body>
 
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>許可の内容(事業の範囲・積替え保管場所・処理施設)</h1>
   <div class="sub">許可証に書かれている内容。ここで入力した内容が「環境への取り組み」の許可の内容のページに出ます</div></div>
 </header>

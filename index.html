@@ -2060,7 +2060,8 @@ function renderEventList() {
         ${mark ? `<span class="mark-badge" style="background:${escapeHtml(mark.color)};">${escapeHtml(mark.name)}</span>` : ""}
         <div class="event-title">${escapeHtml(ev.title)}</div>
         ${ev.notes ? `<div class="event-notes">${escapeHtml(ev.notes)}</div>` : ""}
-        ${(ev.attachments || []).length ? `<div class="event-notes">${ev.attachments.map(a => `<a href="#" onclick="openInlineAttachment('${a.fileId}','${evFileCol(a)}');return false;" style="margin-right:8px;">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}${escapeHtml(a.name)}</a>`).join("")}</div>` : ""}
+        ${evPhCount[ev.id] ? `<div class="event-notes"><a href="#" onclick="openEditEvent('${ev.id}');return false;">🖼️ 写真 ${evPhCount[ev.id]}枚</a></div>` : ""}
+        ${(ev.attachments || []).filter(a => a.store !== "photo").length ? `<div class="event-notes">${ev.attachments.filter(a => a.store !== "photo").map(a => `<a href="#" onclick="openInlineAttachment('${a.fileId}','${evFileCol(a)}');return false;" style="margin-right:8px;">${a.type && a.type.startsWith("image/") ? "🖼️" : "📄"}${escapeHtml(a.name)}</a>`).join("")}</div>` : ""}
         <div class="event-actions">${ev.surveySubId ? `<button class="btn-edit" onclick="location.href='survey.html#${escapeHtml(ev.surveyTpl || "astemo")}/${escapeHtml(ev.surveySubId)}'">📋 調査票の控え</button>` : (eventSource(ev.id) ? `<button class="btn-edit" onclick="openEventSource('${ev.id}')">↗ もとの記録</button>` : "")}
           <button class="btn-edit" onclick="openEditEvent('${ev.id}')">編集</button>
           <button class="btn-delete" onclick="deleteEvent('${ev.id}')">削除</button>
@@ -4615,12 +4616,34 @@ function renderEvAttach() {
     '<div class="field-hint" style="color:#8b8b9e;font-size:12px;">まだ添付はありません</div>';
 }
 document.getElementById("evAttachInput").addEventListener("change", (e) => { Array.from(e.target.files || []).forEach(f => evNewFiles.push(f)); e.target.value = ""; renderEvAttach(); });
+/* 出来事ごとの写真の枚数(写真の記録の eventId から数える) */
+let evPhCount = {};
+db.collection("isoPhotos").onSnapshot(sn => { const c = {}; sn.docs.forEach(d => { const e = d.data().eventId; if (e) c[e] = (c[e] || 0) + 1; }); evPhCount = c;
+  if (document.getElementById("section-list") && document.getElementById("section-list").classList.contains("active")) renderEventList(); }, () => {});
 /* 写真は「写真の記録」と同じ保存先(isoPhotos＝小さい写真・isoPhotoFiles＝大きい写真)、PDFなどの書類は isoEventFiles に入れる */
 const evFileCol = a => a && a.store === "photo" ? "isoPhotoFiles" : EV_FILE_COL;
+/* 出来事から外す：出来事のために入れた写真(kind:event)は消す。写真の記録のほかの写真(現場の様子など)は、つながりだけ外す */
 async function delEvFile(a) {
   if (!a) return;
+  if (a.store === "photo" && a.kind && a.kind !== "event") { try { await db.collection("isoPhotos").doc(a.fileId).update({ eventId: firebase.firestore.FieldValue.delete() }); } catch (e) {} return; }
   try { await db.collection(evFileCol(a)).doc(a.fileId).delete(); } catch (e) {}
   if (a.store === "photo") { try { await db.collection("isoPhotos").doc(a.fileId).delete(); } catch (e) {} }
+}
+/* この出来事の写真(写真の記録で eventId がこの出来事のもの)を読んで、添付の一覧に足す */
+async function loadEvPhotos(evId) {
+  try {
+    const sn = await db.collection("isoPhotos").where("eventId", "==", evId).get();
+    const ph = sn.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.eventId === evId).sort((a, b) => (a.createdMs || 0) - (b.createdMs || 0));
+    if (document.getElementById("editId").value !== evId) return;
+    evAttach = evAttach.filter(a => a.store !== "photo").concat(ph.map(p => ({ name: p.kind === "event" ? (p.memo || "写真") : (p.targetName + (p.memo ? "　" + p.memo : "")), fileId: p.id, type: "image/jpeg", store: "photo", kind: p.kind || "" })));
+    renderEvAttach();
+  } catch (e) { console.error(e); }
+}
+async function delEventFiles(evId) {
+  const ev = allEvents.find(x => x.id === evId) || {};
+  for (const a of (ev.attachments || [])) if (a.store !== "photo") await delEvFile(a);
+  try { const sn = await db.collection("isoPhotos").where("eventId", "==", evId).get();
+    for (const d of sn.docs) { const p = d.data(); if (p.eventId === evId) await delEvFile({ fileId: d.id, store: "photo", kind: p.kind || "" }); } } catch (e) {}
 }
 /* 写真1枚を写真の記録に入れる(出来事の写真として) */
 async function putEvPhoto(evId, ev, blob, name, thumb) {
@@ -4632,7 +4655,7 @@ async function putEvPhoto(evId, ev, blob, name, thumb) {
   return ref.id;
 }
 async function saveEvAttach(evId) {
-  const errors = [], list = evAttach.filter(a => !evRemoved.includes(a.fileId));
+  const errors = [], list = evAttach.filter(a => !evRemoved.includes(a.fileId) && a.store !== "photo");   // 出来事に残すのは書類だけ(写真は写真の記録)
   for (const fid of evRemoved) await delEvFile(evAttach.find(a => a.fileId === fid));
   const ev = { title: document.getElementById("eventTitle").value.trim(), date: document.getElementById("eventDate").value };
   for (const f of evNewFiles) {
@@ -4640,8 +4663,7 @@ async function saveEvAttach(evId) {
     if (blob.size > INLINE_FILE_MAX) { errors.push(`${name}(${Math.round(blob.size / 1024)}KB)は大きすぎます。約700KB以下にしてください`); continue; }
     if (type && type.startsWith("image/")) {
       const thumb = await evThumb(blob);   // 一覧で見せる小さい写真
-      const id = await putEvPhoto(evId, ev, blob, name, thumb);
-      list.push({ name, fileId: id, type: "image/jpeg", size: blob.size, uploadedAt: Date.now(), thumb, store: "photo" });
+      await putEvPhoto(evId, ev, blob, name, thumb);   // 写真の記録に入る(出来事とは eventId でつながる)
       continue;
     }
     const data = await blobToBase64(blob);
@@ -4683,7 +4705,7 @@ async function moveEvPhotosOnce() {
         const blob = new Blob([arr], { type: a.type }), thumb = a.thumb || await evThumb(blob);
         const id = await putEvPhoto(ev.id, ev, blob, a.name, thumb);
         await db.collection(EV_FILE_COL).doc(a.fileId).delete();
-        next.push({ ...a, fileId: id, thumb, store: "photo" });
+        void id;   // 写真の記録に移したので、出来事の添付からは外す(eventId でつながる)
       } catch (e) { console.error(e); next.push(a); }
     }
     await db.collection(EVENT_COLLECTION).doc(ev.id).update({ attachments: next });
@@ -4691,6 +4713,23 @@ async function moveEvPhotosOnce() {
 }
 // 出来事を読み込んでから動かす(読み込み前に動くと移せないので、出来事が来るまで待つ)
 (function waitMove(n) { if (allEvents.length || n > 20) moveEvPhotosOnce().catch(e => console.error(e)); else setTimeout(() => waitMove(n + 1), 1000); })(0);
+/* もとの記録の写真・資料(見るだけ)：もとの記録の添付 ＋ 写真の記録で表示先がそのページの写真(撮影日が前後7日以内) */
+const EV_SRC_PAGE = { waterTest: "water", safety: "safety", noiseCheck: "comp" };
+async function evRelated(ev, src) {
+  const el = document.getElementById("evRelList"); if (!el) return;
+  const arr = { metal: allMetalRecords, waterTest: allWaterTests, safety: allSafetyPatrols }[src.sec] || (src.fn === "openEditComp" ? allCompRecords : allNoiseChecks);
+  const rec = (arr || []).find(x => x.id === src.id) || {};
+  const out = (rec.attachments || []).map(a => attachLinkHtml(a));
+  const page = src.fn === "openEditComp" ? "comp" : src.fn === "openEditNoiseCheck" ? "" : EV_SRC_PAGE[src.sec];
+  if (page && ev.date) { try {
+    const [ph, st] = await Promise.all([db.collection("isoPhotos").get(), db.collection("isoPhotoSettings").doc("recordCats").get()]);
+    const names = ((st.exists && st.data().items) || []).filter(x => x.page === page).map(x => x.name);
+    const dn = d => Math.round(new Date(String(d).slice(0, 10) + "T00:00:00").getTime() / 86400000);
+    ph.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.kind === "record" && x.eventId !== ev.id && names.includes(x.targetName) && x.shotDate && Math.abs(dn(x.shotDate) - dn(ev.date)) <= 7)
+      .forEach(x => out.push(`<a href="#" onclick="openInlineAttachment('${x.id}','isoPhotoFiles');return false;" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;">🖼️<span>${escapeHtml(x.targetName)}（${escapeHtml(x.shotDate)}）</span></a>`));
+  } catch (e) {} }
+  if (out.length) el.innerHTML = `<div style="margin-top:8px;font-size:13px;font-weight:700;color:#334155;">🔗 ${escapeHtml(src.label)}の写真・資料（見るだけ）</div><div class="attach-list">${out.map(h => `<span class="attach-chip">${h}</span>`).join("")}</div>`;
+}
 window.openEventSource = function(evId) {
   const s = eventSource(evId); if (!s) { openEditEvent(evId); return; }
   if (s.url) { location.href = s.url; return; }
@@ -4723,23 +4762,24 @@ window.openEditEvent = function(id) {
   document.getElementById("eventNotes").value = ev.notes || "";
   document.getElementById("eventModalTitle").textContent = "出来事を編集";
   document.getElementById("eventDeleteBtnInModal").style.display = "block";
-  evAttach = (ev.attachments || []).slice(); evNewFiles = []; evRemoved = []; renderEvAttach();
+  evAttach = (ev.attachments || []).filter(a => a.store !== "photo"); evNewFiles = []; evRemoved = []; renderEvAttach(); loadEvPhotos(id);
   const src = eventSource(id);
-  document.getElementById("evSrcLink").innerHTML = src ? `<button type="button" class="btn-edit" onclick="eventOverlay.classList.remove('open');openEventSource('${id}')">↗ ${escapeHtml(src.label)}を開く</button>` : "";
+  document.getElementById("evSrcLink").innerHTML = src ? `<button type="button" class="btn-edit" onclick="eventOverlay.classList.remove('open');openEventSource('${id}')">↗ ${escapeHtml(src.label)}を開く</button><div id="evRelList"></div>` : "";
+  if (src) evRelated(ev, src);
   document.querySelectorAll(".modal-overlay.open").forEach(el => el.classList.remove("open"));
   eventOverlay.classList.add("open");
 };
 document.getElementById("eventDeleteBtnInModal").addEventListener("click", () => {
   const id = document.getElementById("editId").value;
   if (!id) return;
-  if (!confirm("この出来事を削除しますか？（添付した写真・書類も消えます）")) return;
-  ((allEvents.find(x => x.id === id) || {}).attachments || []).forEach(delEvFile);
+  if (!confirm("この出来事を削除しますか？（この出来事のために入れた写真・書類も消えます）")) return;
+  delEventFiles(id);
   db.collection(EVENT_COLLECTION).doc(id).delete();
   eventOverlay.classList.remove("open");
 });
 window.deleteEvent = function(id) {
-  if (!confirm("この出来事を削除しますか？（添付した写真・書類も消えます）")) return;
-  ((allEvents.find(x => x.id === id) || {}).attachments || []).forEach(delEvFile);
+  if (!confirm("この出来事を削除しますか？（この出来事のために入れた写真・書類も消えます）")) return;
+  delEventFiles(id);
   db.collection(EVENT_COLLECTION).doc(id).delete();
   renderDayEventsList();
 };
@@ -4900,6 +4940,14 @@ const SECTION_GROUPS = [
 
 // 他のページ(EMS文書管理など)から「index.html#sec=水質検査のキー」で、その画面を開いて来られるようにする
 window.addEventListener("load", () => {
+  // ほかの画面の「← ISO管理に戻る」で来たときは、出たときの画面・位置に戻す(年間サマリーなどから戻っても一番上にならない)
+  let restore = null; try { if (sessionStorage.getItem("isoRestore")) { sessionStorage.removeItem("isoRestore"); restore = JSON.parse(sessionStorage.getItem("isoBack") || "null"); } } catch (e) {}
+  if (restore && !location.hash) {
+    if (restore.sec && restore.sec !== "home") setTimeout(() => openSection(restore.sec), 200);
+    const back = () => { document.querySelectorAll("details").forEach((d, i) => { if ((restore.open || []).includes(i)) d.open = true; }); window.scrollTo(0, restore.y || 0); };
+    [700, 1500, 2500].forEach(t => setTimeout(back, t));
+  }
+  if (location.hash.match(/^#(ev|evedit)=/)) window._noBackRecord = true;   // 出来事を開くために来たときは、戻り先を上書きしない
   // #ev=ID … もとの記録(なければ出来事)を開く ／ #evedit=ID … 出来事の編集を開く ／ &back=summary … 閉じたら年間サマリーに戻る
   const me = location.hash.match(/^#(ev|evedit)=([^&]+)(?:&back=(\w+))?/);
   if (me) { const evId = decodeURIComponent(me[2]), edit = me[1] === "evedit", back = me[3] || ""; try { history.replaceState(null, "", location.pathname); } catch (e) {}
@@ -4914,6 +4962,15 @@ window.addEventListener("load", () => {
     }; setTimeout(tick, 600); return; }
   const m = location.hash.match(/^#sec=(.+)$/);
   if (m) { const k = decodeURIComponent(m[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {} setTimeout(() => openSection(k), 300); }
+});
+/* ほかの画面へ移るとき、今の画面(セクション)・スクロール位置・開いている折りたたみを覚えておく */
+window.addEventListener("pagehide", () => {
+  if (window._noBackRecord) return;
+  try {
+    const act = document.querySelector(".section.active"), sec = act ? act.id.replace(/^section-/, "") : "home";
+    const open = []; document.querySelectorAll("details").forEach((d, i) => { if (d.open) open.push(i); });
+    sessionStorage.setItem("isoBack", JSON.stringify({ sec, y: window.scrollY, open }));
+  } catch (e) {}
 });
 /* ===== ホームの「やることから探す」入口 ===== */
 // 書類名・言葉で探す(EMS文書の一覧も一緒に探す)

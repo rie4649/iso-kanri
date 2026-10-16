@@ -27,7 +27,7 @@
 </head>
 <body>
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>環境側面調査記録（取扱量・インプット） <span style="font-size:13px;font-weight:normal;opacity:.8;">EMS-A-17</span></h1>
   <div class="sub">年度（8月〜翌7月）ごとに受け入れた量の推移です。前年度比と傾向（↑↓）は自動で出ます。考察を書いて、毎年8月の環境側面の見直しに使います</div></div>
 </header>

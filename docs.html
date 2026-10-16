@@ -36,7 +36,7 @@
 </head>
 <body>
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>EMS文書管理</h1><div class="sub">文書の一覧(EMS-C-22)・原本PDF・見直しの記録(EMS-C-01/C-17)。入力はそれぞれの画面、原本と見直しはここ</div></div>
 </header>
 <div class="wrap">

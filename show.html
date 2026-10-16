@@ -224,7 +224,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <body>
 
 <div id="bar">
-  <button class="bt" onclick="location.href='index.html'">← ISO管理</button>
+  <button class="bt" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理</button>
   <button class="bt" onclick="go(0)">目次</button>
   <button class="bt" id="backBt" onclick="goBackPage()" disabled title="1つ前に見たページへ">← 戻る</button>
   <button class="bt nav" onclick="step(-1)">◀</button>
@@ -1221,9 +1221,20 @@ async function renderReview(p){
 
 /* ---------- 年間の活動(カレンダー) ---------- */
 async function renderCalendar(p){
-  const [ev, marks, ph] = await Promise.all([col("isoEvents"), col("eventMarks"), col("isoPhotos")]);
+  const [ev, marks, ph, wt, sp, cc, cats] = await Promise.all([col("isoEvents"), col("eventMarks"), col("isoPhotos"), col("waterTests"), col("safetyPatrols"), col("compressorInspections"), recCatsGet()]);
   const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#1e3a5f");
-  calPh = ph.filter(x => x.kind === "event");
+  calPh = ph.filter(x => x.eventId);   // 写真の記録で出来事につながっている写真
+  // もとの記録(水質検査・パトロール・圧縮機点検)の添付と、写真の記録で表示先がそのページの写真(撮影日が前後7日以内)も、その出来事の写真として出す
+  calRel = {};
+  const dn = d => Math.round(new Date(String(d).slice(0,10)+"T00:00:00").getTime() / 86400000);
+  [[wt, "water", "waterTestFiles"], [sp, "safety", ""], [cc, "comp", ""]].forEach(([list, page, fcol]) => {
+    const names = cats.filter(c => c.page === page).map(c => c.name);
+    list.filter(r => r.eventId).forEach(r => { const e = ev.find(x => x.id === r.eventId); if (!e) return;
+      const R = calRel[e.id] = calRel[e.id] || { pics:[], docs:[] };
+      (r.attachments || []).forEach(a => R.docs.push({ name:a.name, fileId:a.fileId||"", col:fcol, url:a.url||"" }));
+      if (e.date) ph.filter(x => x.kind === "record" && x.eventId !== e.id && names.includes(x.targetName) && x.shotDate && Math.abs(dn(x.shotDate) - dn(e.date)) <= 7).forEach(x => R.pics.push(x));
+    });
+  });
   const P = regPer(p.key, pickPeriods(ev.map(x => fyOf(x.date)), p.key));
   const l = ev.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(a.date).localeCompare(String(b.date)));
   const cnt = {}; l.forEach(x => { const k = x.mark || "未分類"; cnt[k] = (cnt[k]||0) + 1; });
@@ -1233,22 +1244,25 @@ async function renderCalendar(p){
       '<tr><td class="c nw">'+fdw(x.date)+'</td><td class="nw"><span class="dot" style="background:'+esc(mc[x.mark]||"#94a3b8")+'"></span>'+esc(x.mark||"未分類")+'</td><td><b>'+esc(x.title)+'</b></td><td>'+esc(x.notes)+'</td><td class="nw">'+calAttach(x)+'</td></tr>').join("")+'</table></div>' : empty());
 }
 /* 出来事に添付した写真(写真の記録 isoPhotos の kind:"event")と書類(isoEventFiles)。押すと写真が大きく出る */
-let calPh = [];
+let calPh = [], calRel = {};
+const calPics = id => calPh.filter(y => y.eventId === id).sort((a,b) => (a.createdMs||0) - (b.createdMs||0)).concat(((calRel[id]||{}).pics) || []);
 function calAttach(x){
-  const at = x.attachments || [], pics = at.filter(a => a.store === "photo" || String(a.type||"").startsWith("image/")), docs = at.filter(a => !pics.includes(a));
-  const p0 = pics.find(a => a.thumb);
-  return (pics.length ? '<button class="openBtn" style="display:inline-flex;align-items:center;gap:6px;margin:2px 0;" onclick="calPhOpen(\''+x.id+'\')">'+(p0 ? '<img src="'+p0.thumb+'" alt="" style="width:44px;height:33px;object-fit:cover;border-radius:4px;">' : '')+'📷 写真 '+pics.length+'枚</button>' : '')+
-    docs.map(a => '<div><button class="openBtn" style="margin:2px 0;" onclick="calDocOpen(\''+a.fileId+'\')">📄 '+esc(a.name)+'</button></div>').join("") || '<span class="note">—</span>';
+  const docs = (x.attachments || []).filter(a => a.store !== "photo").map(a => ({ name:a.name, fileId:a.fileId, col:"isoEventFiles", url:"" })).concat(((calRel[x.id]||{}).docs) || []);
+  const pics = calPics(x.id), n = pics.length, p0 = pics.find(a => a.thumb);
+  return (n ? '<button class="openBtn" style="display:inline-flex;align-items:center;gap:6px;margin:2px 0;" onclick="calPhOpen(\''+x.id+'\')">'+(p0 ? '<img src="'+p0.thumb+'" alt="" style="width:44px;height:33px;object-fit:cover;border-radius:4px;">' : '')+'📷 写真 '+n+'枚</button>' : '')+
+    docs.map(a => '<div><button class="openBtn" style="margin:2px 0;" onclick="calDocOpen(\''+esc(a.fileId)+'\',\''+esc(a.col)+'\',\''+esc(a.url)+'\')">📄 '+esc(a.name)+'</button></div>').join("") || '<span class="note">—</span>';
 }
 function calPhOpen(evId){
-  eqPhotos = calPh; eqLb.list = calPh.filter(y => y.eventId === evId).sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
+  eqPhotos = calPh; eqLb.list = calPics(evId);
   if (!eqLb.list.length){ alert("写真が見つかりません(ISO管理を一度開くと、前に入れた写真が写真の記録に移ります)"); return; }
   eqLb.i = 0; eqShow();
 }
-async function calDocOpen(fileId){
+async function calDocOpen(fileId, colName, url){
+  if (url){ window.open(url, "_blank"); return; }
   const w = window.open("", "_blank");
-  try { const d = await db.collection("isoEventFiles").doc(fileId).get(); if (!d.exists) throw new Error("ファイルが見つかりません"); const f = d.data();
-    const bin = atob(f.data), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  try { const d = await db.collection(colName || "isoEventFiles").doc(fileId).get(); if (!d.exists) throw new Error("ファイルが見つかりません"); const f = d.data();
+    const raw = String(f.data||""), isUrl = raw.startsWith("data:"); if (isUrl && !f.type) f.type = raw.slice(5, raw.indexOf(";"));
+    const bin = atob(isUrl ? raw.split(",")[1] : raw), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/pdf" })); if (w) w.location.href = url; else window.open(url, "_blank");
   } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
 }

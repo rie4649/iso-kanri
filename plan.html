@@ -44,7 +44,7 @@
 </head>
 <body>
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>ISOの計画・リスク</h1><div class="sub" style="display:none">課題・利害関係者・環境側面・リスクと機会・目標・委託先・監視測定・苦情・緊急事態の訓練・校正・マネジメントレビュー。ここで入力した内容が「環境への取り組み」に表示されます</div></div>
 </header>
 <div class="wrap">

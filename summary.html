@@ -69,7 +69,7 @@
 </header>
 
 <div class="wrap">
-<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+<button class="backBtn" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
 <div class="yearRow" id="yearRow"></div>
 <button class="grayBtn" onclick="window.print()">🖨️ この画面を印刷(レビュー資料)</button>
 
@@ -393,7 +393,7 @@ function renderEventYear(){
   const shown = markFilter ? list.filter(e=>(e.mark||"未分類")===markFilter) : list;
   box.innerHTML = chips + `<div class="card"><div class="sub" style="font-size:14px;">押すと、その記録（写真・資料もいっしょに）が開きます</div>${shown.map(e=>{
     const m = markOf(e.mark);
-    const n = (e.attachments||[]).length;
+    const n = evItems(e).length;
     return `<a class="evRow" href="#" onclick="openEv('${e.id}');return false;">${dot(m&&m.color)}<b>${esc(e.date)}</b>　${esc(e.title||"")}${e.mark?`<span style="font-size:11px;color:#71717a;">〔${esc(e.mark)}〕</span>`:""}${n?`<span class="evClip">📎${n}</span>`:""}${e.notes?`<span style="color:#71717a;"> — ${esc(e.notes)}</span>`:""}<span class="evGo">›</span></a>`;
   }).join("")}</div>`;
 }
@@ -405,21 +405,37 @@ const EV_FILE_COL = "isoEventFiles";
 const isImg = a => String(a.type||"").startsWith("image/");
 const fcol = a => a && a.store==="photo" ? "isoPhotoFiles" : EV_FILE_COL;   // 写真は「写真の記録」と同じ保存先
 const durl = f => String(f.data||"").startsWith("data:") ? f.data : "data:"+(f.type||"image/jpeg")+";base64,"+f.data;
+/* 出来事の写真は「写真の記録」(isoPhotos) の eventId でつながっている。書類(PDF)は出来事の attachments(中身は isoEventFiles) */
+let allPh = [];
+db.collection("isoPhotos").onSnapshot(sn=>{ allPh = sn.docs.map(d=>({id:d.id, ...d.data()})); renderEventYear(); }, err=>console.error(err));
+function evItems(e){
+  const pics = allPh.filter(p=>p.eventId===e.id).sort((a,b)=>(a.createdMs||0)-(b.createdMs||0))
+    .map(p=>({ name:p.memo||p.targetName||"写真", img:true, thumb:p.thumb||"", fileId:p.id, col:"isoPhotoFiles", url:"" }));
+  const at = (e.attachments||[]).filter(a=>a.store!=="photo")   // 写真の記録に入った写真は上で数える
+    .map(a=>({ name:a.name, img:isImg(a), thumb:a.thumb||"", fileId:a.fileId, col:EV_FILE_COL, url:"" }));
+  return pics.concat(at);
+}
+function itemFig(x, key, i){
+  return `<figure onclick="openItem('${key}',${i})">${x.img?`<img src="${x.thumb||""}" ${x.thumb?"":`data-fid="${x.fileId}" data-col="${x.col}"`} alt="">`:`<div class="pdf">📄</div>`}<figcaption>${x.cap||esc(x.name)}</figcaption></figure>`;
+}
+const ITEMS = {};
+window.openItem = function(key, i){ const x = (ITEMS[key]||[])[i]; if(!x) return; if(x.url){ window.open(x.url, "_blank"); return; } openEvFile(x.fileId, x.img, x.col); };
 function renderEvFiles(){
   const box = document.getElementById("evFileList"); if(!box) return;
-  const list = allEvents.filter(e=>String(e.date||"").startsWith(String(year)) && (e.attachments||[]).length && (!markFilter || (e.mark||"未分類")===markFilter))
+  const list = allEvents.filter(e=>String(e.date||"").startsWith(String(year)) && (!markFilter || (e.mark||"未分類")===markFilter))
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
-  if(!list.length){ box.innerHTML = `<div class="empty">まだありません。出来事を開いて「編集する・写真を足す」から入れられます</div>`; return; }
-  box.innerHTML = `<div class="card"><div class="evPh">${list.map(e=>(e.attachments||[]).map(a=>
-    `<figure onclick="openEv('${e.id}')">${isImg(a)?`<img src="${a.thumb||""}" ${a.thumb?"":`data-fid="${a.fileId}" data-col="${fcol(a)}"`} alt="">`:`<div class="pdf">📄</div>`}<figcaption><b>${esc(e.date)}</b> ${esc(e.title||"")}<br>${esc(a.name)}</figcaption></figure>`).join("")).join("")}</div></div>`;
+  const all = []; list.forEach(e=>evItems(e).forEach(x=>all.push({ ...x, evId:e.id, cap:`<b>${esc(e.date)}</b> ${esc(e.title||"")}<br>${esc(x.name)}` })));
+  if(!all.length){ box.innerHTML = `<div class="empty">まだありません。出来事を開いて「編集する・写真を足す」から入れられます</div>`; return; }
+  ITEMS.year = all;
+  box.innerHTML = `<div class="card"><div class="evPh">${all.map((x,i)=>itemFig(x,"year",i)).join("")}</div><div style="font-size:12px;color:#6b7280;margin-top:6px;">写真は全部「写真の記録」に入っています（「出来事（カレンダー）」のタブ）</div></div>`;
   loadNoThumb(box);
 }
-// 前に入れた写真(小さい写真がないもの)は、中身を読んで出す
+// 小さい写真がないものは、中身を読んで出す
 function loadNoThumb(box){ box.querySelectorAll("img[data-fid]").forEach(async im=>{ try{ const d = await db.collection(im.dataset.col||EV_FILE_COL).doc(im.dataset.fid).get(); if(d.exists) im.src = durl(d.data()); }catch(err){} }); }
 const SRC_COLS = [["metalRecords","金属拾い上げの記録"],["compressorInspections","圧縮機定期点検の記録"],["safetyPatrols","安全衛生パトロールの記録"],["waterTests","水質検査の記録"],["noiseChecks","騒音チェックの記録"]];
 window.openEv = async function(id){
   const e = allEvents.find(x=>x.id===id); if(!e) return;
-  const m = markOf(e.mark), at = e.attachments||[];
+  const m = markOf(e.mark), at = evItems(e); ITEMS.ev = at;
   document.getElementById("evBody").innerHTML = `<h2 style="margin-top:0;">${dot(m&&m.color)}${esc(e.title||"(題名なし)")}</h2>
     <div class="evInfo"><div><span class="lb">日付</span><b>${esc(e.date||"")}</b></div>
     ${e.mark?`<div><span class="lb">マーク</span>${esc(e.mark)}</div>`:""}
@@ -427,19 +443,45 @@ window.openEv = async function(id){
     ${e.recBy?`<div><span class="lb">記録者</span>${esc(e.recBy)}${e.recDate?`（${esc(e.recDate)}）`:""}</div>`:""}</div>
     <div id="evSrc" style="margin-top:8px;"></div>
     <div style="margin-top:12px;font-weight:700;">📎 写真・資料（${at.length}件）</div>
-    ${at.length?`<div class="evPh">${at.map((a,i)=>`<figure onclick="openEvFile('${a.fileId}',${isImg(a)},'${fcol(a)}')">${isImg(a)?`<img id="evIm${i}" src="${a.thumb||""}" alt="">`:`<div class="pdf">📄</div>`}<figcaption>${esc(a.name)}</figcaption></figure>`).join("")}</div>
+    ${at.length?`<div class="evPh" id="evPhBox">${at.map((x,i)=>itemFig(x,"ev",i)).join("")}</div>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">押すと大きく開きます（PDFは別の画面で開くので、そこから保存・印刷できます）</div>`
       :`<div style="color:#6b7280;font-size:14px;">まだありません。「編集する・写真を足す」から入れられます</div>`}`;
   document.getElementById("evEditBtn").onclick = ()=>{ location.href = "index.html#evedit="+encodeURIComponent(id)+"&back=summary"; };
   document.getElementById("evBg").classList.add("show");
-  // 小さい写真がまだない(前に入れた)写真は、中身を読んで出す
-  at.forEach(async(a,i)=>{ if(isImg(a) && !a.thumb){ try{ const d = await db.collection(fcol(a)).doc(a.fileId).get(); const im = document.getElementById("evIm"+i); if(d.exists && im) im.src = durl(d.data()); }catch(err){} } });
+  const pb = document.getElementById("evPhBox"); if(pb) loadNoThumb(pb);
   // もとの記録(金属拾い上げ・点検・パトロールなど・調査票)があれば、開くボタンを出す
   const box = document.getElementById("evSrc");
   if(e.surveySubId){ box.innerHTML = `<button class="grayBtn" style="margin:0;" onclick="location.href='survey.html#${esc(e.surveyTpl||"astemo")}/${esc(e.surveySubId)}'">↗ 委託先調査票の控えを開く</button>`; return; }
   for(const [c,label] of SRC_COLS){ try{ const q = await db.collection(c).where("eventId","==",id).limit(1).get();
-    if(q.docs.some(d=>d.data().eventId===id)){ box.innerHTML = `<button class="grayBtn" style="margin:0;" onclick="location.href='index.html#ev=${encodeURIComponent(id)}&back=summary'">↗ ${label}を開く</button>`; return; } }catch(err){} }
+    const hit = q.docs.find(d=>d.data().eventId===id);
+    if(hit){ box.innerHTML = `<button class="grayBtn" style="margin:0;" onclick="location.href='index.html#ev=${encodeURIComponent(id)}&back=summary'">↗ ${label}を開く</button><div id="evRel"></div>`;
+      showRelated(e, c, label, hit.data()); return; } }catch(err){} }
 };
+/* もとの記録の写真・資料もいっしょに見せる
+   ・もとの記録の添付(水質検査の計量証明書など)
+   ・写真の記録「保管・掲示・現場の様子」で、そのページ(水質検査など)を表示先にした項目の写真のうち、撮影日が出来事の前後7日以内のもの */
+const SRC_PAGE = { waterTests:"water", safetyPatrols:"safety", compressorInspections:"comp" };
+const SRC_FILECOL = { waterTests:"waterTestFiles" };
+async function showRelated(e, c, label, rec){
+  const el = document.getElementById("evRel"); if(!el) return;
+  const items = [];
+  (rec.attachments||[]).forEach(a=>items.push({ name:a.name, img:isImg(a), thumb:"", fileId:a.fileId||"", col:SRC_FILECOL[c]||"", url:a.url||"" }));
+  const page = SRC_PAGE[c];
+  if(page && e.date){ try{
+    const st = await db.collection("isoPhotoSettings").doc("recordCats").get();
+    const names = ((st.exists && st.data().items) || []).filter(x=>x.page===page).map(x=>x.name);
+    const dn = d => Math.round(new Date(String(d).slice(0,10)+"T00:00:00").getTime()/86400000);
+    allPh.filter(x=>x.kind==="record" && x.eventId!==e.id && names.includes(x.targetName) && x.shotDate && Math.abs(dn(x.shotDate)-dn(e.date))<=7)
+      .forEach(x=>items.push({ name:x.targetName+(x.shotDate?"（"+x.shotDate+" 撮影）":""), img:true, thumb:x.thumb||"", fileId:x.id, col:"isoPhotoFiles", url:"" }));
+  }catch(err){} }
+  if(!items.length) return;
+  window._rel = items;
+  el.innerHTML = `<div style="margin-top:12px;font-weight:700;">🔗 ${esc(label)}の写真・資料（${items.length}件）</div><div class="evPh">${items.map((x,i)=>
+    `<figure onclick="openRel(${i})">${x.img&&x.thumb?`<img src="${x.thumb}" alt="">`:x.img?`<img id="relIm${i}" src="" alt="">`:`<div class="pdf">📄</div>`}<figcaption>${esc(x.name)}</figcaption></figure>`).join("")}</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:4px;">ここに出る写真は「写真の記録」や${esc(label)}に入っているものです（ここでは見るだけ）</div>`;
+  items.forEach(async(x,i)=>{ if(x.img && !x.thumb && x.fileId && x.col){ try{ const d = await db.collection(x.col).doc(x.fileId).get(); const im = document.getElementById("relIm"+i); if(d.exists && im) im.src = durl(d.data()); }catch(err){} } });
+}
+window.openRel = function(i){ const x = (window._rel||[])[i]; if(!x) return; if(x.url){ window.open(x.url, "_blank"); return; } openEvFile(x.fileId, x.img, x.col); };
 // summary.html#ev=ID で来たら、その出来事を開く(写真の記録などから)
 (function(){ const m = location.hash.match(/^#ev=([^&]+)/); if(!m) return; const id = decodeURIComponent(m[1]); let n = 0;
   const t = () => { const e = allEvents.find(x=>x.id===id); if(e){ const y = Number(String(e.date||"").slice(0,4)); if(y && y!==year && typeof setYear==="function") setYear(y); openEv(id); } else if(n++<30) setTimeout(t, 300); }; setTimeout(t, 500); })();

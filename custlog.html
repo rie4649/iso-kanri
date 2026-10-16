@@ -23,7 +23,7 @@
 </head>
 <body>
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>顧客対応の進捗記録</h1>
   <div class="sub">環境目標「お客様のニーズ(依頼)に早く確実に応える」の月ごとの記録(進捗記録兼評価表)。電話依頼アプリ・委託先調査票から自動で数えます</div></div>
 </header>

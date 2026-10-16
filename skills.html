@@ -26,7 +26,7 @@
 <body>
 
 <header class="bz">
-  <button class="back" onclick="location.href='index.html'">← ISO管理に戻る</button>
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
   <div><h1>力量(資格の一覧)</h1>
   <div class="sub">マスター管理の名前と、業務管理アプリの資格から自動で表示(ここでは入力しません)</div></div>
 </header>

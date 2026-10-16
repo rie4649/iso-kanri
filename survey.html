@@ -600,7 +600,7 @@ async function showOverview(){
 }
 function goBack(){
   if (dirty && !confirm("保存していない変更があります。保存せずにISO管理に戻りますか？")) return;
-  dirty = false; location.href = "index.html";
+  dirty = false; try { sessionStorage.setItem("isoRestore", "1"); } catch(e){} location.href = "index.html";
 }
 window.addEventListener("beforeunload", e => { if (dirty){ e.preventDefault(); e.returnValue = ""; } });
 window.addEventListener("error", e => { const l = document.getElementById("list"); if (l && /読み込み中/.test(l.textContent)) l.innerHTML = '<div class="empty" style="color:#b91c1c;">エラー: '+esc(e.message||"")+'<br>この画面を写真に撮ってClaudeに送ってください</div>'; });
