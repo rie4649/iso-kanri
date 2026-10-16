@@ -403,17 +403,19 @@ window.setMarkFilter = function(n){ markFilter = n; renderEventYear(); renderEvF
    写真・PDFの中身は「isoEventFiles」(アプリのデータベース)に入っている。ここでは見るだけ。足す・消すは「編集する」から */
 const EV_FILE_COL = "isoEventFiles";
 const isImg = a => String(a.type||"").startsWith("image/");
+const fcol = a => a && a.store==="photo" ? "isoPhotoFiles" : EV_FILE_COL;   // 写真は「写真の記録」と同じ保存先
+const durl = f => String(f.data||"").startsWith("data:") ? f.data : "data:"+(f.type||"image/jpeg")+";base64,"+f.data;
 function renderEvFiles(){
   const box = document.getElementById("evFileList"); if(!box) return;
   const list = allEvents.filter(e=>String(e.date||"").startsWith(String(year)) && (e.attachments||[]).length && (!markFilter || (e.mark||"未分類")===markFilter))
     .sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   if(!list.length){ box.innerHTML = `<div class="empty">まだありません。出来事を開いて「編集する・写真を足す」から入れられます</div>`; return; }
   box.innerHTML = `<div class="card"><div class="evPh">${list.map(e=>(e.attachments||[]).map(a=>
-    `<figure onclick="openEv('${e.id}')">${isImg(a)?`<img src="${a.thumb||""}" ${a.thumb?"":`data-fid="${a.fileId}"`} alt="">`:`<div class="pdf">📄</div>`}<figcaption><b>${esc(e.date)}</b> ${esc(e.title||"")}<br>${esc(a.name)}</figcaption></figure>`).join("")).join("")}</div></div>`;
+    `<figure onclick="openEv('${e.id}')">${isImg(a)?`<img src="${a.thumb||""}" ${a.thumb?"":`data-fid="${a.fileId}" data-col="${fcol(a)}"`} alt="">`:`<div class="pdf">📄</div>`}<figcaption><b>${esc(e.date)}</b> ${esc(e.title||"")}<br>${esc(a.name)}</figcaption></figure>`).join("")).join("")}</div></div>`;
   loadNoThumb(box);
 }
 // 前に入れた写真(小さい写真がないもの)は、中身を読んで出す
-function loadNoThumb(box){ box.querySelectorAll("img[data-fid]").forEach(async im=>{ try{ const d = await db.collection(EV_FILE_COL).doc(im.dataset.fid).get(); if(d.exists) im.src = "data:"+(d.data().type||"image/jpeg")+";base64,"+d.data().data; }catch(err){} }); }
+function loadNoThumb(box){ box.querySelectorAll("img[data-fid]").forEach(async im=>{ try{ const d = await db.collection(im.dataset.col||EV_FILE_COL).doc(im.dataset.fid).get(); if(d.exists) im.src = durl(d.data()); }catch(err){} }); }
 const SRC_COLS = [["metalRecords","金属拾い上げの記録"],["compressorInspections","圧縮機定期点検の記録"],["safetyPatrols","安全衛生パトロールの記録"],["waterTests","水質検査の記録"],["noiseChecks","騒音チェックの記録"]];
 window.openEv = async function(id){
   const e = allEvents.find(x=>x.id===id); if(!e) return;
@@ -425,13 +427,13 @@ window.openEv = async function(id){
     ${e.recBy?`<div><span class="lb">記録者</span>${esc(e.recBy)}${e.recDate?`（${esc(e.recDate)}）`:""}</div>`:""}</div>
     <div id="evSrc" style="margin-top:8px;"></div>
     <div style="margin-top:12px;font-weight:700;">📎 写真・資料（${at.length}件）</div>
-    ${at.length?`<div class="evPh">${at.map((a,i)=>`<figure onclick="openEvFile('${a.fileId}',${isImg(a)})">${isImg(a)?`<img id="evIm${i}" src="${a.thumb||""}" alt="">`:`<div class="pdf">📄</div>`}<figcaption>${esc(a.name)}</figcaption></figure>`).join("")}</div>
+    ${at.length?`<div class="evPh">${at.map((a,i)=>`<figure onclick="openEvFile('${a.fileId}',${isImg(a)},'${fcol(a)}')">${isImg(a)?`<img id="evIm${i}" src="${a.thumb||""}" alt="">`:`<div class="pdf">📄</div>`}<figcaption>${esc(a.name)}</figcaption></figure>`).join("")}</div>
       <div style="font-size:12px;color:#6b7280;margin-top:4px;">押すと大きく開きます（PDFは別の画面で開くので、そこから保存・印刷できます）</div>`
       :`<div style="color:#6b7280;font-size:14px;">まだありません。「編集する・写真を足す」から入れられます</div>`}`;
   document.getElementById("evEditBtn").onclick = ()=>{ location.href = "index.html#evedit="+encodeURIComponent(id)+"&back=summary"; };
   document.getElementById("evBg").classList.add("show");
   // 小さい写真がまだない(前に入れた)写真は、中身を読んで出す
-  at.forEach(async(a,i)=>{ if(isImg(a) && !a.thumb){ try{ const d = await db.collection(EV_FILE_COL).doc(a.fileId).get(); const im = document.getElementById("evIm"+i); if(d.exists && im) im.src = "data:"+(d.data().type||"image/jpeg")+";base64,"+d.data().data; }catch(err){} } });
+  at.forEach(async(a,i)=>{ if(isImg(a) && !a.thumb){ try{ const d = await db.collection(fcol(a)).doc(a.fileId).get(); const im = document.getElementById("evIm"+i); if(d.exists && im) im.src = durl(d.data()); }catch(err){} } });
   // もとの記録(金属拾い上げ・点検・パトロールなど・調査票)があれば、開くボタンを出す
   const box = document.getElementById("evSrc");
   if(e.surveySubId){ box.innerHTML = `<button class="grayBtn" style="margin:0;" onclick="location.href='survey.html#${esc(e.surveyTpl||"astemo")}/${esc(e.surveySubId)}'">↗ 委託先調査票の控えを開く</button>`; return; }
@@ -442,11 +444,11 @@ window.openEv = async function(id){
 (function(){ const m = location.hash.match(/^#ev=([^&]+)/); if(!m) return; const id = decodeURIComponent(m[1]); let n = 0;
   const t = () => { const e = allEvents.find(x=>x.id===id); if(e){ const y = Number(String(e.date||"").slice(0,4)); if(y && y!==year && typeof setYear==="function") setYear(y); openEv(id); } else if(n++<30) setTimeout(t, 300); }; setTimeout(t, 500); })();
 window.closeEv = function(){ document.getElementById("evBg").classList.remove("show"); };
-window.openEvFile = async function(fileId, img){
+window.openEvFile = async function(fileId, img, colName){
   const w = img ? null : window.open("", "_blank");
-  try{ const d = await db.collection(EV_FILE_COL).doc(fileId).get(); if(!d.exists) throw new Error("ファイルが見つかりません");
+  try{ const d = await db.collection(colName||EV_FILE_COL).doc(fileId).get(); if(!d.exists) throw new Error("ファイルが見つかりません");
     const f = d.data();
-    if(img){ document.getElementById("lbImg").src = "data:"+(f.type||"image/jpeg")+";base64,"+f.data; document.getElementById("lbBg").style.display = "flex"; return; }
+    if(img){ document.getElementById("lbImg").src = durl(f); document.getElementById("lbBg").style.display = "flex"; return; }
     const bin = atob(f.data), arr = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
     const url = URL.createObjectURL(new Blob([arr], { type: f.type||"application/pdf" }));
     if(w) w.location.href = url; else window.open(url, "_blank");

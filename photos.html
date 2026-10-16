@@ -608,11 +608,11 @@ function renderEv(){
   const list = evs.slice().sort((a, b) => String(b.date||"").localeCompare(String(a.date||"")));
   document.getElementById("list").innerHTML = list.length ? list.map(e => '<div class="tgt"><div class="ttl">'+esc(fdj(e.date))+'　'+esc(e.title||"")+(e.mark ? '<small>'+esc(e.mark)+'</small>' : '')+'<small>'+e.attachments.length+'件</small>'+
       '<button class="btn sm" style="float:right;" onclick="location.href=\'summary.html#ev='+e.id+'\'">出来事を開く ›</button></div><div class="ph">'+
-      e.attachments.map(a => '<div class="pc">'+(String(a.type||"").startsWith("image/") ? '<img src="'+(a.thumb||"")+'"'+(a.thumb ? '' : ' data-fid="'+a.fileId+'"')+' alt="" style="min-height:90px;background:#e5e7eb;" onclick="openEvFile(\''+a.fileId+'\',true,\''+esc(e.title||"")+'\')">'
+      e.attachments.map(a => '<div class="pc">'+(String(a.type||"").startsWith("image/") ? '<img src="'+(a.thumb||"")+'"'+(a.thumb ? '' : ' data-fid="'+a.fileId+'" data-col="'+evCol(a)+'"')+' alt="" style="min-height:90px;background:#e5e7eb;" onclick="openEvFile(\''+a.fileId+'\',true,\''+esc(e.title||"")+'\',\''+evCol(a)+'\')">'
         : '<div onclick="openEvFile(\''+a.fileId+'\',false)" style="height:120px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#fef2f2;cursor:pointer;">📄</div>')+
         '<div class="memo">'+esc(a.name)+'</div></div>').join("")+'</div></div>').join("")
     : '<div class="empty">まだありません。カレンダーの出来事に写真・資料を入れるとここにも並びます</div>';
-  document.querySelectorAll("#list img[data-fid]").forEach(async im => { try { const d = await db.collection("isoEventFiles").doc(im.dataset.fid).get(); if (d.exists) im.src = "data:"+(d.data().type||"image/jpeg")+";base64,"+d.data().data; } catch(e){} });
+  document.querySelectorAll("#list img[data-fid]").forEach(async im => { try { const d = await db.collection(im.dataset.col || "isoEventFiles").doc(im.dataset.fid).get(); if (d.exists) im.src = evUrl(d.data()); } catch(e){} });
 }
 /* 出来事に入れる(カレンダーと同じ場所：isoEvents の attachments ＋ 中身は isoEventFiles) */
 let evAll = [], evMarks = [], evPend = [];
@@ -651,8 +651,16 @@ async function evUpload(){
     for (const f of evPend) {
       btn.textContent = "保存中… " + (++k) + "/" + evPend.length;
       let data, type = f.type || "application/octet-stream", name = f.name, thumb = "";
-      if (type.startsWith("image/")) { const full = await makeFull(f); data = full.split(",")[1]; type = "image/jpeg"; name = name.replace(/\.[^.]+$/, "") + ".jpg"; thumb = await shrink(f, 320, .7); }
-      else { if (f.size > 720 * 1024) { bad.push(name); continue; } data = await fileB64(f); }
+      if (type.startsWith("image/")) {   // 写真は写真の記録(isoPhotos／isoPhotoFiles)に、出来事の写真として入れる
+        const full = await makeFull(f); name = name.replace(/\.[^.]+$/, "") + ".jpg"; thumb = await shrink(f, 320, .7);
+        const evd = evId === selV ? ev : { title: document.getElementById("evNewTitle").value.trim(), date: document.getElementById("evNewDate").value };
+        const ref = db.collection(PHOTO_COL).doc();
+        await db.collection(FILE_COL).doc(ref.id).set({ data: full, type: "image/jpeg", name, eventId: evId });
+        await ref.set({ kind:"event", targetId:"ev:"+evId, targetName: evd.title || "", eventId: evId, memo: name, thumb, shotDate: evd.date || "", isMain:false, createdMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        list.push({ name, fileId: ref.id, type: "image/jpeg", size: Math.round(full.length * 3 / 4), uploadedAt: Date.now(), thumb, store: "photo" });
+        continue;
+      }
+      if (f.size > 720 * 1024) { bad.push(name); continue; } data = await fileB64(f);
       const ref = await db.collection("isoEventFiles").add({ eventId: evId, name, type, size: Math.round(data.length * 3 / 4), data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       list.push({ name, fileId: ref.id, type, size: Math.round(data.length * 3 / 4), uploadedAt: Date.now(), thumb });
     }
@@ -662,10 +670,12 @@ async function evUpload(){
   } catch(e){ console.error(e); toast("エラー: " + e.message); }
   btn.disabled = false; btn.textContent = "3. 保存する";
 }
-async function openEvFile(fileId, img, cap){
+const evCol = a => a && a.store === "photo" ? FILE_COL : "isoEventFiles";   // 出来事の写真は写真の記録と同じ保存先、書類は isoEventFiles
+const evUrl = f => String(f.data||"").startsWith("data:") ? f.data : "data:"+(f.type||"image/jpeg")+";base64,"+f.data;
+async function openEvFile(fileId, img, cap, colName){
   const w = img ? null : window.open("", "_blank");
-  try { const d = await db.collection("isoEventFiles").doc(fileId).get(); if (!d.exists) throw new Error("ファイルが見つかりません"); const f = d.data();
-    if (img){ document.getElementById("lbImg").src = "data:"+(f.type||"image/jpeg")+";base64,"+f.data; document.getElementById("lbCap").textContent = cap || f.name || ""; document.getElementById("lb").classList.add("show"); return; }
+  try { const d = await db.collection(colName || "isoEventFiles").doc(fileId).get(); if (!d.exists) throw new Error("ファイルが見つかりません"); const f = d.data();
+    if (img){ document.getElementById("lbImg").src = evUrl(f); document.getElementById("lbCap").textContent = cap || f.name || ""; document.getElementById("lb").classList.add("show"); return; }
     const bin = atob(f.data), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/pdf" })); if (w) w.location.href = url; else window.open(url, "_blank");
   } catch(e){ if (w) w.close(); toast("開けませんでした: "+e.message); }

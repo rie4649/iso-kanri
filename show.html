@@ -1221,15 +1221,36 @@ async function renderReview(p){
 
 /* ---------- 年間の活動(カレンダー) ---------- */
 async function renderCalendar(p){
-  const [ev, marks] = await Promise.all([col("isoEvents"), col("eventMarks")]);
+  const [ev, marks, ph] = await Promise.all([col("isoEvents"), col("eventMarks"), col("isoPhotos")]);
   const mc = {}; marks.forEach(m => mc[m.name] = m.color || "#1e3a5f");
+  calPh = ph.filter(x => x.kind === "event");
   const P = regPer(p.key, pickPeriods(ev.map(x => fyOf(x.date)), p.key));
   const l = ev.filter(x => fyOf(x.date) === P.cur).sort((a,b) => String(a.date).localeCompare(String(b.date)));
   const cnt = {}; l.forEach(x => { const k = x.mark || "未分類"; cnt[k] = (cnt[k]||0) + 1; });
   return await head(p, P.cur ? fySub(P.cur)+"・"+l.length+"件" : "", perHtml(p.key, P, fyLabel)) +
     (Object.keys(cnt).length ? '<div class="kpis">'+Object.keys(cnt).sort((a,b) => cnt[b]-cnt[a]).map(k => '<div class="kpi" style="min-width:160px;"><div class="k"><span class="dot" style="background:'+esc(mc[k]||"#94a3b8")+'"></span>'+esc(k)+'</div><div class="v">'+cnt[k]+'<small>件</small></div></div>').join("")+'</div>' : '') +
-    (l.length ? '<div class="tw"><table class="t"><tr><th>日付</th><th>種類</th><th>内容</th><th>メモ</th></tr>'+l.map(x =>
-      '<tr><td class="c nw">'+fdw(x.date)+'</td><td class="nw"><span class="dot" style="background:'+esc(mc[x.mark]||"#94a3b8")+'"></span>'+esc(x.mark||"未分類")+'</td><td><b>'+esc(x.title)+'</b></td><td>'+esc(x.notes)+'</td></tr>').join("")+'</table></div>' : empty());
+    (l.length ? '<div class="tw"><table class="t"><tr><th>日付</th><th>種類</th><th>内容</th><th>メモ</th><th>写真・資料</th></tr>'+l.map(x =>
+      '<tr><td class="c nw">'+fdw(x.date)+'</td><td class="nw"><span class="dot" style="background:'+esc(mc[x.mark]||"#94a3b8")+'"></span>'+esc(x.mark||"未分類")+'</td><td><b>'+esc(x.title)+'</b></td><td>'+esc(x.notes)+'</td><td class="nw">'+calAttach(x)+'</td></tr>').join("")+'</table></div>' : empty());
+}
+/* 出来事に添付した写真(写真の記録 isoPhotos の kind:"event")と書類(isoEventFiles)。押すと写真が大きく出る */
+let calPh = [];
+function calAttach(x){
+  const at = x.attachments || [], pics = at.filter(a => a.store === "photo" || String(a.type||"").startsWith("image/")), docs = at.filter(a => !pics.includes(a));
+  const p0 = pics.find(a => a.thumb);
+  return (pics.length ? '<button class="openBtn" style="display:inline-flex;align-items:center;gap:6px;margin:2px 0;" onclick="calPhOpen(\''+x.id+'\')">'+(p0 ? '<img src="'+p0.thumb+'" alt="" style="width:44px;height:33px;object-fit:cover;border-radius:4px;">' : '')+'📷 写真 '+pics.length+'枚</button>' : '')+
+    docs.map(a => '<div><button class="openBtn" style="margin:2px 0;" onclick="calDocOpen(\''+a.fileId+'\')">📄 '+esc(a.name)+'</button></div>').join("") || '<span class="note">—</span>';
+}
+function calPhOpen(evId){
+  eqPhotos = calPh; eqLb.list = calPh.filter(y => y.eventId === evId).sort((a,b) => (a.createdMs||0) - (b.createdMs||0));
+  if (!eqLb.list.length){ alert("写真が見つかりません(ISO管理を一度開くと、前に入れた写真が写真の記録に移ります)"); return; }
+  eqLb.i = 0; eqShow();
+}
+async function calDocOpen(fileId){
+  const w = window.open("", "_blank");
+  try { const d = await db.collection("isoEventFiles").doc(fileId).get(); if (!d.exists) throw new Error("ファイルが見つかりません"); const f = d.data();
+    const bin = atob(f.data), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/pdf" })); if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
 }
 
 /* ---------- 水質検査 ---------- */
