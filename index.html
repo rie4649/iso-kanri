@@ -4621,10 +4621,18 @@ async function saveEvAttach(evId) {
     if (blob.size > INLINE_FILE_MAX) { errors.push(`${name}(${Math.round(blob.size / 1024)}KB)は大きすぎます。約700KB以下にしてください`); continue; }
     const data = await blobToBase64(blob);
     const ref = await db.collection(EV_FILE_COL).add({ eventId: evId, name, type, size: blob.size, data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    list.push({ name, fileId: ref.id, type, size: blob.size, uploadedAt: Date.now() });
+    const thumb = type && type.startsWith("image/") ? await evThumb(blob) : "";   // 一覧で見せる小さい写真
+    list.push({ name, fileId: ref.id, type, size: blob.size, uploadedAt: Date.now(), thumb });
   }
   if (errors.length) alert("一部の添付を保存できませんでした:\n" + errors.join("\n"));
   return list;
+}
+function evThumb(blob) {
+  return new Promise(res => { const url = URL.createObjectURL(blob), img = new Image();
+    img.onload = () => { const r = Math.min(1, 320 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.7)); };
+    img.onerror = () => { URL.revokeObjectURL(url); res(""); }; img.src = url; });
 }
 /* この出来事のもとの記録(金属拾い上げ・圧縮機点検・パトロール・水質・騒音・調査票)を探す */
 function eventSource(evId) {
@@ -4842,9 +4850,18 @@ const SECTION_GROUPS = [
 
 // 他のページ(EMS文書管理など)から「index.html#sec=水質検査のキー」で、その画面を開いて来られるようにする
 window.addEventListener("load", () => {
-  const me = location.hash.match(/^#ev=(.+)$/);
-  if (me) { const evId = decodeURIComponent(me[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {}
-    let n = 0; const tick = () => { if (allEvents.some(x => x.id === evId) || n++ > 25) openEventSource(evId); else setTimeout(tick, 300); }; setTimeout(tick, 600); return; }
+  // #ev=ID … もとの記録(なければ出来事)を開く ／ #evedit=ID … 出来事の編集を開く ／ &back=summary … 閉じたら年間サマリーに戻る
+  const me = location.hash.match(/^#(ev|evedit)=([^&]+)(?:&back=(\w+))?/);
+  if (me) { const evId = decodeURIComponent(me[2]), edit = me[1] === "evedit", back = me[3] || ""; try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    let n = 0; const tick = () => {
+      if (!(allEvents.some(x => x.id === evId) || n++ > 25)) { setTimeout(tick, 300); return; }
+      if (edit) { openSection("calendar"); openEditEvent(evId); } else openEventSource(evId);
+      if (back === "summary") setTimeout(() => {   // 開いた画面を閉じたら(キャンセル・保存)、年間サマリーに戻る
+        document.querySelectorAll(".modal-overlay.open, .open[id$='Overlay']").forEach(ov => {
+          new MutationObserver((ms, ob) => { if (!ov.classList.contains("open")) { ob.disconnect(); location.href = "summary.html#ev=" + encodeURIComponent(evId); } }).observe(ov, { attributes: true, attributeFilter: ["class"] });
+        });
+      }, 800);
+    }; setTimeout(tick, 600); return; }
   const m = location.hash.match(/^#sec=(.+)$/);
   if (m) { const k = decodeURIComponent(m[1]); try { history.replaceState(null, "", location.pathname); } catch (e) {} setTimeout(() => openSection(k), 300); }
 });

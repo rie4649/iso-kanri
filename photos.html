@@ -62,11 +62,35 @@
   <div style="margin-top:6px;"><b>■ 車両・設備</b>：車両・圧縮機・エアコンなどの写真。名前で自動的に「主な設備・車両」「圧縮機定期点検」「フロン排出抑制法簡易点検」「軽油使用量」に出ます。</div>
   <div style="margin-top:6px;"><b>■ 保管・掲示・現場の様子</b>：項目ごとに「編集」で<b>写真を出すページ</b>を選びます（例：水質検査の様子 → 水質検査、積替え保管場所の様子 → 許可の内容）。</div>
   <div style="margin-top:6px;"><b>■ 撮影日</b>：写真を選ぶと写真の中の日付が自動で入ります（読めないときは今日）。違うときはその場か、保存後の「編集」で直せます。<br>水質検査の写真は、撮影日が<b>検査日の前後7日以内</b>なら、環境への取り組みの水質検査の表でその検査の行に並びます。</div>
+  <div style="margin-top:6px;"><b>■ 出来事（カレンダー）</b>：視察・監査・工事・行事など「日付のあること」の写真と資料。カレンダーの出来事と同じ場所に入ります。</div>
+  <div style="margin-top:6px;"><b>■ 迷ったら</b>：日付のある出来事 → 出来事／いつ見ても同じ様子（掲示・表示・保管・点検のやり方）→ 保管・掲示・現場の様子／車両・機械そのもの → 車両・設備</div>
   <div style="margin-top:6px;"><b>■ 書類は入れない</b>：計量証明書・許可証・点検報告書などの書類は、それぞれの記録（水質検査の添付、許可一覧、消火器・防火管理など）に入れます。</div>
 </details>
 <div class="seg">
   <button id="m_veh" onclick="setMode('veh')">車両・設備<small>主な設備・車両／フロン点検／圧縮機点検／軽油に表示</small></button>
   <button id="m_rec" onclick="setMode('rec')">保管・掲示・現場の様子<small>項目ごとに選んだページに表示</small></button>
+  <button id="m_ev" onclick="setMode('ev')">出来事（カレンダー）<small>視察・工事・行事などの写真・資料（見るだけ）</small></button>
+</div>
+<div class="upCard" id="evCard" style="display:none;">
+  <h2>出来事に写真・資料を入れる</h2>
+  <div class="note" style="margin-top:0;">ここで入れても、カレンダーで入れても、<b>同じ出来事に入ります</b>（カレンダー・年間サマリー・ここ の3か所で見られます）。</div>
+  <label for="evSel">1. どの出来事？</label>
+  <select id="evSel" onchange="evSelChg()"></select>
+  <div id="evNew" style="display:none;margin-top:6px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="date" id="evNewDate" style="flex:0 0 170px;">
+      <select id="evNewMark" style="flex:0 0 170px;"></select>
+      <input id="evNewTitle" placeholder="出来事の名前（例：TDK㈱ 視察）" style="flex:1;min-width:200px;">
+    </div>
+    <div class="note">カレンダーにも、この日の出来事として入ります。</div>
+  </div>
+  <label for="evFiles" style="margin-top:8px;">2. 写真・PDFを選ぶ（複数OK）</label>
+  <input type="file" id="evFiles" accept="image/*,application/pdf" multiple onchange="evPick(this.files)">
+  <div id="evPend" class="note"></div>
+  <label for="evBy" style="margin-top:6px;">記録者（管理者）</label>
+  <input id="evBy" placeholder="名前">
+  <div class="bar" style="margin-top:10px;"><button class="btn pri" id="evUpBtn" onclick="evUpload()">3. 保存する</button></div>
+  <div class="note">写真は自動で小さくします。PDFは1ファイル約700KBまで。</div>
 </div>
 
 <div class="upCard" id="catCard" style="display:none;">
@@ -76,7 +100,7 @@
   <div class="catAdd"><input id="newCat" placeholder="例: 産業廃棄物の保管場所の掲示板"><button class="btn pri" onclick="addCat()">＋ 追加</button></div>
 </div>
 
-<div class="upCard">
+<div class="upCard" id="upCard">
   <h2>写真を追加する</h2>
   <label for="files">1. 写真を選ぶ(複数まとめて選べます)</label>
   <input type="file" id="files" accept="image/*" multiple onchange="addPending(this.files)">
@@ -255,7 +279,7 @@ const FILE_COL = "isoPhotoFiles";
 const FIXED_EQUIP = ["トラックスケール", "天井クレーン"];  // 沿革に出てくる設備
 
 let vehicles = [], equips = [], photos = [], filter = "all";
-let mode = new URLSearchParams(location.search).get("mode") === "rec" ? "rec" : "veh";   // veh=車両・設備 / rec=保管・掲示の状況
+let mode = ({ rec:"rec", ev:"ev" })[new URLSearchParams(location.search).get("mode")] || "veh";   // veh=車両・設備 / rec=保管・掲示の状況
 /* 保管・掲示の状況の項目(isoPhotoSettings/recordCats)。q は見せるモードに出す「調査票のどの質問か」 */
 const DEFAULT_REC = [
   { name:"マニフェストの保管状況", q:"委託先調査票 D1-20・21 帳簿の作成・保存" },
@@ -267,10 +291,18 @@ const DEFAULT_REC = [
 let recCats = DEFAULT_REC.slice();
 /* 項目の写真を出すページ(環境への取り組みのページ。page が無い項目は「保管・掲示の状況」) */
 const PAGE_OPTS = [["records","保管・掲示の状況"],["permit","許可の内容(積替え保管場所・処理施設)"],["water","水質検査"],["safety","安全衛生パトロール"],["training","教育訓練"],
-  ["emergency","緊急事態の訓練・テスト"],["shokaki","消火器・防火管理"],["comp","圧縮機定期点検"],["freon","フロン排出抑制法簡易点検"],["donation","地域貢献"]];
+  ["emergency","緊急事態の訓練・テスト"],["shokaki","消火器・防火管理"],["comp","圧縮機定期点検"],["freon","フロン排出抑制法簡易点検"],["donation","地域貢献"],
+  ["kyoka","許可一覧"],["tenken","車両点検アプリ(点検ラクラク)"],["equip","主な設備・車両"],["history","沿革"],["skills","力量(資格の一覧)"],["vendors","外部委託先の管理"],["sdgs","環境目標・SDGs"]];
 const pageName = k => (PAGE_OPTS.find(o => o[0] === (k || "records")) || PAGE_OPTS[0])[1];
 /* 最初から用意しておく項目(一度だけ自動で足す) */
 const EXTRA_REC = [{ name:"積替え保管場所の様子", q:"許可証の積替え・保管の場所", page:"permit" }, { name:"水質検査の様子", q:"採水・測定の様子", page:"water" }];
+/* 2026/10 追加：見せるときに使う写真(一度だけ自動で足す) */
+const EXTRA_REC2 = [
+  { name:"車両の表示（産廃収集運搬車・許可番号）", q:"委託先調査票 D2「車両の表示」・TDK K-8「車両に必要な表示」。メモに車両の呼び名を書く", page:"kyoka" },
+  { name:"車両点検の様子", q:"日常点検・定期点検をしている証拠", page:"tenken" },
+  { name:"アルコールチェックの様子", q:"運転前後のアルコールチェック（安全運転管理）", page:"tenken" },
+  { name:"表彰・認定（賞状・盾・認定証）", q:"沿革の表彰・認定。表彰式の写真は出来事に入れる", page:"history" }
+];
 let toastTimer;
 function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2800); }
 function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -377,11 +409,15 @@ db.collection("isoPhotoSettings").doc("recordCats").onSnapshot(d => {
   if (!(d.exists && d.data().extra202610)){   // 許可の内容・水質検査の項目を一度だけ足す(消しても再追加しない)
     const add = EXTRA_REC.filter(x => !recCats.some(c => c.name === x.name));
     recCats = recCats.concat(add);
-    db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats, extra202610: true }).catch(() => {});
+    db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats, extra202610: true }, { merge:true }).catch(() => {});
+  }
+  if (!(d.exists && d.data().extra202610b)){   // 車両の表示・車両点検・アルコールチェック・表彰(一度だけ)
+    recCats = recCats.concat(EXTRA_REC2.filter(x => !recCats.some(c => c.name === x.name)));
+    db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats, extra202610: true, extra202610b: true }, { merge:true }).catch(() => {});
   }
   renderCats(); buildSelect(); render();
 }, () => {});
-function saveCats(){ return db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats, extra202610: true }); }
+function saveCats(){ return db.collection("isoPhotoSettings").doc("recordCats").set({ items: recCats, extra202610: true, extra202610b: true }); }
 function renderCats(){
   const used = new Set(photos.filter(p => p.kind === "record").map(p => p.targetName));
   const cnt = {}; photos.filter(p => p.kind === "record").forEach(p => cnt[p.targetName] = (cnt[p.targetName] || 0) + 1);
@@ -408,6 +444,10 @@ function setMode(m){
   document.getElementById("m_veh").classList.toggle("on", m === "veh");
   document.getElementById("m_rec").classList.toggle("on", m === "rec");
   document.getElementById("catCard").style.display = m === "rec" ? "" : "none";
+  document.getElementById("m_ev").classList.toggle("on", m === "ev");
+  document.getElementById("upCard").style.display = m === "ev" ? "none" : "";
+  document.getElementById("evCard").style.display = m === "ev" ? "" : "none";
+  if (m === "ev") buildEvSel();
   pending.forEach(p => { p.sel = guessTarget(p.file.name); p.other = ""; });   // 振り分け中の写真は選び直し
   renderPending(); render();
 }
@@ -482,6 +522,7 @@ async function uploadPhotos(){
 function setFilter(f){ filter = f; render(); }
 function render(){
   if (mode === "rec") return renderRec();
+  if (mode === "ev") return renderEv();
   const cntV = photos.filter(p => p.kind === "vehicle").length, cntE = photos.filter(p => p.kind === "equip").length;
   document.getElementById("tabs").innerHTML = [["all","すべて<small>"+(cntV+cntE)+"枚</small>"],["vehicle","車両<small>"+cntV+"枚</small>"],["equip","設備<small>"+cntE+"枚</small>"],["none","写真がない車両<small>"+vehicles.filter(v => !photos.some(p => p.targetId === v.id)).length+"台</small>"]]
     .map(([k, l]) => '<button class="'+(filter===k?"on":"")+'" onclick="setFilter(\''+k+'\')">'+l+'</button>').join("");
@@ -558,6 +599,77 @@ async function delPhoto(id){
   }catch(e){ toast("削除に失敗: "+e.message); }
 }
 
+/* ---------- 出来事(カレンダー)に添付した写真・資料：見るだけ。中身は isoEventFiles ---------- */
+let evs = [];
+db.collection("isoEvents").onSnapshot(s => { evs = s.docs.map(d => ({ id:d.id, ...d.data() })).filter(e => (e.attachments || []).length); if (mode === "ev") render(); }, e => console.error(e));
+function renderEv(){
+  const n = evs.reduce((t, e) => t + e.attachments.length, 0);
+  document.getElementById("tabs").innerHTML = '<button class="on">すべて<small>'+n+'件</small></button>';
+  const list = evs.slice().sort((a, b) => String(b.date||"").localeCompare(String(a.date||"")));
+  document.getElementById("list").innerHTML = list.length ? list.map(e => '<div class="tgt"><div class="ttl">'+esc(fdj(e.date))+'　'+esc(e.title||"")+(e.mark ? '<small>'+esc(e.mark)+'</small>' : '')+'<small>'+e.attachments.length+'件</small>'+
+      '<button class="btn sm" style="float:right;" onclick="location.href=\'summary.html#ev='+e.id+'\'">出来事を開く ›</button></div><div class="ph">'+
+      e.attachments.map(a => '<div class="pc">'+(String(a.type||"").startsWith("image/") ? '<img src="'+(a.thumb||"")+'"'+(a.thumb ? '' : ' data-fid="'+a.fileId+'"')+' alt="" style="min-height:90px;background:#e5e7eb;" onclick="openEvFile(\''+a.fileId+'\',true,\''+esc(e.title||"")+'\')">'
+        : '<div onclick="openEvFile(\''+a.fileId+'\',false)" style="height:120px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#fef2f2;cursor:pointer;">📄</div>')+
+        '<div class="memo">'+esc(a.name)+'</div></div>').join("")+'</div></div>').join("")
+    : '<div class="empty">まだありません。カレンダーの出来事に写真・資料を入れるとここにも並びます</div>';
+  document.querySelectorAll("#list img[data-fid]").forEach(async im => { try { const d = await db.collection("isoEventFiles").doc(im.dataset.fid).get(); if (d.exists) im.src = "data:"+(d.data().type||"image/jpeg")+";base64,"+d.data().data; } catch(e){} });
+}
+/* 出来事に入れる(カレンダーと同じ場所：isoEvents の attachments ＋ 中身は isoEventFiles) */
+let evAll = [], evMarks = [], evPend = [];
+db.collection("isoEvents").onSnapshot(s => { evAll = s.docs.map(d => ({ id:d.id, ...d.data() })); if (mode === "ev") buildEvSel(); }, () => {});
+db.collection("eventMarks").onSnapshot(s => { evMarks = s.docs.map(d => d.data().name).filter(Boolean); if (mode === "ev") buildEvSel(); }, () => {});
+function buildEvSel(){
+  const sel = document.getElementById("evSel"), cur = sel.value;
+  const l = evAll.filter(e => e.date && e.date <= todayYmd()).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 80);
+  sel.innerHTML = '<option value="">-- 選んでください --</option><option value="new">＋ 新しい出来事を作る</option>' + l.map(e => '<option value="'+e.id+'">'+esc(fdj(e.date))+'　'+esc(e.title||"")+((e.attachments||[]).length ? '（📎'+e.attachments.length+'）' : '')+'</option>').join("");
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  const mk = document.getElementById("evNewMark"), mc = mk.value;
+  mk.innerHTML = '<option value="">マーク（任意）</option>' + evMarks.map(n => '<option>'+esc(n)+'</option>').join(""); if (mc) mk.value = mc;
+  if (!document.getElementById("evNewDate").value) document.getElementById("evNewDate").value = todayYmd();
+  const by = document.getElementById("evBy"); if (!by.value) { try { by.value = localStorage.getItem("isoRecBy") || ""; } catch(e){} }
+}
+function evSelChg(){ document.getElementById("evNew").style.display = document.getElementById("evSel").value === "new" ? "" : "none"; }
+function evPick(files){ evPend = evPend.concat(Array.from(files || [])); document.getElementById("evFiles").value = ""; evPendShow(); }
+function evPendShow(){ document.getElementById("evPend").innerHTML = evPend.length ? evPend.map((f, i) => (f.type.startsWith("image/") ? "🖼️" : "📄")+esc(f.name)+' <a href="#" onclick="evPend.splice('+i+',1);evPendShow();return false;">外す</a>').join("<br>") : ""; }
+const fileB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = () => rej(new Error("読み込み失敗")); r.readAsDataURL(f); });
+async function evUpload(){
+  const selV = document.getElementById("evSel").value, by = document.getElementById("evBy").value.trim();
+  if (!selV) { toast("どの出来事か選んでください"); return; }
+  if (!evPend.length) { toast("写真・PDFを選んでください"); return; }
+  if (!by) { toast("記録者の名前を入れてください"); return; }
+  try { localStorage.setItem("isoRecBy", by); } catch(e){}
+  const btn = document.getElementById("evUpBtn"); btn.disabled = true;
+  try {
+    let evId = selV;
+    if (selV === "new") {
+      const title = document.getElementById("evNewTitle").value.trim(), date = document.getElementById("evNewDate").value;
+      if (!title || !date) { toast("新しい出来事の日付と名前を入れてください"); btn.disabled = false; return; }
+      evId = (await db.collection("isoEvents").add({ date, title, mark: document.getElementById("evNewMark").value, notes:"", recBy: by, recDate: todayYmd(), createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() })).id;
+    }
+    const ev = evAll.find(e => e.id === evId) || {}, list = (ev.attachments || []).slice(), bad = [];
+    let k = 0;
+    for (const f of evPend) {
+      btn.textContent = "保存中… " + (++k) + "/" + evPend.length;
+      let data, type = f.type || "application/octet-stream", name = f.name, thumb = "";
+      if (type.startsWith("image/")) { const full = await makeFull(f); data = full.split(",")[1]; type = "image/jpeg"; name = name.replace(/\.[^.]+$/, "") + ".jpg"; thumb = await shrink(f, 320, .7); }
+      else { if (f.size > 720 * 1024) { bad.push(name); continue; } data = await fileB64(f); }
+      const ref = await db.collection("isoEventFiles").add({ eventId: evId, name, type, size: Math.round(data.length * 3 / 4), data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      list.push({ name, fileId: ref.id, type, size: Math.round(data.length * 3 / 4), uploadedAt: Date.now(), thumb });
+    }
+    await db.collection("isoEvents").doc(evId).update({ attachments: list, recBy: by, recDate: todayYmd(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    evPend = []; evPendShow(); document.getElementById("evNewTitle").value = ""; document.getElementById("evSel").value = evId; evSelChg();
+    toast("保存しました" + (bad.length ? "（大きすぎて入らなかったPDF：" + bad.join("、") + "）" : ""));
+  } catch(e){ console.error(e); toast("エラー: " + e.message); }
+  btn.disabled = false; btn.textContent = "3. 保存する";
+}
+async function openEvFile(fileId, img, cap){
+  const w = img ? null : window.open("", "_blank");
+  try { const d = await db.collection("isoEventFiles").doc(fileId).get(); if (!d.exists) throw new Error("ファイルが見つかりません"); const f = d.data();
+    if (img){ document.getElementById("lbImg").src = "data:"+(f.type||"image/jpeg")+";base64,"+f.data; document.getElementById("lbCap").textContent = cap || f.name || ""; document.getElementById("lb").classList.add("show"); return; }
+    const bin = atob(f.data), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type: f.type || "application/pdf" })); if (w) w.location.href = url; else window.open(url, "_blank");
+  } catch(e){ if (w) w.close(); toast("開けませんでした: "+e.message); }
+}
 async function openLb(id){
   const p = photos.find(x => x.id === id); if (!p) return;
   const img = document.getElementById("lbImg");
