@@ -5033,6 +5033,8 @@ const FIND_INDEX = [
   ["環境側面調査記録 取扱量 インプット 産廃 非鉄 推移 傾向 EMS-A-17 C-20", "環境側面調査記録（取扱量の推移）", "volumes"],
   ["使い方 ヘルプ 質問 わからない どこ", "❓ 使い方（よくある質問）", "help"],
   ["バックアップ 保存 ダウンロード 控え", "💾 バックアップ", "backup"],
+  ["車両 呼び名 愛称 車番 一覧 新入社員 新人", "🚛 車両の愛称一覧（新入社員用）", "vehlist"],
+  ["新入社員 新人 入社 教育 自覚 渡す書類", "🔰 新入社員教育", "newhire"],
   ["承認 確認 承認者 確認者 ハンコ", "❓ 使い方：承認のしかた", "help"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
@@ -5204,7 +5206,7 @@ const WORK_GROUPS = [
     ["plan:review", "マネジメントレビュー", "年1回・社長へ報告"], ["plan:calib", "測定機器の点検・校正", "年1回"], ["shokaki", "消火器・防火管理", "点検のとき"]]],
   ["🚨", "何かあったとき", "起きたらすぐ記録する", [
     ["plan:comms", "苦情・問い合わせ・提案", "お客様・近隣・行政から"], ["plan:nearMiss", "ヒヤリハット", "けが・油漏れにならなかったけど危なかった（C-12）"], ["plan:zoneReport", "ゾーン報告", "ゾーンの置場・油漏れ・飛散など（C-14）"],
-    ["kiroku", "事故・不適合 → 是正処置", "原因と対策を記録"], ["plan:changes", "何かが変わった（変更管理）", "設備・法律・人・委託先"],
+    ["kiroku", "事故・不適合 → 是正処置", "原因と対策を記録"], ["plan:changes", "何かが変わった（変更管理）", "設備・法律・人・委託先"], ["newhire", "🔰 新入社員教育", "人が入ったとき・渡す書類と説明の記録"],
     ["calendar", "行政の立入検査・照会", "カレンダーに行政照会記録"], ["plan:minutes", "会議をした（議事録）", "環境管理会議・推進委員会"]]],
   ["🎯", "計画・ルール・書類", "何か変わったとき・見直すときに使う", [
     ["plan", "ISOの計画（課題・利害関係者・リスク・目標など）", ""],
@@ -5213,7 +5215,7 @@ const WORK_GROUPS = [
     ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
   ["👀", "見る・まとめる", "監査・会議・視察のとき", [
     ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["plan:review", "📊 マネジメントレビューの資料を作る", "1年分の記録から社長への報告書を自動で作る"], ["summary", "年間サマリー", "1年の記録の集計"],
-    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"],
+    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"], ["vehlist", "🚛 車両の愛称一覧（新入社員用）", "愛称と車番の表をA4の半分で印刷"],
     ["help", "❓ 使い方（よくある質問）", "「これはどこ？」と聞かれたらここ"], ["backup", "💾 バックアップ", "月に1回、全部の記録をファイルに保存"]]]
 ];
 function renderHomeMenu() {
@@ -5263,6 +5265,8 @@ window.openSection = function(sec) {
   if (sec === "custlog") { location.href = "custlog.html"; return; }
   if (sec === "volumes") { location.href = "volumes.html"; return; }
   if (sec === "backup") { location.href = "backup.html"; return; }
+  if (sec === "vehlist") { location.href = "vehicles-list.html"; return; }
+  if (sec === "newhire") { location.href = "newhire.html"; return; }
   if (sec === "help") { location.href = "help.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
