@@ -12,6 +12,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="recby.js"></script>
+<script src="reports-due.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -5035,6 +5036,7 @@ const FIND_INDEX = [
   ["バックアップ 保存 ダウンロード 控え", "💾 バックアップ", "backup"],
   ["車両 呼び名 愛称 車番 一覧 新入社員 新人", "🚛 車両の愛称一覧（新入社員用）", "vehlist"],
   ["新入社員 新人 入社 教育 自覚 渡す書類", "🔰 新入社員教育", "newhire"],
+  ["届出 報告 期限 実績報告 行政 提出 定期検査 はかり クレーン 消防 点検", "📮 届出・報告の期限一覧", "reports"],
   ["承認 確認 承認者 確認者 ハンコ", "❓ 使い方：承認のしかた", "help"],
   ["カレンダー 予定", "カレンダー", "calendar"]
 ];
@@ -5128,6 +5130,11 @@ async function renderHomeOpen(rg, cor) {
   const apv = sx[0] && sx[0].exists ? sx[0].data() : {}, bk = sx[1] && sx[1].exists ? sx[1].data() : {};
   const waitDocs = docRegs.filter(k => { const a = apv[k] || {}; if (!a.apBy) return true; const le = R(k).map(x => x.recDate || "").sort().pop() || ""; return le > a.apDate; });
   if (waitDocs.length) add(5, "表の承認待ち：" + waitDocs.length + "つ", "計画書・特定表などの表。それぞれの画面の「✍️ この表の承認」から", "plan:" + waitDocs[0], "承認待ち", "wa");
+  // 届出・報告の期限(届出・報告の期限一覧)：期限切れと、知らせる日数に入ったもの
+  try { const rs = await db.collection("isoReports").get();
+    rs.docs.map(d => d.data()).forEach(x => { if (!window.ReportDue) return; const st = ReportDue.status(x, today);
+      if (st.key === "over" || st.key === "soon") add(0, "届出・報告：" + (x.name || ""), (x.to ? x.to + "・" : "") + "期限 " + String(st.next.date).replace(/-/g, "/"), "reports", st.key === "over" ? "期限切れ" : st.label, st.key === "over" ? "ng" : "wa"); });
+  } catch (e) {}
   const bkOld = !bk.lastDate || bk.lastDate < ymd(new Date(t.getTime() - 31 * 86400000));
   if (bkOld) add(6, "バックアップ", bk.lastDate ? "最後のバックアップ " + String(bk.lastDate).replace(/-/g, "/") + "（月に1回がおすすめ）" : "まだ一度もとっていません（月に1回がおすすめ）", "backup", "まだ", "wa");
   items.sort((a, b) => a[0] - b[0]);
@@ -5200,6 +5207,7 @@ const WORK_GROUPS = [
     ["lifeline", "ライフライン（電気・ガス・水道）", "毎月・前の月の分"], ["custlog", "顧客対応の進捗（電話依頼）", "数は自動。月1回 気づきを書き写す"],
     ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
   ["📅", "年1回・決まった時期", "環境マニュアルで時期が決まっているもの", [
+    ["reports", "📮 届出・報告の期限一覧", "実績報告・定期検査など役所に出すもの。期限が近いとホームに出る"],
     ["volumes", "環境側面調査記録（取扱量の推移）", "8月・去年度の量を入れて考察（A-17）"], ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
     ["plan:auditPlan", "内部監査の計画（日程・分担）", "9月ごろ決める"], ["plan:auditCheck", "内部監査チェックシート", "監査の日に項目を確認（C-02）"], ["plan:auditSurvey", "内部監査アンケート", "全員の回答を入れる（C-03）"], ["kiroku", "内部監査の結果・是正処置", "10月〜2月"], ["plan:extAudit", "外部審査の指摘と対応", "審査のあと（C-06）"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
     ["plan:legal", "法令の順守評価（A-05）", "年1回・チェックシート"], ["waterTest", "水質検査（計量証明書）", "年1回"], ["noiseCheck", "騒音チェック・圧縮機点検", "年1回"],
@@ -5267,6 +5275,7 @@ window.openSection = function(sec) {
   if (sec === "backup") { location.href = "backup.html"; return; }
   if (sec === "vehlist") { location.href = "vehicles-list.html"; return; }
   if (sec === "newhire") { location.href = "newhire.html"; return; }
+  if (sec === "reports") { location.href = "reports.html"; return; }
   if (sec === "help") { location.href = "help.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
