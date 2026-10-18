@@ -69,5 +69,22 @@
   function total(list){ const t = { days: 0, daily: 0, am: 0, pm: 0, bad: 0, byVehicle: {} }, vs = new Set();
     list.forEach(r => { ["days", "daily", "am", "pm", "bad"].forEach(k => t[k] += r[k] || 0); (r.vehList || []).forEach(v => vs.add(v)); Object.keys(r.byVehicle || {}).forEach(v => { vs.add(v); t.byVehicle[v] = (t.byVehicle[v] || 0) + r.byVehicle[v]; }); });
     t.vehicles = vs.size; return t; }
-  window.TenkenStats = { URL, month, months, fiscal, openReports, total, summarize };
+  /* 不具合報告 → ISOの「車両の不具合と修理」(isoRegisters, reg:"vehRepair")に写す。
+     点検ラクラクで「対応済」にすると報告は消えるので、消えたものはISO側で「直した」にして記録を残す。
+     rows: いま読み込んでいる isoRegisters の配列(なければ読む)。reps: openReports() の結果 */
+  async function syncRepairs(db, rows, reps){
+    if (!Array.isArray(reps)) return 0;
+    if (!rows) { const s = await db.collection("isoRegisters").get(); rows = s.docs.map(d => ({ _id: d.id, ...d.data() })); }
+    const today = (() => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); })();
+    const toY = (s, ms) => { const m = String(s || "").match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); if (m) return m[1] + "-" + pad(m[2]) + "-" + pad(m[3]); if (ms) { const d = new Date(ms); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); } return today; };
+    const mine = rows.filter(x => x.reg === "vehRepair" && x.tkReportId), have = new Set(mine.map(x => x.tkReportId)), open = new Set(reps.map(r => r.id));
+    let n = 0;
+    for (const r of reps) { if (have.has(r.id)) continue;
+      await db.collection("isoRegisters").doc("tk_" + r.id).set({ reg: "vehRepair", draft: false, date: toY(r.date, r.createdAt), vehicle: r.vehicle || "", content: r.content || "", reporter: r.staff || "",
+        status: "未対応", fixDate: "", fixHow: "", fixBy: "", tkReportId: r.id, source: "点検ラクラク", recBy: "点検ラクラクから自動", recDate: today, createdMs: Date.now() }); n++; }
+    for (const x of mine) { if (x.status === "未対応" && !open.has(x.tkReportId)) {
+      await db.collection("isoRegisters").doc(x._id || x.id).update({ status: "直した", fixDate: x.fixDate || today, autoFixed: true, recDate: today }); n++; } }
+    return n;
+  }
+  window.TenkenStats = { syncRepairs, URL, month, months, fiscal, openReports, total, summarize };
 })();

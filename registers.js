@@ -552,6 +552,21 @@ const ISO_REGS = [
       { k:"by", label:"点検した人", type:"text", list:true },
       { k:"memo", label:"メモ(補充したもの・数など)", type:"textarea", list:true }
     ]
+  },
+  {
+    key:"vehRepair", icon:"🔧", name:"車両の不具合と修理", clause:"8.1 / 10.2",
+    help:"点検ラクラクの「不具合報告」が、ここに自動で写ります(書き写し不要)。点検ラクラクで「対応済」にすると点検ラクラクからは消えますが、ISO管理では「直した」になって記録が残ります(直した日は、ISO管理が対応済に気づいた日です)。どう直したか(交換した部品・修理した業者など)を書いておくと、審査で「見つけた不具合をきちんと直している」証拠になります。点検ラクラクにない不具合も「＋」で書けます。",
+    title:"content", dated:"date",
+    fields:[
+      { k:"date", label:"報告された日", type:"date", req:true, list:true },
+      { k:"vehicle", label:"車両", type:"text", req:true, list:true, ph:"例: 340" },
+      { k:"content", label:"不具合の内容", type:"textarea", req:true, list:true, ph:"例: ブレーキエア抜け" },
+      { k:"reporter", label:"報告した人", type:"text", list:true },
+      { k:"status", label:"状況", type:"select", options:[["未対応","未対応"],["直した","直した"]], list:true },
+      { k:"fixDate", label:"直した日", type:"date", list:true },
+      { k:"fixHow", label:"どう直したか", type:"textarea", list:true, ph:"例: エアホース交換（○○自動車）" },
+      { k:"fixBy", label:"直した人・業者", type:"text", list:true }
+    ]
   }
 ];
 

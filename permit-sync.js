@@ -23,7 +23,7 @@
     return "";
   }
   // 業務管理の許可証1件から「有効期限」を探す(項目名が変わっても読めるように)
-  const GOOD = /exp|limit|until|valid|deadline|end|期限|満了|有効/i, BAD = /issue|交付|start|begin|created|updated|登録|取得/i;
+  const GOOD = /exp|limit|until|valid|deadline|end|kigen|期限|満了|有効/i, BAD = /issue|交付|start|begin|created|updated|登録|取得/i;
   function findExp(p){
     const cands = Object.keys(p).map(k => [k, toYmd(p[k])]).filter(x => x[1]);
     const good = cands.filter(([k]) => GOOD.test(k) && !BAD.test(k));
@@ -62,16 +62,16 @@
   }
   // 状態の文字と色(ok/wa/ng/gr)
   function state(r){
-    if (r.left == null) return ["期限がわからない", "gr"];
+    if (r.left == null) return ["期限なし", "gr"];
     if (r.left < 0) return ["期限切れ", "ng"];
     if (r.left <= WARN_DAYS) return ["あと" + r.left + "日（更新の準備）", "wa"];
     return ["有効", "ok"];
   }
   const ISSUE = {
-    noexp: "業務管理に有効期限が入っていません → 業務管理の許可証管理で入れてください",
+    noexp: "",   // 古物商・計量証明事業など有効期限のない許可もあるので、知らせない
     nopdf: "許可証のPDFがまだありません → マスタ管理の「📜許可証」で入れてください",
-    oldpdf: "業務管理の期限のほうが新しいです → 更新後の許可証PDFをマスタ管理の「📜許可証」で入れてください",
-    oldexp: "許可証PDFの日付のほうが新しいです → 業務管理の許可証管理で有効期限を直してください",
+    oldpdf: "許可は更新済み（業務管理の期限が新しい）なのに、許可証PDFが古いままです → 新しい許可証PDFをマスタ管理の「📜許可証」で入れてください",
+    oldexp: "新しい許可証PDFは入っているのに、業務管理の有効期限が古いままです → 業務管理の許可証管理で有効期限を直してください",
     nogyomu: "業務管理の許可証管理にない許可です（期限はPDFの日付で見ています）"
   };
   window.PermitSync = { WARN_DAYS, load, build, state, ISSUE, toYmd, daysLeft, findExp, labelOf };

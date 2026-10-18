@@ -146,6 +146,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="history.js"></script>
 <script src="phone-complaint.js"></script>
+<script src="tenken-stats.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -581,7 +582,7 @@ function setTab(k){ if (k === "objectives") setTimeout(() => custPlanOnce().catc
      承認したあとに表を直すと「承認のあと直されています」になり、もう一度 確認・承認 する
    ・1件ずつの報告(苦情・ヒヤリハット・ゾーン報告・監査など): 行ごとに 確認・承認(行の chkBy/chkDate/apBy/apDate)。行を直すと消える
    ※ログインのしくみはないので、押した人の名前と日付を残す形(誰が押したかは記録に残る) */
-const REC_APPROVE = ["comms","nearMiss","zoneReport","auditCheck","extAudit","changes","emergency","minutes","review","distrib","auditPlan","auditSurvey","contractors","spillKit","calib"];
+const REC_APPROVE = ["comms","nearMiss","zoneReport","auditCheck","extAudit","changes","emergency","minutes","review","distrib","auditPlan","auditSurvey","contractors","spillKit","calib","vehRepair"];
 /* 2026/10: 1件ずつの記録(苦情・ヒヤリハットなど)の確認・承認ボタンはやめた。
    ISO14001 7.5.2 で「承認」が要るのは、計画書・手順書などの文書を作った・直したときだけで、起きたことの記録には要らないため。
    計画書などの表まるごとの承認(この下の approvalCard)だけ残す */
@@ -635,7 +636,7 @@ function render(){
   // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
   // タブ: 使う場面ごとに3つにまとめて、折り返して全部見えるように(2026/10)。下書きがあれば(下書き)を付ける
   const TAB_GROUPS = [["計画を立てる（6章）", ["issues","parties","roles","aspects","sigAspects","risks","legal","objectives"]],
-    ["支援（7章）", ["trainPlan","contractors"]], ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","zoneReport","emergency","spillKit","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
+    ["支援（7章）", ["trainPlan","contractors"]], ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","zoneReport","vehRepair","emergency","spillKit","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
   const inG = new Set(TAB_GROUPS.flatMap(g => g[1])), rest = ISO_REGS.map(r => r.key).filter(k => !inG.has(k));
   const chip = k => { const r = regOf(k); if (!r) return ""; const d = rows.filter(x => x.reg === k && x.draft).length;
     return '<button class="chipT'+(k===cur?" on":"")+'" onclick="setTab(\''+k+'\')">'+esc(r.name)+(d ? '<span class="dr">下書き'+d+'</span>' : '')+'</button>'; };
@@ -651,6 +652,7 @@ function render(){
   h += emsDocsHtml(reg, list.length);   // 会社の書類(PDF)は「使い方」のすぐ下
   h += approvalCard(reg, list);
   if (reg.key === "comms") { h += '<div id="phoneCand"></div>'; setTimeout(phoneCand, 0); }
+  if (reg.key === "vehRepair" && !window._tkSynced) { window._tkSynced = true; setTimeout(tkSync, 0); }
   if (reg.key === "objectives") h += custStepsCard();
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "review"){   // マネジメントレビューの資料を1年分の記録から自動で集める(mr-report.js)
@@ -690,6 +692,12 @@ function render(){
 /* ---------- 電話依頼から苦情かもしれないもの(phone-complaint.js) ----------
    押すだけで「コミュニケーション・苦情」に1行入る。苦情ではないものは「苦情ではない」で二度と出さない */
 let phoneC = [];
+/* 点検ラクラクの不具合報告を「車両の不具合と修理」に写す(開いたときに1回) */
+async function tkSync(){
+  if (!window.TenkenStats) return;
+  try { const reps = await TenkenStats.openReports(); const n = await TenkenStats.syncRepairs(db, rows, reps); if (n) toast("点検ラクラクの不具合報告を写しました（" + n + "件）"); }
+  catch(e){ console.error(e); toast("点検ラクラクを読めませんでした"); }
+}
 async function phoneCand(){
   const el = document.getElementById("phoneCand"); if (!el || !window.PhoneComplaint) return;
   try {

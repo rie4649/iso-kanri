@@ -5094,6 +5094,7 @@ async function renderHomeTasks() {
   const fyStart = now.getMonth() + 1 >= 8 ? now.getFullYear() + "-08" : (now.getFullYear() - 1) + "-08";
   const get = c => db.collection(c).get().then(s => s.docs.map(d => ({ _id: d.id, ...d.data() }))).catch(() => []);
   const [cl, sp, dr, ll, fr, fe, wt, nc, hv, mr, au, tr, rg, rv, ev, plog, plive, cmo, cor] = await Promise.all(["cleanlinessChecks","safetyPatrols","dieselRecords","lifelineRecords","freonRecords","freonEquipments","waterTests","noiseChecks","isoHoreiEval","isoMgmtReviews","isoAudits","trainingRecords","isoRegisters","emsDocReviews","isoEvents","phoneRequestLog","phoneRequests","isoCustMonthly","isoCorrectives"].map(get));
+  renderHomeCal(ev);
   db.collection("companyInfo").doc("profile").get().then(d => renderHomeInfo(d.exists ? d.data() : {})).catch(() => {});
   const has = (l, k, v) => l.some(x => String(x[k] || "").startsWith(v));
   const last = (l, k) => l.map(x => String(x[k] || "")).filter(Boolean).sort().pop() || "";
@@ -5148,7 +5149,7 @@ async function renderHomeOpen(rg, cor, tr) {
   R("vendors").forEach(x => [["permitExp", "許可"], ["contractExp", "契約"]].forEach(([k, l]) => { if (x[k] && x[k] <= soon) add(0, "委託先の" + l + "期限：" + (x.name || ""), l + "の期限 " + String(x[k]).replace(/-/g, "/"), "plan:vendors", x[k] < today ? "期限切れ" : "もうすぐ", x[k] < today ? "ng" : "wa"); }));
   // 承認待ち(1件ずつの報告は件数、表まるごとは個数)とバックアップ
   // 承認は計画書などの「表まるごと」だけ(1件ずつの記録は承認なし。ISO 7.5.2 で承認が要るのは文書だけ)
-  const REC = { comms:1, nearMiss:1, zoneReport:1, auditCheck:1, extAudit:1, changes:1, emergency:1, minutes:1, review:1, distrib:1, auditPlan:1, auditSurvey:1, contractors:1, spillKit:1, calib:1, trainPlan:1 };
+  const REC = { comms:1, nearMiss:1, zoneReport:1, auditCheck:1, extAudit:1, changes:1, emergency:1, minutes:1, review:1, distrib:1, auditPlan:1, auditSurvey:1, contractors:1, spillKit:1, calib:1, trainPlan:1, vehRepair:1 };
   const docRegs = [...new Set(rg.filter(x => !x.draft && x.reg && !REC[x.reg]).map(x => x.reg))];
   const sx = await Promise.all([db.collection("isoSettings").doc("approvals").get().catch(() => null), db.collection("isoSettings").doc("backup").get().catch(() => null)]);
   const apv = sx[0] && sx[0].exists ? sx[0].data() : {}, bk = sx[1] && sx[1].exists ? sx[1].data() : {};
@@ -5173,10 +5174,13 @@ async function renderHomeOpen(rg, cor, tr) {
   try { if (window.PermitSync) { const pr = await PermitSync.load(db);
     pr.rows.forEach(r => { const [st, c] = PermitSync.state(r), nm = [r.area, r.kind].filter(Boolean).join(" ") || r.label;
       if (c === "ng" || c === "wa") add(0, "許可の更新：" + nm, "有効期限 " + String(r.exp).replace(/-/g, "/") + (r.num ? "（" + r.num + "）" : ""), "kyoka", c === "ng" ? "期限切れ" : "あと" + r.left + "日", c);
-      else if (r.issue === "oldpdf" || r.issue === "oldexp" || r.issue === "noexp") add(5, "許可の日付が合っていません：" + nm, PermitSync.ISSUE[r.issue].split("→")[1].trim(), "kyoka", "確認", "wa"); }); } } catch (e) {}
+      else if (r.issue === "oldpdf") add(5, "許可証PDFが古いまま：" + nm, "許可は更新済み（業務管理 " + String(r.exp).replace(/-/g, "/") + "）。新しい許可証PDFをマスタ管理で入れる", "kyoka", "PDFを入れる", "wa");
+      else if (r.issue === "oldexp") add(5, "業務管理の期限が古いまま：" + nm, "新しい許可証PDF（" + String(r.pdfDate).replace(/-/g, "/") + "）に合わせて業務管理の期限を直す", "kyoka", "期限を直す", "wa"); }); } } catch (e) {}
   // 点検ラクラクの不具合報告(未対応のもの)：点検で見つかった不具合は、直すまでISOでも見えるように
   try { if (window.TenkenStats) { const rp = await Promise.race([TenkenStats.openReports(), new Promise((_, rj) => setTimeout(() => rj(new Error("t")), 8000))]);
-    if (rp.length) add(2, "車両の不具合報告（点検ラクラク）：" + rp.length + "件", rp.slice(0, 2).map(r => (r.vehicle || "") + " " + (r.content || "")).join("／").slice(0, 40), "tenkenNum", "未対応", "ng"); } } catch (e) {}
+    try { await TenkenStats.syncRepairs(db, rg, rp); } catch (e) { console.error(e); }   // ISOの「車両の不具合と修理」に写す・直したものは「直した」に
+    if (rp.length) add(2, "車両の不具合（点検ラクラク）：" + rp.length + "件", rp.slice(0, 2).map(r => (r.vehicle || "") + " " + (r.content || "")).join("／").slice(0, 40), "plan:vehRepair", "未対応", "ng"); } } catch (e) {}
+  R("vehRepair").filter(x => !x.tkReportId && x.status !== "直した").forEach(x => add(2, "車両の不具合：" + (x.vehicle || ""), (x.content || "").slice(0, 40), "plan:vehRepair", "未対応", "ng"));
   // 届出・報告の期限(届出・報告の期限一覧)：期限切れと、知らせる日数に入ったもの
   try { const rs = await db.collection("isoReports").get();
     rs.docs.map(d => d.data()).forEach(x => { if (!window.ReportDue) return; const st = ReportDue.status(x, today);
@@ -5293,6 +5297,8 @@ function renderHomeMenu() {
   const card = (ic, t, sub, body) => `<div class="hm-find hm-wk"><h3>${ic} ${t}</h3><div class="hm-wsub">${sub}</div>${body}</div>`;
   const [g1, g2, gT, g3, g4] = WORK_GROUPS;
   document.getElementById("homeMenu").innerHTML =
+    `<div class="hm-find hm-cal"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><h3 style="margin:0;flex:1;">📅 カレンダー<span style="font-size:12px;font-weight:normal;color:#6b7280;margin-left:8px;">今日から2週間の予定</span></h3>` +
+      `<button style="padding:9px 18px;font-size:15px;font-weight:700;border:none;border-radius:8px;background:#1e3a5f;color:#fff;cursor:pointer;" onclick="openSection('calendar')">📅 カレンダーを開く</button></div><div id="hmCal" style="margin-top:6px;"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
     `<div class="hm-find"><input type="search" id="hmQ" placeholder="🔍 書類名・言葉で探す（例：リスク、計量証明書、許可証、EMS-A-10）" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
     `<div class="hm-info" id="hmInfo" style="display:none;"></div>` +
     `<div class="hm-two"><div class="hm-find hm-now"><h3>✅ 今やること（時期が来ている記録）</h3><div id="hmNow"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
@@ -5307,6 +5313,17 @@ function renderHomeMenu() {
       SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("") + `</details>`;
   homeLibrary();
   renderHomeTasks().then(renderHomeNow).catch(e => { console.error(e); const el = document.getElementById("hmNow"); if (el) el.innerHTML = '<div style="font-size:13px;color:#6b7280;">状況を読み込めませんでした</div>'; });
+}
+/* ホームの一番上：今日から2週間のカレンダーの予定(押すとカレンダーが開く) */
+function renderHomeCal(ev) {
+  const el = document.getElementById("hmCal"); if (!el) return;
+  const t = new Date(), ymd = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const from = ymd(t), to = ymd(new Date(t.getTime() + 14 * 86400000)), WD = "日月火水木金土";
+  const L = (ev || []).filter(e => e.date && e.date >= from && e.date <= to).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time || "").localeCompare(String(b.time || "")));
+  if (!L.length) { el.innerHTML = '<div style="font-size:14px;color:#6b7280;padding:2px;">2週間以内の予定はありません</div>'; return; }
+  el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + L.slice(0, 10).map(e => { const d = new Date(e.date + "T00:00:00"), today = e.date === from;
+    return `<div class="hm-in" style="border:1px solid ${today ? "#f59e0b" : "#e5e7eb"};background:${today ? "#fffbeb" : "#f8fafc"};border-radius:6px;padding:6px 10px;flex:1 1 220px;" onclick="openSection('calendar')"><span class="nm"><b style="color:${today ? "#b45309" : "#1e3a5f"};">${today ? "今日" : (d.getMonth() + 1) + "/" + d.getDate() + "（" + WD[d.getDay()] + "）"}</b>　${escapeHtml(e.mark ? e.mark + " " : "")}${escapeHtml(e.title || "")}</span></div>`; }).join("") + '</div>' +
+    (L.length > 10 ? `<div class="hm-wsub" style="margin-top:4px;">ほか ${L.length - 10} 件</div>` : "");
 }
 /* 書類の置き場(library.js)に入れた書類を、ホームのフォルダの中にも並べる */
 async function homeLibrary() {

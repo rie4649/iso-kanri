@@ -427,6 +427,7 @@ const PAGES = [
   { key:"objectives", ch:2, icon:"🗓️", name:"環境目標の実施計画", reg:"objectives", render: renderReg },
   { key:"manual", ch:3, icon:"📖", name:"環境手順書", purpose:"manual", render: renderManual },
   { key:"tenken", ch:3, icon:"🚚", name:"車両点検アプリ(点検ラクラク)", render: renderTenken },
+  { key:"vehRepair", ch:3, icon:"🔧", name:"車両の不具合と修理", reg:"vehRepair", render: renderReg },
   { key:"records", ch:3, icon:"📁", name:"保管・掲示の状況", render: renderRecords },
   { key:"vendors", ch:3, icon:"", name:"外部委託先の管理", reg:"vendors", render: renderReg },
   { key:"skills", ch:3, icon:"🪪", name:"力量(資格の一覧)", render: renderSkills },
@@ -1209,7 +1210,7 @@ async function renderTenkenNum(p){
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="noPrintBar">'+sw(3)+sw(6)+sw(12)+
       '<a class="openBtn" href="'+TenkenStats.URL+'" target="_blank" rel="noopener" style="text-decoration:none;font-size:14px;padding:8px 14px;background:#fff;color:#1e3a5f;border:2px solid #cbd5e1;">🚚 点検ラクラクを開く ↗</a></div>'+
     '<div class="kpis">'+kp("点検した日", num(t.days, 0), "日", "")+kp("日常点検(32項目)", num(t.daily, 0), "回", "")+kp("午前・午後の点検確認", num(t.am + t.pm, 0), "回", "午前 "+num(t.am, 0)+"／午後 "+num(t.pm, 0))+
-      kp("点検した車両", t.vehicles, "台", "")+kp("「否」があった点検", t.bad, "件", reps.length ? "未対応の不具合報告 "+reps.length+"件" : "")+'</div>'+
+      kp("点検した車両", t.vehicles, "台", "")+kp("「否」があった点検", t.bad, "件", reps.length ? "未対応の不具合報告 "+reps.length+"件（「車両の不具合と修理」のページ）" : "")+'</div>'+
     '<h3 class="sec">📅 月ごと</h3><div class="tw"><table class="t"><tr><th>月</th><th>点検した日</th><th>車両</th><th>日常点検</th><th>午前確認</th><th>午後確認</th><th>否</th></tr>'+rows+'</table></div>'+
     (veh.length ? '<h3 class="sec">🚛 車両ごとの日常点検の回数</h3><div style="display:flex;flex-wrap:wrap;gap:6px;">'+veh.map(([v, n]) => '<span class="badge b-gr" style="font-size:14px;padding:4px 10px;">'+esc(v)+' <b>'+n+'</b>回</span>').join("")+'</div>' : '')+
     (bads.length ? '<h3 class="sec">⚠️ 「否」があった点検(新しい順)</h3><div class="tw"><table class="t"><tr><th>日付</th><th>車両</th><th>否の項目</th><th>備考</th></tr>'+bads.map(b =>
