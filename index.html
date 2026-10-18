@@ -5035,7 +5035,10 @@ const FIND_INDEX = [
   ["使い方 ヘルプ 質問 わからない どこ", "❓ 使い方（よくある質問）", "help"],
   ["バックアップ 保存 ダウンロード 控え", "💾 バックアップ", "backup"],
   ["車両 呼び名 愛称 車番 一覧 新入社員 新人", "🚛 車両の愛称一覧（新入社員用）", "vehlist"],
-  ["新入社員 新人 入社 教育 自覚 渡す書類", "🔰 新入社員教育", "newhire"],
+  ["新入社員 新人 入社 教育 自覚 渡す書類 聞き取り", "🔰 新入社員教育", "newhire"],
+  ["教育訓練計画 年間計画 教育の計画 力量", "年間の教育訓練計画", "plan:trainPlan"],
+  ["協力会社 来訪者 見学 工事業者 派遣 応援 周知 構内ルール", "協力会社・来訪者への周知", "plan:contractors"],
+  ["緊急用品 吸着マット 油吸着材 土のう 砂 油漏れ 備品", "緊急用品の点検", "plan:spillKit"],
   ["届出 報告 期限 実績報告 行政 提出 定期検査 はかり クレーン 消防 点検", "📮 届出・報告の期限一覧", "reports"],
   ["承認 確認 承認者 確認者 ハンコ", "❓ 使い方：承認のしかた", "help"],
   ["カレンダー 予定", "カレンダー", "calendar"]
@@ -5101,12 +5104,17 @@ async function renderHomeTasks() {
     T("ライフライン（電気・ガス・水道）", "前の月の分を入力", "lifeline", st(has(ll, "yearMonth", prevM), has(ll, "yearMonth", prevM) ? fdy(prevM) + " 済" : fdy(prevM) + " まだ")) +
     '<div class="hm-per">3か月ごと</div>' +
     T("フロン排出抑制法簡易点検", qMonths.join("・") + "月の間に全機器", "freon", st(fe.length ? frDone >= fe.length : null, `${frDone} / ${fe.length}台`)) +
+    (() => {   // 緊急用品(吸着マットなど)の点検：前の点検から3か月以内なら済
+      const sk = rg.filter(x => x.reg === "spillKit" && !x.draft), lastSk = last(sk, "date");
+      const ok = lastSk && (now - new Date(lastSk + "T00:00:00")) / 86400000 <= 92;
+      return T("緊急用品の点検", "吸着マット・油吸着材・砂・土のうなど（3か月に1回）", "plan:spillKit", st(ok, lastSk ? (ok ? fdy(lastSk) + " 済" : fdy(lastSk) + " から3か月") : "まだ"));
+    })() +
     '';
     homeYearPlan({ now, fyStart, wt, nc, hv, mr, au, tr, rg, rv, ev, st, fdy });
-    renderHomeOpen(rg, cor).catch(e => console.error(e));
+    renderHomeOpen(rg, cor, tr).catch(e => console.error(e));
 }
 /* 環境管理責任者が毎日見るもの: 終わっていないこと(対応中)と、期限が近いもの・過ぎたもの */
-async function renderHomeOpen(rg, cor) {
+async function renderHomeOpen(rg, cor, tr) {
   const el = document.getElementById("hmOpen"); if (!el) return;
   const t = new Date(), ymd = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   const today = ymd(t), soon = ymd(new Date(t.getTime() + 45 * 86400000));
@@ -5130,6 +5138,23 @@ async function renderHomeOpen(rg, cor) {
   const apv = sx[0] && sx[0].exists ? sx[0].data() : {}, bk = sx[1] && sx[1].exists ? sx[1].data() : {};
   const waitDocs = docRegs.filter(k => { const a = apv[k] || {}; if (!a.apBy) return true; const le = R(k).map(x => x.recDate || "").sort().pop() || ""; return le > a.apDate; });
   if (waitDocs.length) add(5, "表の承認待ち：" + waitDocs.length + "つ", "計画書・特定表などの表。それぞれの画面の「✍️ この表の承認」から", "plan:" + waitDocs[0], "承認待ち", "wa");
+  // 年間の教育訓練計画：予定の月が過ぎたのに、教育訓練の記録がないもの(テーマに「照合する言葉」が入った記録があれば済)
+  (() => { const fyNow = t.getMonth() + 1 >= 8 ? t.getFullYear() : t.getFullYear() - 1;
+    const recs = (tr || []).filter(x => { const d = String(x.date || ""); return d >= fyNow + "-08-01" && d <= (fyNow + 1) + "-07-31"; });
+    R("trainPlan").filter(x => String(x.fy || "") === String(fyNow) && (x.status || "予定") === "予定").forEach(x => {
+      const m = Number(x.month) || 0; if (!m) return;
+      const y = m >= 8 ? fyNow : fyNow + 1, end = ymd(new Date(y, m, 0));
+      const kws = String(x.keyword || "").split(/[、,，\s]+/).filter(Boolean);
+      const hit = kws.length && recs.some(r => kws.some(k => String(r.theme || "").includes(k)));
+      if (!hit && end < today) add(3, "教育訓練の計画：" + (x.theme || "").slice(0, 24), m + "月の予定・まだ記録がありません（" + (x.target || "") + "）", "plan:trainPlan", "まだ", "wa");
+    }); })();
+  // 新入社員の聞き取り(新入社員教育)：入社から1週間・1か月・3か月の日が来て、まだ聞いていないもの
+  try { const nh = await db.collection("isoNewHire").get();
+    nh.docs.map(d => d.data()).forEach(r => { if (!r.joinDate) return; const j = new Date(r.joinDate + "T00:00:00");
+      [["f1w", "1週間後", 7], ["f1m", "1か月後", 30], ["f3m", "3か月後", 90]].forEach(([k, l, dd]) => {
+        const due = ymd(new Date(j.getTime() + dd * 86400000)); if ((r.follow || {})[k] && r.follow[k].date) return;
+        if (due <= ymd(new Date(t.getTime() + 3 * 86400000))) add(3, "新入社員の聞き取り：" + (r.name || ""), l + "（" + due.replace(/-/g, "/") + "）困っていることを聞く", "newhire", due < today ? "聞く日" : "もうすぐ", "wa"); }); });
+  } catch (e) {}
   // 届出・報告の期限(届出・報告の期限一覧)：期限切れと、知らせる日数に入ったもの
   try { const rs = await db.collection("isoReports").get();
     rs.docs.map(d => d.data()).forEach(x => { if (!window.ReportDue) return; const st = ReportDue.status(x, today);
@@ -5192,6 +5217,10 @@ function homeYearPlan(o) {
     Y("11月", "緊急事態の手順書の見直し・定期テスト", "油漏れ・火災・地震などの訓練をして、緊急時の手順書を見直す（8.2）", "safety", done(test) || notYet(11)) +
     Y("1月末", "半期末の目標の評価", "環境目標が半分まで進んでいるか確認。足りなければ是正処置（6.2）", "plan:objectives", st(null, "1月末")) +
     Y("年7〜8回", "環境管理会議", "環境管理責任者とISO推進委員の会議。「会議の議事録」に記録（7.4.2・C-19）", "plan:minutes", st(meet.length >= 7 ? true : null, `${meet.length}回`)) +
+    (() => { const tp = o.rg.filter(x => x.reg === "trainPlan" && !x.draft && String(x.fy || "") === String(fy));
+      const recs = inFy(o.tr, "date"), isDone = x => x.status === "実施済み" || (() => { const kws = String(x.keyword || "").split(/[、,，\s]+/).filter(Boolean); return kws.length && recs.some(r => kws.some(k => String(r.theme || "").includes(k))); })();
+      const n = tp.filter(isDone).length;
+      return Y("年間", "教育訓練の計画", "今年度の教育の計画と実施（7.2）。計画は「ISOの計画」の年間の教育訓練計画、実施は教育訓練に記録", "plan:trainPlan", tp.length ? st(n >= tp.length ? true : null, `${n} / ${tp.length}件 実施`) : st(false, "計画なし")); })() +
     Y("年1回", "法令の順守評価", "法律や条例を守れているかを確認する。法的要求事項特定書（A-05）のチェックシートで点検（9.1.2）", "plan:legal", done(hv) || st(null, "まだ")) +
     Y("年1回", "水質検査", "油水分離槽の水を検査し、計量証明書を添付する（9.1.1）", "waterTest", done(water) || st(null, "まだ")) +
     Y("年1回", "騒音チェック", "敷地境界の騒音を測って記録する（9.1.1）", "noiseCheck", done(noise) || st(null, "まだ")) +
@@ -5205,16 +5234,17 @@ const WORK_GROUPS = [
   ["📝", "毎月・3か月ごとの記録", "決まった間隔で入力するもの", [
     ["clean", "クリーン度チェック", "月2回"], ["safety", "安全衛生パトロール・教育訓練", "パトロールは月1回"], ["diesel", "軽油使用量", "毎月・前の月の分"],
     ["lifeline", "ライフライン（電気・ガス・水道）", "毎月・前の月の分"], ["custlog", "顧客対応の進捗（電話依頼）", "数は自動。月1回 気づきを書き写す"],
-    ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
+    ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["plan:spillKit", "緊急用品の点検（吸着マットなど）", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
   ["📅", "年1回・決まった時期", "環境マニュアルで時期が決まっているもの", [
     ["reports", "📮 届出・報告の期限一覧", "実績報告・定期検査など役所に出すもの。期限が近いとホームに出る"],
+    ["plan:trainPlan", "年間の教育訓練計画", "8月に今年度の計画。記録があると自動で済"],
     ["volumes", "環境側面調査記録（取扱量の推移）", "8月・去年度の量を入れて考察（A-17）"], ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
     ["plan:auditPlan", "内部監査の計画（日程・分担）", "9月ごろ決める"], ["plan:auditCheck", "内部監査チェックシート", "監査の日に項目を確認（C-02）"], ["plan:auditSurvey", "内部監査アンケート", "全員の回答を入れる（C-03）"], ["kiroku", "内部監査の結果・是正処置", "10月〜2月"], ["plan:extAudit", "外部審査の指摘と対応", "審査のあと（C-06）"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
     ["plan:legal", "法令の順守評価（A-05）", "年1回・チェックシート"], ["waterTest", "水質検査（計量証明書）", "年1回"], ["noiseCheck", "騒音チェック・圧縮機点検", "年1回"],
     ["plan:review", "マネジメントレビュー", "年1回・社長へ報告"], ["plan:calib", "測定機器の点検・校正", "年1回"], ["shokaki", "消火器・防火管理", "点検のとき"]]],
   ["🚨", "何かあったとき", "起きたらすぐ記録する", [
     ["plan:comms", "苦情・問い合わせ・提案", "お客様・近隣・行政から"], ["plan:nearMiss", "ヒヤリハット", "けが・油漏れにならなかったけど危なかった（C-12）"], ["plan:zoneReport", "ゾーン報告", "ゾーンの置場・油漏れ・飛散など（C-14）"],
-    ["kiroku", "事故・不適合 → 是正処置", "原因と対策を記録"], ["plan:changes", "何かが変わった（変更管理）", "設備・法律・人・委託先"], ["newhire", "🔰 新入社員教育", "人が入ったとき・渡す書類と説明の記録"],
+    ["kiroku", "事故・不適合 → 是正処置", "原因と対策を記録"], ["plan:changes", "何かが変わった（変更管理）", "設備・法律・人・委託先"], ["newhire", "🔰 新入社員教育", "人が入ったとき・渡す書類と説明の記録"], ["plan:contractors", "協力会社・来訪者にルールを伝えた", "工事・応援・見学の人が来たとき"],
     ["calendar", "行政の立入検査・照会", "カレンダーに行政照会記録"], ["plan:minutes", "会議をした（議事録）", "環境管理会議・推進委員会"]]],
   ["🎯", "計画・ルール・書類", "何か変わったとき・見直すときに使う", [
     ["plan", "ISOの計画（課題・利害関係者・リスク・目標など）", ""],

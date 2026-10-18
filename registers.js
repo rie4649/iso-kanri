@@ -509,6 +509,49 @@ const ISO_REGS = [
       { name:"トラックスケール", use:"搬入・搬出の計量", method:"検定" },
       { name:"騒音計", use:"騒音チェック", method:"社内点検" }
     ]
+  },
+  {
+    key:"trainPlan", icon:"🎓", name:"年間の教育訓練計画", clause:"7.2 / 7.3",
+    help:"今年度(8月〜翌7月)に、だれに・何を・いつ教えるかの計画です。審査では「教育の計画はあるか、計画どおりにできたか」を見られます。教育訓練の記録(安全災害対策の🎓)に、テーマに「照合する言葉」が入った記録があると、ホームでは自動で「済」になります。月が過ぎても記録がないものは、ホームの「終わっていないこと・期限」に出ます。",
+    title:"theme",
+    fields:[
+      { k:"fy", label:"年度(8月始まりの年)", type:"text", req:true, list:true, ph:"例: 2026" },
+      { k:"month", label:"予定の月", type:"select", options:[["8","8月"],["9","9月"],["10","10月"],["11","11月"],["12","12月"],["1","1月"],["2","2月"],["3","3月"],["4","4月"],["5","5月"],["6","6月"],["7","7月"]], list:true },
+      { k:"theme", label:"テーマ", type:"text", req:true, list:true, ph:"例: 自覚教育(環境方針・環境目標・著しい環境側面)" },
+      { k:"target", label:"対象者", type:"text", list:true, ph:"例: 全社員／運転する人／内部監査員" },
+      { k:"instructor", label:"講師・担当", type:"text", list:true, ph:"例: 環境管理責任者" },
+      { k:"keyword", label:"照合する言葉(教育訓練の記録のテーマに入っていれば自動で済)", type:"text", list:false, ph:"例: 自覚 (いくつかあるときは「、」で区切る)" },
+      { k:"status", label:"状況", type:"select", options:[["予定","予定"],["実施済み","実施済み"],["延期","延期"],["中止","中止"]], list:true },
+      { k:"memo", label:"メモ", type:"textarea", list:true }
+    ]
+  },
+  {
+    key:"contractors", icon:"🦺", name:"協力会社・来訪者への周知", clause:"7.3 / 8.1",
+    help:"構内で作業する協力会社・派遣の人・運送業者・見学の人などに、会社の環境と安全のルールを伝えた記録です。ISO14001の「自覚」(7.3)は、社員だけでなく会社の管理のもとで働く人も対象です。初めて来たときと、ルールが変わったときに記録します。",
+    title:"company", dated:"date",
+    fields:[
+      { k:"date", label:"伝えた日", type:"date", req:true, list:true },
+      { k:"kind", label:"相手", type:"select", options:[["協力会社","協力会社(工事・修理など)"],["派遣・応援","派遣・応援の人"],["運送業者","運送業者・持ち込みのお客様"],["見学・来客","見学・来客"],["その他","その他"]], list:true },
+      { k:"company", label:"会社名", type:"text", req:true, list:true, ph:"例: 宮島工務店" },
+      { k:"people", label:"人の名前・人数", type:"text", list:true, ph:"例: 3名(代表 宮島さん)" },
+      { k:"items", label:"伝えたこと", type:"checks", options:["構内の制限速度・通行ルート","立入禁止の場所","保護具(ヘルメット・安全靴など)","喫煙場所","分別・置場のルール","油漏れ・事故のときの連絡先","火気の使用","緊急時の避難場所","作業で出たごみの持ち帰り"], list:true },
+      { k:"method", label:"伝え方", type:"select", options:[["口頭","口頭で説明"],["書面","書面を渡した"],["掲示","掲示を見てもらった"],["立会い","立会いで説明"]], list:true },
+      { k:"by", label:"伝えた人", type:"text", list:true },
+      { k:"memo", label:"メモ", type:"textarea", list:true }
+    ]
+  },
+  {
+    key:"spillKit", icon:"🧰", name:"緊急用品の点検", clause:"8.2",
+    help:"油漏れ・飛散などの緊急事態に使う用品(吸着マット・油吸着材・砂・土のうなど)が、決まった場所に足りているかの点検記録です。3か月に1回を目安に点検します(前の点検から3か月たつとホームに出ます)。消火器は「消火器・防火管理」で記録します。",
+    title:"place", dated:"date",
+    fields:[
+      { k:"date", label:"点検した日", type:"date", req:true, list:true },
+      { k:"place", label:"置き場所", type:"text", req:true, list:true, ph:"例: 事務所前の緊急用品ボックス／各車両" },
+      { k:"items", label:"そろっていたもの", type:"checks", options:["吸着マット","油吸着材(粒・ロール)","砂","土のう","スコップ","ほうき・ちりとり","回収袋・容器","ゴム手袋","中和剤"], list:true },
+      { k:"result", label:"結果", type:"select", options:[["足りている","足りている"],["補充した","足りなかったので補充した"],["不足","不足している(補充が必要)"]], list:true },
+      { k:"by", label:"点検した人", type:"text", list:true },
+      { k:"memo", label:"メモ(補充したもの・数など)", type:"textarea", list:true }
+    ]
   }
 ];
 

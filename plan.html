@@ -629,7 +629,7 @@ function render(){
   // タブ: 計画書(EMS文書)の有無と、表の行数(0のときは出さない)
   // タブ: 使う場面ごとに3つにまとめて、折り返して全部見えるように(2026/10)。下書きがあれば(下書き)を付ける
   const TAB_GROUPS = [["計画を立てる（6章）", ["issues","parties","roles","aspects","sigAspects","risks","legal","objectives"]],
-    ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","zoneReport","emergency","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
+    ["支援（7章）", ["trainPlan","contractors"]], ["運用・何かあったとき（6.3〜8章）", ["changes","vendors","routes","comms","nearMiss","zoneReport","emergency","spillKit","minutes","distrib"]], ["監視・評価（9章）", ["monitoring","calib","auditPlan","auditCheck","auditSurvey","extAudit","review"]]];
   const inG = new Set(TAB_GROUPS.flatMap(g => g[1])), rest = ISO_REGS.map(r => r.key).filter(k => !inG.has(k));
   const chip = k => { const r = regOf(k); if (!r) return ""; const d = rows.filter(x => x.reg === k && x.draft).length;
     return '<button class="chipT'+(k===cur?" on":"")+'" onclick="setTab(\''+k+'\')">'+esc(r.name)+(d ? '<span class="dr">下書き'+d+'</span>' : '')+'</button>'; };
@@ -1011,6 +1011,27 @@ async function planSeed4Once(){
   await b.commit(); toast("監視・測定の計画 "+PLAN_SEED2.monitoring.length+"件を入れました");
 }
 setTimeout(() => planSeed4Once().catch(e => console.error(e)), 3000);
+/* 最初の1回だけ: 年間の教育訓練計画に、環境マニュアルの時期に合わせた今年度の計画を入れる(もう計画があれば入れない) */
+async function planSeed5Once(){
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().planSeed5) return;
+  await fr.set({ planSeed5:true }, { merge:true });
+  const col = db.collection(ISO_REG_COL), all = (await col.get()).docs.map(d => d.data()), t = Date.now();
+  if (all.some(x => x.reg === "trainPlan")) return;
+  const fy = String(ycFy());
+  const P = [
+    ["8", "自覚教育（環境方針・環境目標・著しい環境側面・守らないとどうなるか）", "全社員", "環境管理責任者", "自覚、環境方針"],
+    ["9", "法令・条例の改正の周知", "全社員", "環境管理責任者", "法令、法改正"],
+    ["10", "内部監査員の教育（監査のしかた・チェックシートの使い方）", "内部監査員", "環境管理責任者", "内部監査員、監査員"],
+    ["11", "緊急事態の訓練（油漏れ・火災・地震）", "全社員", "環境管理責任者", "緊急、訓練、油漏れ、火災、地震"],
+    ["12", "フォークリフト・重機の安全教育", "作業員", "安全衛生担当", "フォークリフト、重機"],
+    ["4", "安全運転・アルコールチェック・車両点検", "運転する人", "安全運転管理者", "安全運転、アルコール、車両点検"],
+    ["6", "分別・置場のルールの確認（ヒヤリハットの振り返り）", "作業員", "環境管理責任者", "分別、置場、ヒヤリハット"]
+  ];
+  const b = db.batch(); P.forEach(([month, theme, target, instructor, keyword], i) => b.set(col.doc(), { reg:"trainPlan", fy, month, theme, target, instructor, keyword, status:"予定", memo:"", draft:false, createdMs:t+i, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }));
+  await b.commit(); toast("年間の教育訓練計画 "+P.length+"件を入れました（直して使ってください）");
+}
+setTimeout(() => planSeed5Once().catch(e => console.error(e)), 3500);
 /* 最初の1回だけ: 取引先環境配慮チェック体制(2025.12.09)の10社を外部委託先の管理に入れる(同じ名前の会社があれば入れない)。
    法令遵守状況は「廃棄物処理体制 全社適正」なので2点、事故・不適合履歴は「なし」で2点 */
 const VENDOR_SEED = [["(株)サイトー","エコアクション21",2,2,2],["(株)ウェルサイクル","エコアクション21",2,2,2],["(有)ゼンユー","ISO14001",2,2,0],["(株)フロンティアスピリット","ISO14001",2,2,2],

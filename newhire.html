@@ -47,6 +47,7 @@
     <div style="margin-top:6px;line-height:1.8;">
     <b>■ ① 渡す書類・説明すること</b>：新しく人が入ったら、この順番で渡して説明します。「開く・印刷」でその書類が出ます。PDFや写真は「編集」から付けられます。項目は足したり直したりできます。<br>
     <b>■ ② 記録</b>：「＋ 新しく入った人を記録」で名前と日付を入れ、説明したものにチェックして保存します。教育訓練の記録にも自動で1件入ります。<br>
+    <b>■ 聞き取り</b>：入社から1週間・1か月・3か月の日が来ると、ホームの「終わっていないこと・期限」に出ます。困っていることを聞いて記録し、次の人にも伝えたいことは「③ よく聞かれること」に足します。<br>
     <b>■ 記録表の印刷</b>：記録の「🖨️ 記録表」で、チェック表と本人・説明した人のサイン欄を印刷できます（ISOの審査で見せる控えになります）。<br>
     <b>■ なぜ必要？</b>：ISO14001では、働く人みんなが「環境方針」「自分の仕事が環境にどう関わるか」「守らないとどうなるか」を知っていることが求められます（7.3 自覚）。新入社員も対象です。</div>
   </details>
@@ -56,7 +57,31 @@
 
   <div class="sec">② 新入社員ごとの記録 <button class="btn pri" onclick="openRec('')">＋ 新しく入った人を記録</button></div>
   <div id="recs"><div class="empty">読み込み中…</div></div>
+
+  <div class="sec">③ よく聞かれること（次に入る人へ先に伝える） <button class="btn sm" onclick="openFaq(-1)">＋ 足す</button><button class="btn sm" onclick="printFaq()">🖨️ 印刷</button></div>
+  <div class="note" style="margin-top:-2px;">新入社員に聞かれたこと・聞き取りで出た困りごとをためておくと、次の人に最初から渡せます。</div>
+  <div id="faq"></div>
 </div>
+
+<!-- 聞き取り -->
+<div class="bg" id="fuBg" onclick="if(event.target===this)closeFu()"><div class="modal">
+  <h2 id="fuTtl">聞き取り</h2>
+  <div class="note" style="margin-top:0;line-height:1.8;">5分でOK。「困っていない？」より、次のように聞くと答えやすいです。<br>
+  ・聞いてもわからなかった言葉は？　・だれに聞けばいいか迷ったことは？<br>・ヒヤッとしたことは？　・最初に知りたかったことは？</div>
+  <label class="lb" for="fuDate">聞いた日</label><input type="date" id="fuDate">
+  <label class="lb" for="fuMemo">困っていること・答えたこと</label><textarea id="fuMemo" rows="5" placeholder="例：品物の呼び方（ミックス・ダライ粉）がわからない → 一覧を渡した"></textarea>
+  <label class="chk" style="border:none;"><input type="checkbox" id="fuFaq"><span>この内容を「③ よく聞かれること」にも足す</span></label>
+  <label class="lb" for="fuBy">聞いた人</label><input id="fuBy">
+  <div class="mBtns"><button class="btn" onclick="closeFu()">キャンセル</button><button class="btn pri" onclick="saveFu()">保存</button></div>
+</div></div>
+
+<!-- よく聞かれること -->
+<div class="bg" id="faqBg" onclick="if(event.target===this)closeFaq()"><div class="modal">
+  <h2>よく聞かれること</h2>
+  <label class="lb" for="faqQ">聞かれたこと・困ったこと</label><input id="faqQ" placeholder="例：ダライ粉って何？">
+  <label class="lb" for="faqA">答え・伝えること</label><textarea id="faqA" rows="4"></textarea>
+  <div class="mBtns"><button class="btn del" style="margin-right:auto;" id="faqDel" onclick="delFaq()">削除</button><button class="btn" onclick="closeFaq()">キャンセル</button><button class="btn pri" onclick="saveFaq()">保存</button></div>
+</div></div>
 
 <!-- 項目の編集 -->
 <div class="bg" id="itemBg" onclick="if(event.target===this)closeItem()"><div class="modal">
@@ -126,6 +151,7 @@ const DEFAULT_ITEMS = [
   { name:"ヒヤリハットの出し方", note:"ヒヤッとしたら、小さなことでも報告する。", link:"plan.html#nearMiss", iso:true },
   { name:"アルコールチェック・車両点検のやり方（運転する人）", note:"運転の前後のアルコールチェック、毎日の点検。", link:"" }
 ];
+let faq = [], editFaq = -1, fuRec = "", fuKey = "";
 let items = [], recs = [], editItem = -1, itemFiles = [], newFiles = [], rmFiles = [], editRec = "";
 const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const todayYmd = () => { const d = new Date(), z = n => String(n).padStart(2, "0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); };
@@ -139,7 +165,7 @@ SET_REF.onSnapshot(d => {
     if (!window._seeded) { window._seeded = true; SET_REF.set({ items: DEFAULT_ITEMS.map(x => ({ id: uid(), files: [], iso: false, ...x })) }, { merge: true }).catch(e => toast("エラー: "+e.message)); }
     return;
   }
-  items = d.data().items; renderItems(); renderRecs();
+  items = d.data().items; faq = d.data().faq || []; renderItems(); renderRecs(); renderFaq();
 }, e => toast("読み込みエラー: "+e.message));
 function renderItems(){
   document.getElementById("items").innerHTML = items.length ? items.map((x, i) => '<div class="it"><div class="n">'+(i+1)+'</div><div class="b">'+
@@ -214,6 +240,8 @@ function renderRecs(){
   document.getElementById("recs").innerHTML = recs.length ? recs.map(r => { const c = items.filter(x => (r.checks || {})[x.id]).length, pct = n ? Math.round(c / n * 100) : 0;
     return '<div class="rec"><div class="nm">'+esc(r.name)+'<div class="note" style="margin:2px 0 0;font-weight:normal;">入社 '+esc(fdj(r.joinDate)||"—")+'　教育 '+esc(fdj(r.date)||"—")+'　説明した人 '+esc(r.recBy||"—")+'</div></div>'+
       '<div style="font-size:13px;font-weight:700;color:'+(c >= n ? "#15803d" : "#b45309")+';">'+(c >= n ? "✅ 全部済み" : c+" / "+n+" 済み")+'</div><div class="bar2"><i style="width:'+pct+'%"></i></div>'+
+      '<div style="width:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:#475569;">聞き取り：'+FU.map(([k, l, dd]) => { const f = (r.follow || {})[k], due = r.joinDate ? addDays(r.joinDate, dd) : "";
+        return '<button class="btn sm'+(f && f.date ? '' : (due && due <= todayYmd() ? ' pri' : ''))+'" onclick="openFu(\''+r.id+'\',\''+k+'\')">'+(f && f.date ? '✅ ' : '')+l+(f && f.date ? '（'+esc(fdj(f.date))+'）' : (due ? '（'+esc(fdj(due))+'）' : ''))+'</button>'; }).join("")+'</div>'+
       '<button class="btn sm" onclick="printRec(\''+r.id+'\')">🖨️ 記録表</button><button class="btn sm pri" onclick="openRec(\''+r.id+'\')">開く・直す</button></div>'; }).join("")
     : '<div class="empty">まだ記録がありません。人が入ったら「＋ 新しく入った人を記録」から入れてください</div>';
 }
@@ -258,6 +286,50 @@ async function delRec(){
   const r = recs.find(x => x.id === editRec); if (!r || !confirm(r.name + " さんの記録を消しますか？（教育訓練の記録からも消えます）")) return;
   try { if (r.trainingId) await db.collection(TRAIN_COL).doc(r.trainingId).delete(); await db.collection(REC_COL).doc(r.id).delete(); closeRec(); toast("消しました"); } catch(e){ toast("エラー: "+e.message); }
 }
+/* ---------- 聞き取り(入社から1週間・1か月・3か月) ---------- */
+const FU = [["f1w", "1週間後", 7], ["f1m", "1か月後", 30], ["f3m", "3か月後", 90]];
+const addDays = (ymd, n) => { const d = new Date(ymd + "T00:00:00"); d.setDate(d.getDate() + n); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+function openFu(id, k){
+  fuRec = id; fuKey = k; const r = recs.find(x => x.id === id) || {}, f = (r.follow || {})[k] || {}, l = (FU.find(x => x[0] === k) || [])[1];
+  document.getElementById("fuTtl").textContent = "聞き取り（" + l + "）― " + (r.name || "");
+  document.getElementById("fuDate").value = f.date || todayYmd(); document.getElementById("fuMemo").value = f.memo || ""; document.getElementById("fuFaq").checked = false;
+  let by = ""; try { by = localStorage.getItem("isoRecBy") || ""; } catch(e){} document.getElementById("fuBy").value = f.by || by;
+  document.getElementById("fuBg").classList.add("show");
+}
+function closeFu(){ document.getElementById("fuBg").classList.remove("show"); }
+async function saveFu(){
+  const r = recs.find(x => x.id === fuRec); if (!r) return;
+  const by = document.getElementById("fuBy").value.trim(), memo = document.getElementById("fuMemo").value.trim();
+  if (!by) { toast("聞いた人の名前を入れてください"); return; }
+  try { localStorage.setItem("isoRecBy", by); } catch(e){}
+  const follow = { ...(r.follow || {}), [fuKey]: { date: document.getElementById("fuDate").value || todayYmd(), memo, by } };
+  try {
+    await db.collection(REC_COL).doc(fuRec).update({ follow, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    if (document.getElementById("fuFaq").checked && memo) { faq = faq.concat([{ q: memo.split("\n")[0].slice(0, 80), a: memo }]); await SET_REF.update({ faq }); }
+    closeFu(); toast("聞き取りを保存しました");
+  } catch(e){ toast("エラー: "+e.message); }
+}
+/* ---------- よく聞かれること ---------- */
+function renderFaq(){
+  document.getElementById("faq").innerHTML = faq.length ? faq.map((x, i) => '<div class="it"><div class="n" style="background:#b45309;">Q</div><div class="b"><div class="t">'+esc(x.q)+'</div>'+(x.a ? '<div class="d">'+esc(x.a)+'</div>' : '')+
+    '<div class="acts"><button class="btn sm" onclick="openFaq('+i+')">編集</button></div></div></div>').join("") : '<div class="empty">まだありません</div>';
+}
+function openFaq(i){ editFaq = i; const x = i >= 0 ? faq[i] : { q:"", a:"" };
+  document.getElementById("faqQ").value = x.q || ""; document.getElementById("faqA").value = x.a || ""; document.getElementById("faqDel").style.display = i >= 0 ? "" : "none";
+  document.getElementById("faqBg").classList.add("show"); }
+function closeFaq(){ document.getElementById("faqBg").classList.remove("show"); }
+async function saveFaq(){
+  const q = document.getElementById("faqQ").value.trim(); if (!q) { toast("聞かれたことを入れてください"); return; }
+  const x = { q, a: document.getElementById("faqA").value.trim() }; const next = faq.slice(); if (editFaq >= 0) next[editFaq] = x; else next.push(x);
+  try { await SET_REF.update({ faq: next }); faq = next; renderFaq(); closeFaq(); toast("保存しました"); } catch(e){ toast("エラー: "+e.message); }
+}
+async function delFaq(){ if (!confirm("消しますか？")) return; const next = faq.filter((_, k) => k !== editFaq);
+  try { await SET_REF.update({ faq: next }); faq = next; renderFaq(); closeFaq(); } catch(e){ toast("エラー: "+e.message); } }
+function printFaq(){
+  document.getElementById("printArea").innerHTML = '<div class="pt"><h1>新しく入った人へ ― よく聞かれること</h1><table><tr><th style="width:38%;">聞かれたこと</th><th>答え</th></tr>'+
+    faq.map(x => '<tr><td><b>'+esc(x.q)+'</b></td><td style="white-space:pre-wrap;">'+esc(x.a||"")+'</td></tr>').join("")+'</table><div style="margin-top:4mm;font-size:9pt;color:#475569;">わからないことは、いつでも事務所に聞いてください。　株式会社関根商店</div></div>';
+  window.print();
+}
 /* 記録表(A4)：チェック表と本人・説明した人のサイン欄 */
 function printRec(id){
   const r = recs.find(x => x.id === id); if (!r) return;
@@ -267,6 +339,8 @@ function printRec(id){
     '<table><tr><th class="ck">済</th><th style="width:38%;">渡した書類・説明したこと</th><th>内容</th></tr>'+
     items.map(x => '<tr><td class="ck">'+((r.checks || {})[x.id] ? "✔" : "")+'</td><td><b>'+esc(x.name)+'</b></td><td style="white-space:pre-wrap;">'+esc(x.note||"")+'</td></tr>').join("")+'</table>'+
     (r.memo ? '<div style="margin-top:4mm;font-size:10.5pt;"><b>メモ：</b>'+esc(r.memo)+'</div>' : '')+
+    '<table style="margin-top:4mm;"><tr><th style="width:18%;">聞き取り</th><th style="width:16%;">聞いた日</th><th>困っていること・答えたこと</th><th style="width:14%;">聞いた人</th></tr>'+
+    FU.map(([k, l]) => { const f = (r.follow || {})[k] || {}; return '<tr><td>'+l+'</td><td>'+esc(fdj(f.date))+'</td><td style="white-space:pre-wrap;">'+esc(f.memo||"")+'</td><td>'+esc(f.by||"")+'</td></tr>'; }).join("")+'</table>'+
     '<div class="sign"><div>本人サイン</div><div>説明した人サイン</div><div>確認（環境管理責任者）</div></div>'+
     '<div style="margin-top:4mm;font-size:9pt;color:#475569;">株式会社関根商店　ISO14001 7.2 力量・7.3 自覚</div></div>';
   window.print();
