@@ -17,6 +17,7 @@
 <script src="library.js"></script>
 <script src="phone-complaint.js"></script>
 <script src="permit-sync.js"></script>
+<script src="tenken-stats.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -5173,6 +5174,9 @@ async function renderHomeOpen(rg, cor, tr) {
     pr.rows.forEach(r => { const [st, c] = PermitSync.state(r), nm = [r.area, r.kind].filter(Boolean).join(" ") || r.label;
       if (c === "ng" || c === "wa") add(0, "許可の更新：" + nm, "有効期限 " + String(r.exp).replace(/-/g, "/") + (r.num ? "（" + r.num + "）" : ""), "kyoka", c === "ng" ? "期限切れ" : "あと" + r.left + "日", c);
       else if (r.issue === "oldpdf" || r.issue === "oldexp" || r.issue === "noexp") add(5, "許可の日付が合っていません：" + nm, PermitSync.ISSUE[r.issue].split("→")[1].trim(), "kyoka", "確認", "wa"); }); } } catch (e) {}
+  // 点検ラクラクの不具合報告(未対応のもの)：点検で見つかった不具合は、直すまでISOでも見えるように
+  try { if (window.TenkenStats) { const rp = await Promise.race([TenkenStats.openReports(), new Promise((_, rj) => setTimeout(() => rj(new Error("t")), 8000))]);
+    if (rp.length) add(2, "車両の不具合報告（点検ラクラク）：" + rp.length + "件", rp.slice(0, 2).map(r => (r.vehicle || "") + " " + (r.content || "")).join("／").slice(0, 40), "tenkenNum", "未対応", "ng"); } } catch (e) {}
   // 届出・報告の期限(届出・報告の期限一覧)：期限切れと、知らせる日数に入ったもの
   try { const rs = await db.collection("isoReports").get();
     rs.docs.map(d => d.data()).forEach(x => { if (!window.ReportDue) return; const st = ReportDue.status(x, today);
@@ -5269,7 +5273,7 @@ const WORK_GROUPS = [
     ["survey", "委託先調査票の回答", "取引先から届いたとき"], ["horei", "法規制一覧（法改正のお知らせ）", ""], ["kyoka", "許可一覧", ""], ["permit", "許可の内容", ""],
     ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
   ["👀", "見る・まとめる", "監査・会議・視察のとき", [
-    ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["plan:review", "📊 マネジメントレビューの資料を作る", "1年分の記録から社長への報告書を自動で作る"], ["summary", "年間サマリー", "1年の記録の集計"],
+    ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["plan:review", "📊 マネジメントレビューの資料を作る", "1年分の記録から社長への報告書を自動で作る"], ["summary", "年間サマリー", "1年の記録の集計"], ["tenkenNum", "🚚 車両点検の実績", "点検ラクラクの記録を自動で数える（審査で見せる）"],
     ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"],
     ["slides", "🖥️ スライドショー（展示用）", "見せたい写真・ページを選んで自動で流す"], ["edithist", "🕘 直した履歴", "だれが・いつ・何を直したか。間違えたら元に戻す"], ["help", "❓ 使い方（よくある質問）", "「これはどこ？」と聞かれたらここ"], ["backup", "💾 バックアップ", "月に1回、全部の記録をファイルに保存"]]]
 ];
@@ -5342,6 +5346,7 @@ window.openSection = function(sec) {
   if (sec === "library") { location.href = "library.html"; return; }
   if (sec === "help") { location.href = "help.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
+  if (sec === "tenkenNum") { location.href = "show.html#tenkenNum"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
   if (sec === "kiroku") { location.href = "kiroku.html"; return; }
   if (sec === "summary") { location.href = "summary.html"; return; }

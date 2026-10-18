@@ -271,6 +271,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <script src="survey-items.js"></script>
 <script src="contract-stats.js"></script>
 <script src="permit-sync.js"></script>
+<script src="tenken-stats.js"></script>
 <script>
 /* =====================================================================
    環境への取り組み(旧 見せるモード。監査・視察・プロジェクター用)
@@ -438,6 +439,7 @@ const PAGES = [
   { key:"water", ch:4, icon:"🧪", name:"水質検査", purpose:"waterTest", render: renderWater },
   { key:"noise", ch:4, icon:"🔊", name:"騒音チェック", purpose:"noiseCheck", render: renderNoise },
   { key:"comp", ch:4, icon:"🛠️", name:"圧縮機定期点検", purpose:"noiseCheck", render: renderComp },
+  { key:"tenkenNum", ch:4, icon:"🚚", name:"車両点検の実績(点検ラクラク)", render: renderTenkenNum },
   { key:"diesel", ch:4, icon:"⛽", name:"軽油使用量", purpose:"diesel", render: renderDiesel },
   { key:"lifeline", ch:4, icon:"⚡", name:"ライフライン(電気・ガス・水道)", purpose:"lifeline", render: renderLifeline },
   { key:"freon", ch:4, icon:"🌡️", name:"フロン排出抑制法簡易点検", purpose:"freon", render: renderFreon },
@@ -962,6 +964,8 @@ async function renderNumbers(p){
   const curRecs = dr.filter(x => x.yearMonth && fyOf(x.yearMonth) === fy), ms = curRecs.map(x => x.yearMonth.slice(5,7));
   const c1 = curRecs.reduce((a,x) => a + lit(x), 0), c0 = dr.filter(x => x.yearMonth && fyOf(x.yearMonth) === prevFy && ms.includes(x.yearMonth.slice(5,7))).reduce((a,x) => a + lit(x), 0);
   if (c1 && c0){ const r = (1 - c1 / c0) * 100; if (r > 0) big("⛽", "軽油の使用量を削減", num(r), "%減", "前年度の同じ時期と比べて"); }
+  // 車両の日常点検(点検ラクラクから自動・直近12か月)
+  try { if (window.TenkenStats){ const t = TenkenStats.total(await TenkenStats.months(12)); if (t.daily) big("🚚", "車両の日常点検", num(t.daily, 0), "回", "直近12か月・点検した日 "+t.days+"日"); } } catch(e){}
   return await head(p, esc(pf.company || COMPANY)) + (cards.length ? '<div class="kpis" style="gap:18px;">'+cards.join("")+'</div>' : empty("表示できる数字がまだありません"));
 }
 
@@ -1182,6 +1186,35 @@ async function renderTenken(p){
     '<div style="display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px;">'+
       (x[2] ? '<span class="badge b-ok">📱 実際のアプリの画面</span>' : '')+link+'</div>'+
     '<div class="note" style="text-align:center;margin-top:8px;">'+(tkIdx+1)+' / '+TENKEN_IMGS.length+'　上のボタンか ◀ ▶ で切り替えます(点線のボタンは実際の画面)</div>';
+}
+
+/* ---------- 車両点検の実績(点検ラクラクから自動で数える) ----------
+   点検ラクラク(別のFirebase)の記録を読むだけ。tenken-stats.js で月ごとに数える */
+let tkStatN = 12;
+async function renderTenkenNum(p){
+  if (!window.TenkenStats) return await head(p) + empty("tenken-stats.js が読み込めません");
+  let L, reps = [];
+  try { [L, reps] = await Promise.all([TenkenStats.months(tkStatN), TenkenStats.openReports().catch(() => [])]); }
+  catch(e){ return await head(p) + empty("点検ラクラクの記録を読めませんでした（" + esc(e.message) + "）"); }
+  const t = TenkenStats.total(L), max = Math.max(1, ...L.map(r => r.daily));
+  const kp = (k, v, u, s) => '<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+'<small>'+u+'</small></div>'+(s ? '<div class="note">'+s+'</div>' : '')+'</div>';
+  const first = L[0], last = L[L.length - 1], per = first.y+"年"+first.m+"月〜"+last.y+"年"+last.m+"月";
+  const rows = L.map(r => '<tr><td class="nw"><b>'+r.y+"年"+r.m+'月</b>'+(r.error ? ' <span class="note">読めず</span>' : '')+'</td><td class="c">'+r.days+'日</td><td class="c">'+r.vehicles+'台</td>'+
+    '<td><div style="display:flex;align-items:center;gap:8px;"><div style="height:14px;border-radius:3px;background:#1E6B45;width:'+Math.round(r.daily / max * 160)+'px;"></div><b>'+r.daily+'</b>回</div></td>'+
+    '<td class="c">'+r.am+'</td><td class="c">'+r.pm+'</td><td class="c">'+(r.bad ? '<span class="badge b-wn">'+r.bad+'件</span>' : '0')+'</td></tr>').join("");
+  const veh = Object.entries(t.byVehicle).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"));
+  const bads = L.flatMap(r => r.badList).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
+  const sw = n => '<button class="openBtn" style="font-size:14px;padding:8px 14px;'+(tkStatN === n ? 'background:#1E6B45;color:#fff;border:2px solid #1E6B45;' : 'background:#fff;color:#1E6B45;border:2px solid #1E6B45;')+'" onclick="tkStatN='+n+';show(cur)">'+(n === 12 ? '直近12か月' : '直近'+n+'か月')+'</button>';
+  return await head(p, per + "・点検ラクラクの記録から自動で数えています(書き写し不要)") +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" class="noPrintBar">'+sw(3)+sw(6)+sw(12)+
+      '<a class="openBtn" href="'+TenkenStats.URL+'" target="_blank" rel="noopener" style="text-decoration:none;font-size:14px;padding:8px 14px;background:#fff;color:#1e3a5f;border:2px solid #cbd5e1;">🚚 点検ラクラクを開く ↗</a></div>'+
+    '<div class="kpis">'+kp("点検した日", num(t.days, 0), "日", "")+kp("日常点検(32項目)", num(t.daily, 0), "回", "")+kp("午前・午後の点検確認", num(t.am + t.pm, 0), "回", "午前 "+num(t.am, 0)+"／午後 "+num(t.pm, 0))+
+      kp("点検した車両", t.vehicles, "台", "")+kp("「否」があった点検", t.bad, "件", reps.length ? "未対応の不具合報告 "+reps.length+"件" : "")+'</div>'+
+    '<h3 class="sec">📅 月ごと</h3><div class="tw"><table class="t"><tr><th>月</th><th>点検した日</th><th>車両</th><th>日常点検</th><th>午前確認</th><th>午後確認</th><th>否</th></tr>'+rows+'</table></div>'+
+    (veh.length ? '<h3 class="sec">🚛 車両ごとの日常点検の回数</h3><div style="display:flex;flex-wrap:wrap;gap:6px;">'+veh.map(([v, n]) => '<span class="badge b-gr" style="font-size:14px;padding:4px 10px;">'+esc(v)+' <b>'+n+'</b>回</span>').join("")+'</div>' : '')+
+    (bads.length ? '<h3 class="sec">⚠️ 「否」があった点検(新しい順)</h3><div class="tw"><table class="t"><tr><th>日付</th><th>車両</th><th>否の項目</th><th>備考</th></tr>'+bads.map(b =>
+      '<tr><td class="c nw">'+esc(fd(b.date))+'</td><td class="nw"><b>'+esc(b.vehicle)+'</b></td><td>'+esc(b.items.join("、"))+'</td><td>'+esc(b.memo)+'</td></tr>').join("")+'</table></div>' : '')+
+    '<div class="note" style="margin-top:10px;">※ 日常点検をすると午前の点検確認も付きます。アルコールチェックは点検ラクラクとは別の記録のため、ここには入っていません。</div>';
 }
 
 async function renderManual(p){

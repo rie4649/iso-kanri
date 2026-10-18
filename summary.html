@@ -124,6 +124,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="history.js"></script>
 <script src="recby.js"></script>
+<script src="tenken-stats.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -318,7 +319,18 @@ async function buildSummary(){
       return `<div class="stat"><div class="k">${m.name}</div><div class="d">読み込めませんでした</div></div>`;
     }
   }));
-  grid.innerHTML = cards.join("");
+  grid.innerHTML = cards.join("") + '<div class="stat" id="tkStat"><div class="k">🚚 車両の日常点検(点検ラクラク)</div><div class="d">集計中...</div></div>';
+  // 点検ラクラクの記録を自動で数える(別のFirebaseを読むだけ)
+  try {
+    const now = new Date(), endM = Number(year) === now.getFullYear() ? now.getMonth() + 1 : 12;
+    if (!window.TenkenStats || Number(year) > now.getFullYear()) throw new Error("");
+    const t = TenkenStats.total(await TenkenStats.months(endM, Number(year), endM));
+    const el = document.getElementById("tkStat"); if (!el) return;
+    el.style.cursor = "pointer"; el.onclick = () => { location.href = "show.html#tenkenNum"; };
+    el.innerHTML = `<div class="k">🚚 車両の日常点検(${year}年)</div><div class="v">${t.daily}<span style="font-size:13px;font-weight:normal;">回</span></div>
+      <div class="d">点検した日 ${t.days}日　午前・午後の確認 ${t.am + t.pm}回${t.bad ? `　<span class="warn">否 ${t.bad}件</span>` : ""}</div>
+      <div class="d" style="color:#0f766e;font-weight:bold;">👆 タップで月ごとの実績を見る</div>`;
+  } catch(e){ const el = document.getElementById("tkStat"); if (el) el.innerHTML = '<div class="k">🚚 車両の日常点検(点検ラクラク)</div><div class="d">読み込めませんでした</div>'; }
 }
 
 // 1件を読める1行にする

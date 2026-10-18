@@ -91,7 +91,7 @@ const db = firebase.firestore();
 /* 保存先：isoSettings/slides { sets:[{ id, name, sec, cap, items:[{t:"photo",id} | {t:"page",key} | {t:"text",title,body}] }] }
    写真は「写真の記録」(isoPhotos＝小さい写真・isoPhotoFiles＝大きい写真)、ページは「環境への取り組み」(show.html)をそのまま使う */
 const SET_REF = db.collection("isoSettings").doc("slides");
-const PAGES = [["policy","🌿 環境方針"],["history","📜 沿革"],["org","🏢 組織図"],["numbers","✨ 数字で見る関根商店"],["equip","🚛 主な設備・車両"],["kyoka","📜 許可一覧"],["permit","許可の内容"],
+const PAGES = [["policy","🌿 環境方針"],["history","📜 沿革"],["org","🏢 組織図"],["numbers","✨ 数字で見る関根商店"],["equip","🚛 主な設備・車両"],["kyoka","📜 許可一覧"],["tenkenNum","🚚 車両点検の実績"],["permit","許可の内容"],
   ["sdgs","🎯 環境目標・SDGs"],["records","📁 保管・掲示の状況"],["training","🎓 教育訓練"],["calendar","📅 年間の活動"],["water","🧪 水質検査"],["noise","🔊 騒音チェック"],["diesel","⛽ 軽油使用量"],
   ["lifeline","⚡ ライフライン"],["co2","🌍 CO₂排出量"],["safety","🦺 安全衛生パトロール"],["clean","🧹 クリーン度チェック"],["metal","🔩 金属拾い上げ"],["donation","🤝 地域貢献"],["dash","📋 ひと目で分かるまとめ"]];
 const GROUPS = [["all","すべて"],["vehicle","車両"],["equip","設備"],["record","保管・掲示・現場"],["event","出来事"]];
