@@ -266,9 +266,11 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="history.js"></script>
+<script src="library.js"></script>
 <script src="registers.js"></script>
 <script src="survey-items.js"></script>
 <script src="contract-stats.js"></script>
+<script src="permit-sync.js"></script>
 <script>
 /* =====================================================================
    環境への取り組み(旧 見せるモード。監査・視察・プロジェクター用)
@@ -449,6 +451,7 @@ const PAGES = [
   { key:"review", ch:4, icon:"📊", name:"マネジメントレビュー", render: renderReview },
   { key:"corrective", ch:5, icon:"🛠", name:"是正処置", render: renderCorrective },
   { key:"donation", ch:6, icon:"🤝", name:"地域貢献", purpose:"donation", render: renderDonation },
+  { key:"docsLib", ch:7, icon:"📚", name:"資料", render: renderDocsLib },
   { key:"dash", ch:7, icon:"📋", name:"ひと目で分かるまとめ", render: renderDash }
 ];
 /* 見せる相手ごとのコース(表紙で選ぶ) */
@@ -476,6 +479,14 @@ async function renderCover(p){
     '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ</div></div>'+
     '<div class="tiles">'+tiles+'</div>'+
     '<div class="note" style="text-align:center;margin-top:18px;">◀ ▶ ボタン・キーボードの ← → ・スワイプで次のページへ進めます</div>';
+}
+
+/* ---------- 資料：書類の置き場(library.html)で「環境への取り組み」を選んだ書類 ---------- */
+async function renderDocsLib(p){
+  const L = window.Library ? (await Library.list(db)).filter(d => (d.uses || []).includes("show")) : [];
+  if (!L.length) return await head(p, "") + empty("ISO管理の「📁 書類の置き場」で、使う場所に「環境への取り組み」を選んだ書類がここに並びます");
+  return await head(p, "押すと開きます") + Library.FOLDERS.map(([k, ic, nm]) => { const D = L.filter(d => (d.folder || "other") === k); if (!D.length) return "";
+    return '<h3 class="sec">'+ic+' '+esc(nm)+'</h3><div class="recg">'+D.map(d => '<div class="recc" style="cursor:pointer;padding:14px;" onclick="Library.open(db,\''+d.id+'\')"><div style="font-size:34px;">'+Library.icon(d)+'</div><div class="recm"><b style="font-size:17px;">'+esc(d.name)+'</b>'+(d.memo ? '<div class="note" style="margin:2px 0 0;">'+esc(d.memo)+'</div>' : '')+'</div></div>').join("")+'</div>'; }).join("");
 }
 
 /* ---------- ひと目で分かるまとめ ---------- */
@@ -1074,21 +1085,18 @@ async function renderOrg(p){
 
 /* ---------- 許可一覧 ---------- */
 async function renderKyoka(p){
-  const [docs, ord] = await Promise.all([col("isoKyokaDocs"), docGet("isoKyokaSettings", "groupOrder")]);
-  const groups = {};
-  docs.forEach(d => { (groups[d.type || "(名前なし)"] = groups[d.type || "(名前なし)"] || []).push(d); });
-  const labels = (ord && ord.labels) || [];
-  const keys = Object.keys(groups).sort((a,b) => { const ia = labels.indexOf(a), ib = labels.indexOf(b); if (ia >= 0 || ib >= 0) return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib); return a.localeCompare(b, "ja"); });
-  if (!keys.length) return await head(p) + empty("許可証が登録されていません");
-  const rows = keys.map(k => {
-    const l = groups[k].sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")));
-    const d = l[0], kind = d.dateKind || "許可期限", left = kind === "許可期限" ? daysLeft(d.date) : null;
-    const st = left == null ? '<span class="badge b-gr">'+esc(kind)+'</span>' : left < 0 ? '<span class="badge b-ng">期限切れ</span>' : left <= 90 ? '<span class="badge b-wn">あと'+left+'日</span>' : '<span class="badge b-ok">有効</span>';
-    return '<tr><td><b>'+esc(k)+'</b></td><td class="c nw">'+esc(kind)+'</td><td class="c nw">'+esc(fd(d.date))+'</td><td class="c">'+st+'</td>'+
-      '<td class="c"><button class="openBtn" onclick="openChunked(\'isoKyokaChunks\',\''+d.id+'\',\''+esc(d.fileType||"application/pdf")+'\')">📄 開く</button></td></tr>';
-  }).join("");
-  return await head(p, "期限が90日以内は黄色、切れているものは赤で表示") +
-    '<div class="tw"><table class="t"><tr><th>許可の種類</th><th>日付の種類</th><th>日付</th><th>状態</th><th>許可証</th></tr>'+rows+'</table></div>';
+  /* 有効期限は業務管理の許可証管理(kyokaShoumei)が正。許可証PDFはマスタ管理で登録したもの(isoKyokaDocs) */
+  const [docs, ord, pms] = await Promise.all([col("isoKyokaDocs"), docGet("isoKyokaSettings", "groupOrder"), col("kyokaShoumei").catch(() => [])]);
+  const rows = PermitSync.build(pms || [], docs || []);
+  if (!rows.length) return await head(p) + empty("許可証が登録されていません");
+  const labels = (ord && ord.labels) || [], oi = r => { const i = labels.indexOf(r.group); return i < 0 ? 999 : i; };
+  if (!(pms || []).length) rows.sort((a, b) => oi(a) - oi(b) || a.label.localeCompare(b.label, "ja"));
+  const B = { ok: "b-ok", wa: "b-wn", ng: "b-ng", gr: "b-gr" };
+  const tr = rows.map(r => { const [t, c] = PermitSync.state(r), nm = [r.area, r.kind].filter(Boolean).join(" ") || r.label;
+    return '<tr><td><b>'+esc(nm)+'</b></td><td class="c nw">'+esc(r.num || "")+'</td><td class="c nw">'+esc(fd(r.exp))+'</td><td class="c"><span class="badge '+B[c]+'">'+esc(c === "wa" ? "あと" + r.left + "日" : t)+'</span></td>'+
+      '<td class="c">'+(r.pdf ? '<button class="openBtn" onclick="openChunked(\'isoKyokaChunks\',\''+r.pdf.id+'\',\''+esc(r.pdf.fileType||"application/pdf")+'\')">📄 開く</button>' : '')+'</td></tr>'; }).join("");
+  return await head(p, "有効期限は業務管理の許可証管理から自動。期限の" + PermitSync.WARN_DAYS + "日前から黄色、切れているものは赤") +
+    '<div class="tw"><table class="t"><tr><th>許可の種類</th><th>許可番号</th><th>有効期限</th><th>状態</th><th>許可証</th></tr>'+tr+'</table></div>';
 }
 
 /* ---------- 法規制一覧 ---------- */

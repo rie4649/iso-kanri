@@ -75,8 +75,11 @@
   <div class="row2"><div><label class="lb" for="iDay">いつ</label><select id="iDay"></select></div><div><label class="lb" for="iTime">時間の目安</label><input id="iTime" placeholder="例：30分"></div></div>
   <label class="lb" for="iNote">教えること（1行に1つ）</label><textarea id="iNote" rows="5"></textarea>
   <label class="lb" for="iCheck">確認の質問（教えたあとに聞く）</label><input id="iCheck" placeholder="例：重機が動いているときはどうする？">
-  <label class="lb" for="iLink">「教材を開く」で開く画面</label><select id="iLink"></select>
-  <label class="lb">教材のPDF・写真（いくつでも）</label>
+  <label class="lb" for="iLink">教材にするアプリの画面（あれば）</label><select id="iLink"></select>
+  <label class="lb">📁 書類の置き場から教材を選ぶ（環境マニュアルなど。1回入れた書類を使い回せます）</label>
+  <div id="iLibs" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px 8px;"></div>
+  <div class="note"><a href="library.html#add=people">＋ 書類の置き場に新しい書類を入れる</a>（入れるときに「新入社員研修の教材」を選ぶと、ここの上のほうに出ます）</div>
+  <label class="lb">この研修だけのPDF・写真（いくつでも）</label>
   <div id="iFiles"></div>
   <input type="file" id="iFileIn" accept="application/pdf,image/*" multiple style="margin-top:6px;" onchange="pickFiles(this.files)">
   <div class="note">写真は自動で小さくします。PDFは1ファイル約700KBまで。「保存」で保存されます。</div>
@@ -107,6 +110,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="history.js"></script>
+<script src="library.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
@@ -133,29 +137,31 @@ const LINKS = [["", "（なし）"], ["vehicles-list.html", "車両の愛称と�
   ["plan.html#aspects", "環境側面（自分の仕事と環境）"], ["index.html#sec=calendar", "カレンダー（就業カレンダー）"], ["index.html#sec=manual", "環境手順書"], ["photos.html?mode=rec", "写真の記録（保管・掲示・現場の様子）"]];
 /* 研修プログラム(最初に入れる内容)。スクラップ・収集運搬・中間処理の会社で、ISO14001の自覚(7.3)と安全を中心に */
 const PROGRAM = [
-  { day:"d1", time:"30分", name:"会社の紹介と1日の流れ", job:"all", link:"show.html#org",
+  { day:"d1", time:"30分", name:"会社の紹介と1日の流れ", job:"all",
     note:"・会社の仕事（集める・運ぶ・分ける・リサイクルする）\n・組織図：だれに報告・相談するか\n・1日の流れ、朝礼、休み・遅刻のときの連絡\n・就業カレンダー（自分の班と休みの日）", check:"困ったとき、最初にだれに言いますか？" },
-  { day:"d1", time:"60分", name:"安全の基本ルール", job:"all", link:"show.html#safety",
+  { day:"d1", time:"60分", name:"安全の基本ルール", job:"all",
     note:"・保護具（ヘルメット・安全靴・手袋）はいつも着ける\n・構内の制限速度と、歩く場所\n・重機・フォークリフト・クレーンが動いているときは近づかない、合図を待つ\n・立入禁止の場所\n・夏は熱中症に気をつける（水分・休憩）", check:"重機が動いているそばを通りたいとき、どうしますか？" },
-  { day:"d1", time:"45分", name:"構内を一緒に歩く（社内図）", job:"all", link:"photos.html?mode=rec",
+  { day:"d1", time:"45分", name:"構内を一緒に歩く（社内図）", job:"all",
     note:"・置場とゾーンの場所\n・消火器・緊急用品（吸着マットなど）の場所\n・避難する場所と道\n・トイレ・休憩所・事務所", check:"いちばん近い消火器と吸着マットはどこにありますか？" },
-  { day:"d1", time:"30分", name:"環境方針とISO（自覚教育）", job:"all", link:"show.html#policy", iso:true,
+  { day:"d1", time:"30分", name:"環境方針とISO（自覚教育）", job:"all", iso:true,
     note:"・会社の環境方針（カードを渡す）\n・自分の仕事のどこが環境に関わるか（油漏れ・分別・騒音・燃料・ほこり）\n・守るとどう良くなるか／守らないとどうなるか（事故・法律違反・お客様の信頼）\n・今年の環境目標と、自分にできること", check:"会社の環境方針で大事なことを1つ言えますか？" },
   { day:"w1", time:"15分", name:"車両の愛称と車両番号", job:"all", link:"vehicles-list.html",
     note:"・配車や指示は愛称で呼ぶ\n・一覧表を渡す（わからないときは事務所へ）", check:"「低クレ」はどの車ですか？" },
-  { day:"w1", time:"60分", name:"品物の呼び方と分別・置場のルール", job:"all", link:"photos.html?mode=rec", iso:true,
+  { day:"w1", time:"60分", name:"品物の呼び方と分別・置場のルール", job:"all", iso:true,
     note:"・よく使う品物の呼び方（現場の言葉）\n・置き場所と表示\n・混ぜてはいけないもの（危ないもの・別にする廃棄物）\n・有価物（売れるもの）と産業廃棄物の違い", check:"混ぜてはいけないものを1つ言えますか？" },
-  { day:"w1", time:"30分", name:"緊急のときの動き方（油漏れ・火災・けが）", job:"all", link:"plan.html#emergency", iso:true,
+  { day:"w1", time:"30分", name:"緊急のときの動き方（油漏れ・火災・けが）", job:"all", iso:true,
     note:"・まず自分の安全、まわりに大きな声で知らせる\n・連絡の順番（だれに・何を）\n・油が漏れたら：止める→吸着マットで広げない→報告\n・消火器の使い方（ピンを抜く→向ける→握る）", check:"油が漏れているのを見つけたら、最初に何をしますか？" },
-  { day:"w1", time:"15分", name:"ヒヤリハットの出し方", job:"all", link:"plan.html#nearMiss", iso:true,
+  { day:"w1", time:"15分", name:"ヒヤリハットの出し方", job:"all", iso:true,
     note:"・ヒヤッとしたら、小さなことでも報告する（責めるためではない）\n・出し方（紙・アプリ）\n・出たヒヤリハットで、置き方や手順を直している", check:"どんなときにヒヤリハットを出しますか？" },
   { day:"m1", time:"30分", name:"運転する人：アルコールチェック・日常点検・安全運転", job:"drive",
     note:"・運転の前後のアルコールチェック（記録する）\n・毎日の車両点検\n・荷台のシート掛け・積みすぎない（飛散・落下を防ぐ）\n・アイドリングを止める（燃料とCO₂を減らす）", check:"運転の前に必ずすることは何ですか？" },
-  { day:"m1", time:"30分", name:"運転する人：収集運搬の決まり", job:"drive", link:"show.html#kyoka", iso:true,
+  { day:"m1", time:"30分", name:"運転する人：収集運搬の決まり", job:"drive", iso:true,
     note:"・産業廃棄物を運ぶときは、許可証の写しを車に積む\n・車両の表示（産業廃棄物収集運搬車・会社名・許可番号）\n・マニフェスト（紙・電子）の扱い\n・決められた場所以外に降ろさない", check:"産業廃棄物を運ぶとき、車に必ず積んでおくものは何ですか？" },
   { day:"m1", time:"現場で", name:"作業する人：フォークリフト・重機・クレーン", job:"work",
     note:"・資格が必要な機械と、自分の資格\n・合図のしかた、玉掛け\n・始業前点検\n・資格がない機械は動かさない", check:"資格を持っていない機械を動かしてもいいですか？" }
 ];
+let libs = [];
+if (window.Library) Library.list(db).then(L => { libs = L; renderItems(); }).catch(() => {});
 let items = [], recs = [], editItem = -1, itemFiles = [], newFiles = [], rmFiles = [], editRec = "";
 const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const todayYmd = () => { const d = new Date(), z = n => String(n).padStart(2, "0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); };
@@ -168,15 +174,20 @@ function toast(m){ const t = document.getElementById("toast"); t.textContent = m
 const OLD_NAMES = ["車両の愛称と車両番号","環境方針","自覚教育（自分の仕事と環境）","緊急連絡先・事故や油漏れのときの動き方","社内図（置場・ゾーン・消火器・避難経路）","分別・置場のルール","就業カレンダー（A班・B班）","ヒヤリハットの出し方","アルコールチェック・車両点検のやり方（運転する人）"];
 SET_REF.onSnapshot(d => {
   const data = d.exists ? d.data() : {};
-  if (data.ver !== 2 && !window._seeded) {   // はじめて、または前の版(渡す書類の一覧)のとき：研修プログラムに入れ替える(自分で足した項目と付けた教材は残す)
+  if (data.ver === 2 && !window._mig3) {   // 2026/10: 最初に入れた「教材を開く」の行き先は合っていないものが多いので外す(自分で入れる)。直したものは残す
+    window._mig3 = true; const DEF = {"会社の紹介と1日の流れ": "show.html#org", "安全の基本ルール": "show.html#safety", "構内を一緒に歩く（社内図）": "photos.html?mode=rec", "環境方針とISO（自覚教育）": "show.html#policy", "品物の呼び方と分別・置場のルール": "photos.html?mode=rec", "緊急のときの動き方（油漏れ・火災・けが）": "plan.html#emergency", "ヒヤリハットの出し方": "plan.html#nearMiss", "運転する人：収集運搬の決まり": "show.html#kyoka"};
+    SET_REF.update({ ver:3, items: (data.items || []).map(x => DEF[x.name] && x.link === DEF[x.name] ? { ...x, link:"" } : x) }).catch(e => toast("エラー: "+e.message));
+    return;
+  }
+  if (data.ver !== 2 && data.ver !== 3 && !window._seeded) {   // はじめて、または前の版(渡す書類の一覧)のとき：研修プログラムに入れ替える(自分で足した項目と付けた教材は残す)
     window._seeded = true;
     const old = Array.isArray(data.items) ? data.items : [];
     const keep = old.filter(x => !OLD_NAMES.includes(x.name)).map(x => ({ day:"w1", time:"", check:"", job:"all", ...x }));
     const nx = PROGRAM.map(x => { const o = old.find(y => y.name === x.name || (x.name === "車両の愛称と車両番号" && y.name === x.name)); return { id: o ? o.id : uid(), iso:false, link:"", files: o ? (o.files || []) : [], ...x }; });
-    SET_REF.set({ ver:2, items: nx.concat(keep) }, { merge:true }).catch(e => toast("エラー: "+e.message));
+    SET_REF.set({ ver:3, items: nx.concat(keep) }, { merge:true }).catch(e => toast("エラー: "+e.message));
     return;
   }
-  if (data.ver !== 2) return;
+  if (data.ver !== 3) return;
   items = data.items || []; renderItems(); renderRecs();
 }, e => toast("読み込みエラー: "+e.message));
 function renderItems(){
@@ -185,7 +196,8 @@ function renderItems(){
     h += '<div class="day">'+esc(l)+'<small>'+esc(s)+'</small></div>' + L.map(({ x, i }) => '<div class="it"><div class="n">'+(++n)+'</div><div class="b">'+
       '<div class="t">'+esc(x.name)+(x.iso ? '<span class="tagIso">ISO</span>' : '')+(x.time ? '<span class="tm">⏱ '+esc(x.time)+'</span>' : '')+(x.job && x.job !== "all" ? '<span class="tm">👤 '+esc(JOBS[x.job]||"")+'</span>' : '')+'</div>'+
       (x.note ? '<div class="d">'+esc(x.note)+'</div>' : '')+(x.check ? '<div class="q">❓ 確認：'+esc(x.check)+'</div>' : '')+
-      '<div class="acts">'+(x.link ? '<button class="btn sm pri" onclick="location.href=\''+esc(x.link)+'\'">教材を開く ›</button>' : '')+
+      '<div class="acts">'+(x.link ? '<button class="btn sm pri" onclick="location.href=\''+esc(x.link)+'\'">教材を開く ›</button>' : '')+(!x.link && !(x.files || []).length && !(x.libs || []).length ? '<span class="note" style="margin:0;align-self:center;">教材：まだ入っていません（「編集」で書類の置き場から選ぶ）</span>' : '')+
+      (x.libs || []).map(id => { const d = libs.find(l => l.id === id); return d ? '<span class="chip" onclick="Library.open(db,\''+id+'\')">📁 '+esc(d.name)+'</span>' : ''; }).join("")+
       (x.files || []).map(f => '<span class="chip" onclick="openFile(\''+f.fileId+'\')">'+(String(f.type||"").startsWith("image/") ? "🖼️" : "📄")+esc(f.name)+'</span>').join("")+
       '<button class="btn sm" onclick="openItem('+i+')">編集</button>'+(i > 0 ? '<button class="btn sm" onclick="moveItem('+i+',-1)">▲</button>' : '')+(i < items.length - 1 ? '<button class="btn sm" onclick="moveItem('+i+',1)">▼</button>' : '')+
       '</div></div></div>').join(""); });
@@ -202,6 +214,9 @@ function openItem(i){
   const has = LINKS.some(l => l[0] === (x.link || ""));
   document.getElementById("iLink").innerHTML = LINKS.concat(has ? [] : [[x.link, x.link]]).map(l => '<option value="'+esc(l[0])+'"'+(l[0] === (x.link || "") ? " selected" : "")+'>'+esc(l[1])+'</option>').join("");
   itemFiles = (x.files || []).slice(); newFiles = []; rmFiles = []; renderItemFiles();
+  const sel = x.libs || [], L = libs.slice().sort((a, b) => ((b.uses || []).includes("newhire") ? 1 : 0) - ((a.uses || []).includes("newhire") ? 1 : 0));
+  document.getElementById("iLibs").innerHTML = L.length ? L.map(d => '<label class="chk" style="border:none;padding:4px 0;"><input type="checkbox" value="'+d.id+'"'+(sel.includes(d.id) ? " checked" : "")+'><span>'+Library.icon(d)+' '+esc(d.name)+((d.uses || []).includes("newhire") ? ' <span class="tagIso">研修の教材</span>' : '')+'</span></label>').join("")
+    : '<div class="note" style="margin:4px 0;">書類の置き場にまだ書類がありません</div>';
   document.getElementById("iDel").style.display = i >= 0 ? "" : "none";
   document.getElementById("itemBg").classList.add("show");
 }
@@ -233,7 +248,8 @@ async function saveItem(){
       files.push({ name: nm, fileId: ref.id, type });
     }
     const x = { ...(editItem >= 0 ? items[editItem] : { id: uid(), iso: false, job: "all" }), name, note: document.getElementById("iNote").value.trim(), link: document.getElementById("iLink").value,
-      day: document.getElementById("iDay").value, time: document.getElementById("iTime").value.trim(), check: document.getElementById("iCheck").value.trim(), files };
+      day: document.getElementById("iDay").value, time: document.getElementById("iTime").value.trim(), check: document.getElementById("iCheck").value.trim(), files,
+      libs: [...document.querySelectorAll("#iLibs input:checked")].map(c => c.value) };
     if (editItem >= 0) items[editItem] = x; else items.push(x);
     await saveItems(); closeItem(); renderItems(); toast("保存しました" + (bad.length ? "（大きすぎて入らなかったもの：" + bad.join("、") + "）" : ""));
   } catch(e){ toast("エラー: "+e.message); }

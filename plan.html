@@ -145,6 +145,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="history.js"></script>
+<script src="phone-complaint.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -580,7 +581,10 @@ function setTab(k){ if (k === "objectives") setTimeout(() => custPlanOnce().catc
      承認したあとに表を直すと「承認のあと直されています」になり、もう一度 確認・承認 する
    ・1件ずつの報告(苦情・ヒヤリハット・ゾーン報告・監査など): 行ごとに 確認・承認(行の chkBy/chkDate/apBy/apDate)。行を直すと消える
    ※ログインのしくみはないので、押した人の名前と日付を残す形(誰が押したかは記録に残る) */
-const REC_APPROVE = ["comms","nearMiss","zoneReport","auditCheck","extAudit","changes","emergency","minutes","review","distrib","auditPlan","auditSurvey"];
+const REC_APPROVE = ["comms","nearMiss","zoneReport","auditCheck","extAudit","changes","emergency","minutes","review","distrib","auditPlan","auditSurvey","contractors","spillKit","calib"];
+/* 2026/10: 1件ずつの記録(苦情・ヒヤリハットなど)の確認・承認ボタンはやめた。
+   ISO14001 7.5.2 で「承認」が要るのは、計画書・手順書などの文書を作った・直したときだけで、起きたことの記録には要らないため。
+   計画書などの表まるごとの承認(この下の approvalCard)だけ残す */
 let apv = {};
 db.collection("isoSettings").doc("approvals").onSnapshot(s => { apv = s.exists ? s.data() : {}; render(); }, () => {});
 function apName(role){ const def = (window.RecBy && RecBy.getName()) || ""; const v = prompt(role+"の名前（例: 環境管理責任者 関根理絵／代表取締役 関根健巳）", def); return v === null ? null : v.trim(); }
@@ -602,6 +606,7 @@ async function approveDoc(key, k){
   catch(e){ toast("保存できませんでした: "+e.message); }
 }
 function rowApproval(reg, r){
+  return "";
   if (!REC_APPROVE.includes(reg.key) || r.draft) return "";
   const b = (k, lbl) => r[k+"By"] ? '<span class="apChip done">'+lbl+' '+esc(r[k+"By"])+' '+esc(String(r[k+"Date"] || "").slice(5).replace("-", "/"))+'</span>' : '<button class="btn sm'+(k === "ap" ? " pri" : "")+'" onclick="approveRow(\''+r.id+'\',\''+k+'\')"'+(k === "ap" && !r.chkBy ? ' disabled title="先に確認してください"' : '')+'>'+lbl+'する</button>';
   return '<div class="apLine">'+(r.apBy ? '<span class="tag ok">承認済み</span>' : '<span class="tag gray">承認待ち</span>')+b("chk", "確認")+b("ap", "承認")+'</div>';
@@ -645,6 +650,7 @@ function render(){
     : '<div class="flow"><b>使い方</b><span>① 下の「✏️ ここで入力・直す」で中身を確認・追加・訂正</span><span>→ ② 「📄 この表でPDFを作る」で新しい版に</span><span>→ ③ '+dn+' としてEMS文書管理に自動で残ります（前の版も残ります）</span></div>';
   h += emsDocsHtml(reg, list.length);   // 会社の書類(PDF)は「使い方」のすぐ下
   h += approvalCard(reg, list);
+  if (reg.key === "comms") { h += '<div id="phoneCand"></div>'; setTimeout(phoneCand, 0); }
   if (reg.key === "objectives") h += custStepsCard();
   if (reg.yearCheck) h += yearCheckCard(reg);
   if (reg.key === "review"){   // マネジメントレビューの資料を1年分の記録から自動で集める(mr-report.js)
@@ -680,6 +686,35 @@ function render(){
   h += '<details class="card" style="padding:10px 14px;"'+(list.length && !reg.yearCheck ? ' open' : '')+'><summary style="cursor:pointer;font-weight:700;color:var(--navy);">'+(reg.yearCheck ? '📝 1行ずつの画面（長い文をくわしく入力したいとき・PDFを作る）' : '📝 表で入力・修正する')+'（'+(list.length ? list.length+'行' : '任意')+'）</summary>'+
     '<div class="note" style="margin:4px 0 8px;">計画書の中身を1行ずつ入力すると、環境への取り組みで表として見せられ、1行ずつ直せます。'+(list.some(r => r.fromDoc) ? '受け取った書類('+esc([...new Set(list.filter(r => r.srcDoc).map(r => r.srcDoc))].join("・"))+')から書き写した内容が入っています。' : '')+'</div>'+tbl+'</details>';
   document.getElementById("body").innerHTML = h;
+}
+/* ---------- 電話依頼から苦情かもしれないもの(phone-complaint.js) ----------
+   押すだけで「コミュニケーション・苦情」に1行入る。苦情ではないものは「苦情ではない」で二度と出さない */
+let phoneC = [];
+async function phoneCand(){
+  const el = document.getElementById("phoneCand"); if (!el || !window.PhoneComplaint) return;
+  try {
+    const [live, log, st] = await Promise.all([db.collection("phoneRequests").get(), db.collection("phoneRequestLog").get().catch(() => ({ docs:[] })), db.collection("isoSettings").doc("phoneComplaint").get().catch(() => null)]);
+    phoneC = PhoneComplaint.find(live.docs, log.docs, rows, st && st.exists ? (st.data().skip || []) : [], 120);
+  } catch(e){ el.innerHTML = ""; return; }
+  if (!document.getElementById("phoneCand")) return;
+  el.innerHTML = phoneC.length ? '<div class="card" style="border-left:4px solid #f59e0b;background:#fffbeb;"><div style="font-weight:800;color:#92400e;font-size:15px;">📞 電話依頼から：苦情かもしれないもの '+phoneC.length+'件</div>'+
+    '<div class="note" style="margin:2px 0 8px;">電話依頼アプリの依頼のうち、苦情・騒音・におい・油漏れなどの言葉があるものです（最近120日）。押すだけでこの表に入ります（書き写しはいりません）。</div>'+
+    phoneC.map((c, i) => '<div style="background:#fff;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:6px;"><div style="font-size:14px;"><b>'+esc(c.date.replace(/-/g, "/"))+'　'+esc(c.client || "(会社名なし)")+'</b>'+(c.strong ? '<span class="tag sig" style="margin-left:6px;">苦情</span>' : '')+(c.done ? '<span class="tag ok" style="margin-left:4px;">電話依頼で対応済み</span>' : '<span class="tag gray" style="margin-left:4px;">電話依頼で未対応</span>')+'</div>'+
+      '<div style="font-size:13px;margin-top:3px;">'+esc(c.text)+(c.resp ? '<div style="color:#475569;">対応：'+esc(c.resp)+'</div>' : '')+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;"><button class="btn sm pri" onclick="phoneAdd('+i+',\'苦情\')">苦情として記録</button><button class="btn sm" onclick="phoneAdd('+i+',\'問い合わせ\')">問い合わせとして記録</button><button class="btn sm" onclick="phoneAdd('+i+',\'要望\')">要望として記録</button><button class="btn sm" onclick="phoneSkip('+i+')">苦情ではない</button></div></div>').join("")+'</div>' : "";
+}
+async function phoneAdd(i, kind){
+  const c = phoneC[i]; if (!c) return;
+  const by = (window.RecBy && RecBy.getName()) || "";
+  try { const data = { ...PhoneComplaint.toRow(c, kind, by), updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    const ref = await db.collection(ISO_REG_COL).add(data); rows.push({ id: ref.id, ...data, updatedAt: { toDate: () => new Date() } });
+    toast(kind + "として記録しました" + (c.done ? "" : "（電話依頼で対応が終わったら、ここの状況を「完了」に）")); render();
+  } catch(e){ toast("記録できませんでした: " + e.message); }
+}
+async function phoneSkip(i){
+  const c = phoneC[i]; if (!c) return;
+  try { await db.collection("isoSettings").doc("phoneComplaint").set({ skip: firebase.firestore.FieldValue.arrayUnion(c.id) }, { merge: true }); phoneC.splice(i, 1); phoneCand(); toast("苦情ではないものにしました"); }
+  catch(e){ toast("エラー: " + e.message); }
 }
 /* この台帳に入れる文書(EMS文書管理で「入力する場所」がこの台帳のもの) */
 let cstats = null, cstatsLoading = false;

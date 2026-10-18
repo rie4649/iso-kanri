@@ -66,9 +66,9 @@ const COLS = [
   ["isoShokakiDocs","消火器・防火の書類"],["isoPhotos","写真の記録"],["isoPhotoSettings","写真の設定"],["isoPermitScopes","許可の内容"],
   ["isoSurveyAnswers","委託先調査票の回答"],["isoSurvey","委託先調査票(Astemo)"],["isoSurveyCustom","調査票の追加の質問"],["isoSurveyTemplates","調査票の会社"],["isoSurveyCommon","調査票の共通の答え"],["isoSurveySubmits","調査票の提出の記録"],
   ["isoCustMonthly","顧客対応の月ごとの記録"],["phoneRequestLog","電話依頼の控え"],["isoVolumes","環境側面調査記録(取扱量)"],
-  ["isoReports","届出・報告の期限一覧"],["isoNewHire","新入社員教育の記録"]
+  ["isoReports","届出・報告の期限一覧"],["isoLibrary","書類の置き場"],["isoNewHire","新入社員教育の記録"]
 ];
-const FILE_COLS = [["emsDocChunks","EMS文書のPDFの中身"],["waterTestFiles","水質検査の添付"],["isoEventFiles","出来事の写真・資料"],["isoReportFiles","届出・報告の控え"],["isoNewHireFiles","新入社員教育の書類"],["trainingFiles","教育訓練の添付"],["envManualFiles","手順書の添付"],["isoPhotoFiles","写真(大きいもの)"],["isoShokakiChunks","消火器書類の中身"],["sdgsGoalChunks","SDGs資料の中身"]];
+const FILE_COLS = [["emsDocChunks","EMS文書のPDFの中身"],["waterTestFiles","水質検査の添付"],["isoEventFiles","出来事の写真・資料"],["isoReportFiles","届出・報告の控え"],["isoLibraryChunks","書類の置き場の中身"],["isoNewHireFiles","新入社員教育の書類"],["trainingFiles","教育訓練の添付"],["envManualFiles","手順書の添付"],["isoPhotoFiles","写真(大きいもの)"],["isoShokakiChunks","消火器書類の中身"],["sdgsGoalChunks","SDGs資料の中身"]];
 const $ = id => document.getElementById(id);
 const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const today = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };

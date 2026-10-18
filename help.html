@@ -81,6 +81,9 @@
     <tr><th>photos.html / slideshow.html</th><td>写真の記録 / スライドショー（展示用）</td></tr>
     <tr><th>volumes.html ＋ volumes-seed.js</th><td>環境側面調査記録（取扱量）</td></tr>
     <tr><th>custlog.html / shokaki.html / permit.html / skills.html</th><td>顧客対応の進捗 / 消火器・防火管理 / 許可の内容 / 力量（資格）</td></tr>
+    <tr><th>kyoka.html ＋ permit-sync.js</th><td>許可一覧。有効期限は業務管理の許可証管理（kyokaShoumei）を読むだけで、許可証PDF（マスタ管理で登録）と組み合わせて食い違いを知らせる。知らせ始める日数は permit-sync.js の WARN_DAYS</td></tr>
+    <tr><th>phone-complaint.js</th><td>電話依頼の中から苦情かもしれないものを見つけて、コミュニケーション・苦情の表に1回押すだけで入れる（電話依頼アプリには書き込まない）</td></tr>
+    <tr><th>library.html ＋ library.js</th><td>書類の置き場（PDF・写真を1回入れると、ホームのフォルダ・研修の教材・環境への取り組みの「資料」から見られる）</td></tr>
     <tr><th>vehicles-list.html</th><td>車両の愛称と車両番号の一覧（マスタ管理から自動）</td></tr>
     <tr><th>backup.html / history.html ＋ history.js</th><td>バックアップ / 直した履歴（history.js が全部の画面の保存を自動で記録）</td></tr>
     <tr><th>recby.js</th><td>どの記録にも「記録者・記録日」を自動で付ける部品</td></tr>
@@ -98,6 +101,7 @@ const QA = [
   ["教育の計画はどこ？", "ホーム →「📅 年1回・決まった時期」→「年間の教育訓練計画」。8月に今年度の計画を立てます。教育訓練の記録のテーマに「照合する言葉」が入っていれば、ホームで自動で済になります。", "plan:trainPlan"],
   ["工事の業者さん・見学の人が来た", "「🚨 何かあったとき」→「協力会社・来訪者にルールを伝えた」。伝えたことにチェックして記録します（ISO 7.3）。", "plan:contractors"],
   ["吸着マットなどの緊急用品の点検は？", "「📝 毎月・3か月ごとの記録」→「緊急用品の点検」。3か月に1回。前の点検から3か月たつとホームに出ます。", "plan:spillKit"],
+  ["許可の有効期限はどこで入れる？", "業務管理の「許可証管理」だけです（ISO管理では入れ直しません）。ISO管理の「許可一覧」と、ホームの「終わっていないこと・期限」に自動で出ます。期限の120日前から知らせます。許可証のPDFはマスタ管理の「📜 許可証」で入れます。PDFの日付と業務管理の期限が違うと ⚠️ でどちらを直すか出ます。", "kyoka"],
   ["役所に出す報告・届出の期限は？", "ホーム →「📅 年1回・決まった時期」→「📮 届出・報告の期限一覧」。出したら「✅ 出した」で日付を入れると次の期限に進みます。期限が近づくとホームの「終わっていないこと・期限」に出ます。許可の更新は「許可一覧」。", "reports"],
   ["新しい人が入った", "ホーム →「🚨 何かあったとき」→「🔰 新入社員研修」。入社日・1週目・1か月以内の研修プログラムどおりに教えて、終わったものにチェックして保存。教育訓練の記録にも自動で入ります。「🖨️ 研修テキスト」で中身と確認の質問を印刷して渡せます。", "newhire"],
   ["待合や展示のモニターに写真を流したい", "「👀 見る・まとめる」→「🖥️ スライドショー（展示用）」。見せたい写真や環境への取り組みのページを選んで「セット」を作り、▶で自動で流します。監査で話しながら見せるときは、今までどおり「環境への取り組み」を手で進めます。", "slides"],
@@ -117,6 +121,7 @@ const QA = [
   ["取扱量（インプット）の記録は？", "「環境側面調査記録（取扱量の推移）」。8月に去年度の量を入れると、前年度比と傾向が自動で出ます。考察を書いて「まとめを作る」。", "volumes"],
   ["記録者の名前はどう入れる？", "保存するときに「記録者（管理者）」の欄に入れます。1回入れれば、その端末では次から自動で入ります。", ""],
   ["間違えて入れた・消したい", "その記録の「編集」で直す、または「削除」。表は「✏️ ここで入力・直す」の各行から。", ""],
+  ["書類（PDF・写真）をどこに入れる？", "ホームの「📁 書類・資料の置き場」→「書類を入れる」。1回入れるときにフォルダと使う場所（新入社員研修の教材・環境への取り組み）を選ぶと、ホームのフォルダ・研修の編集・環境への取り組みの「資料」から見られます。", "library"],
   ["間違えて消した・直してしまった", "「👀 見る・まとめる」→「🕘 直した履歴」。だれが・いつ・何を直したかが残っていて、「元に戻す」で戻せます（写真やPDFの中身はバックアップから戻します）。", "edithist"],
   ["バックアップはどうやるの？", "ホーム →「👀 見る・まとめる」→「💾 バックアップ」。月に1回、ボタンを押すとZIPが保存されます。会社のパソコンやUSBなど別の場所に置きます。", "backup"],
   ["画面が古いまま・直したはずなのに変わらない", "Ctrl＋Shift＋R（スマホは再読み込み）で最新にします。", ""]
@@ -125,7 +130,7 @@ function render(list){
   document.getElementById("list").innerHTML = list.map(([q, a, to]) => '<div class="qa"><div class="q"><b>' + q + '</b>' + (to ? '<button class="btn sm pri noPrint" onclick="go(\'' + to + '\')">開く ›</button>' : '') + '</div><div class="a">' + a + '</div></div>').join("") || '<div class="note">見つかりません。別の言葉で探してください。</div>';
 }
 function filter(v){ const t = String(v || "").trim(); render(t ? QA.filter(x => (x[0] + x[1]).includes(t)) : QA); }
-function go(to){ if (to === "home") location.href = "index.html"; else if (to === "show") location.href = "show.html"; else location.href = "index.html#sec=" + encodeURIComponent(to); }
+function go(to){ if (to === "library") { location.href = "library.html"; return; } if (to === "home") location.href = "index.html"; else if (to === "show") location.href = "show.html"; else location.href = "index.html#sec=" + encodeURIComponent(to); }
 render(QA);
 </script>
 </body>

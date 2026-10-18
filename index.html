@@ -14,6 +14,9 @@
 <script src="history.js"></script>
 <script src="recby.js"></script>
 <script src="reports-due.js"></script>
+<script src="library.js"></script>
+<script src="phone-complaint.js"></script>
+<script src="permit-sync.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -328,6 +331,12 @@
   .hm-info-sub { font-size:12px; color:#475569; }
   .hm-two > .hm-find { margin-bottom:0; }
   .hm-look { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); column-gap:16px; }
+  .hm-fold { border:1px solid #e5e7eb; border-radius:6px; margin:6px 0; background:#f8fafc; }
+  .hm-fold > summary { cursor:pointer; padding:10px 12px; font-size:15px; font-weight:700; color:#1e3a5f; list-style:none; display:flex; align-items:center; gap:6px; }
+  .hm-fold > summary::-webkit-details-marker { display:none; }
+  .hm-fold > summary:before { content:"▸"; color:#64748b; } .hm-fold[open] > summary:before { content:"▾"; }
+  .hm-fold > summary span { margin-left:auto; font-size:12px; color:#64748b; font-weight:normal; background:#e2e8f0; border-radius:999px; padding:1px 8px; }
+  .hm-fold[open] { background:#fff; } .hm-fold .hm-in { margin:0 8px 4px; }
   .hm-det { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:10px 14px; margin-bottom:12px; }
   .hm-det > summary { cursor:pointer; font-size:14px; font-weight:700; color:#1e3a5f; padding:4px 0; }
   .hm-det[open] > summary { margin-bottom:8px; }
@@ -5039,6 +5048,7 @@ const FIND_INDEX = [
   ["新入社員 新人 入社 教育 研修 自覚 渡す書類", "🔰 新入社員研修", "newhire"],
   ["スライドショー 展示 モニター 自動 写真 視察 待合", "🖥️ スライドショー（展示用）", "slides"],
   ["履歴 直した 消した 元に戻す 間違えた 変更履歴 だれが", "🕘 直した履歴", "edithist"],
+  ["書類 置き場 PDF 入れる 保存 フォルダ 環境マニュアル 資料 ファイル", "📁 書類の置き場（PDF・写真を入れる）", "library"],
   ["CO2 二酸化炭素 排出量 温暖化 脱炭素", "🌍 CO₂排出量（会社全体・環境への取り組み）", "show"],
   ["教育訓練計画 年間計画 教育の計画 力量", "年間の教育訓練計画", "plan:trainPlan"],
   ["協力会社 来訪者 見学 工事業者 派遣 応援 周知 構内ルール", "協力会社・来訪者への周知", "plan:contractors"],
@@ -5115,6 +5125,7 @@ async function renderHomeTasks() {
     })() +
     '';
     homeYearPlan({ now, fyStart, wt, nc, hv, mr, au, tr, rg, rv, ev, st, fdy });
+    window._phoneData = { plog, plive };
     renderHomeOpen(rg, cor, tr).catch(e => console.error(e));
 }
 /* 環境管理責任者が毎日見るもの: 終わっていないこと(対応中)と、期限が近いもの・過ぎたもの */
@@ -5135,13 +5146,14 @@ async function renderHomeOpen(rg, cor, tr) {
   R("calib").filter(x => x.next && x.next <= soon).forEach(x => add(0, "測定機器：" + (x.name || ""), "次回の点検・検定 " + fd(x.next), "plan:calib", x.next < today ? "期限切れ" : "もうすぐ", x.next < today ? "ng" : "wa"));
   R("vendors").forEach(x => [["permitExp", "許可"], ["contractExp", "契約"]].forEach(([k, l]) => { if (x[k] && x[k] <= soon) add(0, "委託先の" + l + "期限：" + (x.name || ""), l + "の期限 " + String(x[k]).replace(/-/g, "/"), "plan:vendors", x[k] < today ? "期限切れ" : "もうすぐ", x[k] < today ? "ng" : "wa"); }));
   // 承認待ち(1件ずつの報告は件数、表まるごとは個数)とバックアップ
-  const REC = { comms:"苦情・コミュニケーション", nearMiss:"ヒヤリハット", zoneReport:"ゾーン報告", auditCheck:"内部監査チェックシート", extAudit:"外部審査の指摘", changes:"変更管理", emergency:"緊急事態の訓練", minutes:"議事録", review:"マネジメントレビュー", distrib:"文書の配布記録", auditPlan:"内部監査の計画", auditSurvey:"内部監査アンケート" };
-  Object.entries(REC).forEach(([k, nm]) => { const n = R(k).filter(x => x.recBy && !x.apBy).length; if (n) add(5, "承認待ち：" + nm, n + "件　確認・承認を押してください", "plan:" + k, "承認待ち", "wa"); });
+  // 承認は計画書などの「表まるごと」だけ(1件ずつの記録は承認なし。ISO 7.5.2 で承認が要るのは文書だけ)
+  const REC = { comms:1, nearMiss:1, zoneReport:1, auditCheck:1, extAudit:1, changes:1, emergency:1, minutes:1, review:1, distrib:1, auditPlan:1, auditSurvey:1, contractors:1, spillKit:1, calib:1, trainPlan:1 };
   const docRegs = [...new Set(rg.filter(x => !x.draft && x.reg && !REC[x.reg]).map(x => x.reg))];
   const sx = await Promise.all([db.collection("isoSettings").doc("approvals").get().catch(() => null), db.collection("isoSettings").doc("backup").get().catch(() => null)]);
   const apv = sx[0] && sx[0].exists ? sx[0].data() : {}, bk = sx[1] && sx[1].exists ? sx[1].data() : {};
   const waitDocs = docRegs.filter(k => { const a = apv[k] || {}; if (!a.apBy) return true; const le = R(k).map(x => x.recDate || "").sort().pop() || ""; return le > a.apDate; });
-  if (waitDocs.length) add(5, "表の承認待ち：" + waitDocs.length + "つ", "計画書・特定表などの表。それぞれの画面の「✍️ この表の承認」から", "plan:" + waitDocs[0], "承認待ち", "wa");
+  const stale = waitDocs.filter(k => (apv[k] || {}).apBy);   // 承認したあとに直した表だけ知らせる(はじめから未承認のものはずっと出さない)
+  if (stale.length) add(5, "計画書の承認し直し：" + stale.length + "つ", "承認したあとに直した計画書があります。その表の「✍️ この表の承認」で確認・承認", "plan:" + stale[0], "承認し直し", "wa");
   // 年間の教育訓練計画：予定の月が過ぎたのに、教育訓練の記録がないもの(テーマに「照合する言葉」が入った記録があれば済)
   (() => { const fyNow = t.getMonth() + 1 >= 8 ? t.getFullYear() : t.getFullYear() - 1;
     const recs = (tr || []).filter(x => { const d = String(x.date || ""); return d >= fyNow + "-08-01" && d <= (fyNow + 1) + "-07-31"; });
@@ -5152,6 +5164,15 @@ async function renderHomeOpen(rg, cor, tr) {
       const hit = kws.length && recs.some(r => kws.some(k => String(r.theme || "").includes(k)));
       if (!hit && end < today) add(3, "教育訓練の計画：" + (x.theme || "").slice(0, 24), m + "月の予定・まだ記録がありません（" + (x.target || "") + "）", "plan:trainPlan", "まだ", "wa");
     }); })();
+  // 電話依頼から苦情かもしれないもの(まだISOに記録していないもの)
+  try { if (window.PhoneComplaint && window._phoneData) { const st = await db.collection("isoSettings").doc("phoneComplaint").get().catch(() => null);
+    const pc = PhoneComplaint.find(window._phoneData.plive.map(x => ({ id: x._id, data: () => x })), window._phoneData.plog.map(x => ({ id: x._id, data: () => x })), rg, st && st.exists ? (st.data().skip || []) : [], 120);
+    if (pc.length) add(1, "電話依頼に苦情かもしれないもの：" + pc.length + "件", pc.slice(0, 2).map(c => (c.client || "") + " " + c.text).join("／").slice(0, 40), "plan:comms", "確認", "wa"); } } catch (e) {}
+  // 許可の有効期限(業務管理の許可証管理が正)：期限切れ・更新の準備・PDFとの食い違い
+  try { if (window.PermitSync) { const pr = await PermitSync.load(db);
+    pr.rows.forEach(r => { const [st, c] = PermitSync.state(r), nm = [r.area, r.kind].filter(Boolean).join(" ") || r.label;
+      if (c === "ng" || c === "wa") add(0, "許可の更新：" + nm, "有効期限 " + String(r.exp).replace(/-/g, "/") + (r.num ? "（" + r.num + "）" : ""), "kyoka", c === "ng" ? "期限切れ" : "あと" + r.left + "日", c);
+      else if (r.issue === "oldpdf" || r.issue === "oldexp" || r.issue === "noexp") add(5, "許可の日付が合っていません：" + nm, PermitSync.ISSUE[r.issue].split("→")[1].trim(), "kyoka", "確認", "wa"); }); } } catch (e) {}
   // 届出・報告の期限(届出・報告の期限一覧)：期限切れと、知らせる日数に入ったもの
   try { const rs = await db.collection("isoReports").get();
     rs.docs.map(d => d.data()).forEach(x => { if (!window.ReportDue) return; const st = ReportDue.status(x, today);
@@ -5233,7 +5254,6 @@ const WORK_GROUPS = [
     ["lifeline", "ライフライン（電気・ガス・水道）", "毎月・前の月の分"], ["custlog", "顧客対応の進捗（電話依頼）", "数は自動。月1回 気づきを書き写す"],
     ["metal", "金属拾い上げ", "拾ったとき"], ["freon", "フロン簡易点検", "3か月ごと"], ["plan:spillKit", "緊急用品の点検（吸着マットなど）", "3か月ごと"], ["donation", "地域貢献", "活動したとき"]]],
   ["📅", "年1回・決まった時期", "環境マニュアルで時期が決まっているもの", [
-    ["reports", "📮 届出・報告の期限一覧", "実績報告・定期検査など役所に出すもの。期限が近いとホームに出る"],
     ["plan:trainPlan", "年間の教育訓練計画", "8月に今年度の計画。記録があると自動で済"],
     ["volumes", "環境側面調査記録（取扱量の推移）", "8月・去年度の量を入れて考察（A-17）"], ["plan:aspects", "環境側面の見直し（A-06〜A-08）", "8月・チェックシート"], ["plan:vendors", "委託先の管理・取引先チェック（A-18・A-26）", "8月"],
     ["plan:auditPlan", "内部監査の計画（日程・分担）", "9月ごろ決める"], ["plan:auditCheck", "内部監査チェックシート", "監査の日に項目を確認（C-02）"], ["plan:auditSurvey", "内部監査アンケート", "全員の回答を入れる（C-03）"], ["kiroku", "内部監査の結果・是正処置", "10月〜2月"], ["plan:extAudit", "外部審査の指摘と対応", "審査のあと（C-06）"], ["plan:emergency", "緊急事態の訓練・テスト", "11月"], ["plan:objectives", "環境目標の評価・見直し", "1月末・7月"],
@@ -5250,8 +5270,18 @@ const WORK_GROUPS = [
     ["skills", "力量（資格の一覧）", ""], ["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""], ["plan:monitoring", "監視・測定の計画", ""]]],
   ["👀", "見る・まとめる", "監査・会議・視察のとき", [
     ["show", "環境への取り組み", "監査・視察・プロジェクター用（見るだけ）"], ["plan:review", "📊 マネジメントレビューの資料を作る", "1年分の記録から社長への報告書を自動で作る"], ["summary", "年間サマリー", "1年の記録の集計"],
-    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"], ["vehlist", "🚛 車両の愛称一覧（新入社員用）", "愛称と車番の表をA4の半分で印刷"],
+    ["calendar", "カレンダー", "会議・行政照会・監査の予定と記録"], ["photos", "写真の記録", "車両・設備・保管・掲示・現場"],
     ["slides", "🖥️ スライドショー（展示用）", "見せたい写真・ページを選んで自動で流す"], ["edithist", "🕘 直した履歴", "だれが・いつ・何を直したか。間違えたら元に戻す"], ["help", "❓ 使い方（よくある質問）", "「これはどこ？」と聞かれたらここ"], ["backup", "💾 バックアップ", "月に1回、全部の記録をファイルに保存"]]]
+];
+/* 📁 書類・資料の置き場：見たいときに開くもの(毎回の入力ではないもの)を、フォルダにまとめる。
+   ここを開いて、フォルダの中から選ぶと、その画面に飛ぶ */
+const CABINET = [   // [アイコン, 名前, 画面の一覧, 書類の置き場のフォルダ(library.js)]
+  ["📋", "ISOの計画・ルール", [["plan", "ISOの計画（課題・利害関係者・環境側面・リスク・目標など）", ""], ["docs", "EMS文書管理（書類の一覧・原本PDF）", "監査の前は「ISOの要求と書類」タブ"], ["manual", "環境手順書", ""], ["plan:monitoring", "監視・測定の計画", ""], ["plan:distrib", "文書の配布記録", ""]], "plan"],
+  ["📜", "許可・法令・届出", [["kyoka", "許可一覧", "許可証と有効期限"], ["permit", "許可の内容", "事業の範囲・積替え保管場所"], ["horei", "法規制一覧", "法改正のお知らせ"], ["reports", "届出・報告の期限一覧", "実績報告・定期検査など。期限が近いとホームに出る"]], "permit"],
+  ["🏭", "委託先・行先", [["plan:vendors", "外部委託先の管理（取引先チェック）", ""], ["plan:routes", "産業廃棄物の行先経路（B-06）", ""], ["survey", "委託先調査票の回答", "取引先から届いたとき"]], "vendor"],
+  ["👥", "人・車両", [["skills", "力量（資格の一覧）", ""], ["vehlist", "車両の愛称一覧", "A4の半分で印刷"], ["plan:trainPlan", "年間の教育訓練計画", ""]], "people"],
+  ["🏢", "会社", [["company", "会社情報（沿革・組織図・環境方針）", ""], ["sdgs", "SDGs", ""]], "company"],
+  ["🗂️", "その他", [], "other"]
 ];
 function renderHomeMenu() {
   const row = d => `<div class="hm-row" onclick="openSection('${d.key}')"><span class="nm">${d.name}</span>${d.cl ? `<span class="cl">${d.cl}</span>` : ""}<span class="ar">›</span></div>`;
@@ -5261,25 +5291,29 @@ function renderHomeMenu() {
   document.getElementById("homeMenu").innerHTML =
     `<div class="hm-find"><input type="search" id="hmQ" placeholder="🔍 書類名・言葉で探す（例：リスク、計量証明書、許可証、EMS-A-10）" oninput="homeFind(this.value)"><div class="hm-hits" id="hmHits"></div></div>` +
     `<div class="hm-info" id="hmInfo" style="display:none;"></div>` +
-    `<details class="hm-det"><summary>📘 はじめての人へ：ISO管理の使い方（ここを押すと開きます）</summary><div style="font-size:14px;line-height:1.9;color:#1f2937;">` +
-      `<b>① 毎日・毎週</b>：下の「✅ 今やること」と「📌 終わっていないこと・期限」を見て、赤いものから片づけます。押すと入力する画面が開きます。<br>` +
-      `<b>② 何か起きたら</b>：「🚨 何かあったとき」から記録します（苦情・ヒヤリハット・ゾーン報告・事故・変更・行政の立入）。<br>` +
-      `<b>③ 書類が届いたら</b>：「📥 届いた書類を入れる」で、入れる場所に案内します。<br>` +
-      `<b>④ 年に1回</b>：「📅 年1回・決まった時期」の順番で（8月 見直し → 10〜2月 内部監査 → 7月 マネジメントレビュー）。<br>` +
-      `<b>⑤ 監査の前</b>：「EMS文書管理」→「ISOの要求と書類」タブで、オレンジの行（記録がないもの）をなくします。<br>` +
-      `<b>決まりごと</b>：どの記録にも「記録者」と日付が残ります。直したいときは「編集」、いらないときは「削除」。書類（PDF）は「この表でPDFを作る」で版として残り、「確認」「承認」を押して確定します。<br>` +
-      `<button class="btn-save" style="margin-top:8px;padding:8px 14px;border-radius:8px;" onclick="location.href='help.html'">❓ 使い方（よくある質問）を全部見る</button>` +
-    `</div></details>` +
     `<div class="hm-two"><div class="hm-find hm-now"><h3>✅ 今やること（時期が来ている記録）</h3><div id="hmNow"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div>` +
     `<div class="hm-find hm-open"><h3>📌 終わっていないこと・期限</h3><div id="hmOpen"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></div></div>` +
     `<div class="hm-sec">仕事から探す</div>` +
     `<div class="hm-two">` + card(g1[0], g1[1], g1[2], g1[3].map(wrow).join("")) + card(g2[0], g2[1], g2[2], g2[3].map(wrow).join("")) + `</div>` +
-    `<div class="hm-two">` + card(gT[0], gT[1], gT[2], gT[3].map(wrow).join("")) + card("📥", "届いた書類を入れる", "書類ごとに入れる場所へ案内します", INCOMING.map(([n, to, how]) => wrow([to, n, how])).join("")) + `</div>` +
-    `<div class="hm-two">` + card(g3[0], g3[1], g3[2], g3[3].map(wrow).join("")) + card(g4[0], g4[1], g4[2], g4[3].map(wrow).join("")) + `</div>` +
+    `<div class="hm-two">` + card(gT[0], gT[1], gT[2], gT[3].map(wrow).join("")) + card("📁", "書類・資料の置き場", "フォルダを押すと中が開きます。届いた書類は「📥」から入れる場所へ", `<div class="hm-in" onclick="location.href='library.html'" style="background:#eef2ff;"><span class="nm">📁 書類を入れる・全部見る<span style="display:block;font-size:11px;color:#6b7280;">PDF・写真を1回入れると、フォルダや研修の教材など必要な画面から見られる</span></span><span class="to">›</span></div>` +
+      CABINET.concat([["📥", "届いた書類を入れる", INCOMING.map(([n, to, how]) => [to, n, how]), ""]]).map(([ic, t, L, lib]) => `<details class="hm-fold" data-lib="${lib || ""}"${lib === "other" ? ' style="display:none;"' : ""}><summary>${ic} ${t}<span>${L.length}</span></summary>${L.map(wrow).join("")}${lib ? `<div class="hm-libs"></div><div class="hm-in" onclick="location.href='library.html#add=${lib}'"><span class="nm" style="color:#2563eb;">＋ このフォルダに書類を入れる</span><span class="to">›</span></div>` : ""}</details>`).join("")) + `</div>` +
+    `<div class="hm-two">` + card(g4[0], g4[1], g4[2], g4[3].map(wrow).join("")) + `<div></div></div>` +
     `<details class="hm-det"><summary>📅 予定と状況をすべて見る（毎月・3か月ごと・今年度の予定）</summary><div id="hmTasks"><div style="font-size:13px;color:#6b7280;">確認中…</div></div></details>` +
     `<details class="hm-det"><summary>📚 ISOの章ごとのメニュー（監査で「◯章はどこ？」と聞かれたとき）</summary>` +
       SECTION_GROUPS.map(([g, label]) => `<div class="hm-grp"><h3>${label}</h3><div class="hm-list">${SECTION_DEFS.filter(d => d.grp === g).map(row).join("")}</div></div>`).join("") + `</details>`;
+  homeLibrary();
   renderHomeTasks().then(renderHomeNow).catch(e => { console.error(e); const el = document.getElementById("hmNow"); if (el) el.innerHTML = '<div style="font-size:13px;color:#6b7280;">状況を読み込めませんでした</div>'; });
+}
+/* 書類の置き場(library.js)に入れた書類を、ホームのフォルダの中にも並べる */
+async function homeLibrary() {
+  if (!window.Library) return;
+  try { const L = await Library.list(db);
+    document.querySelectorAll(".hm-fold[data-lib]").forEach(f => { const k = f.dataset.lib; if (!k) return;
+      const mine = L.filter(d => (d.folder || "other") === k), box = f.querySelector(".hm-libs"); if (!box) return;
+      box.innerHTML = mine.map(d => `<div class="hm-in" onclick="Library.open(db,'${d.id}')"><span class="nm">${Library.icon(d)} ${escapeHtml(d.name)}${d.memo ? `<span style="display:block;font-size:11px;color:#6b7280;">${escapeHtml(d.memo)}</span>` : ""}</span><span class="to">開く</span></div>`).join("");
+      const cnt = f.querySelector("summary span"); if (cnt) cnt.textContent = (f.querySelectorAll(".hm-in").length - 1);
+      if (k === "other" && mine.length) f.style.display = ""; });
+  } catch (e) { console.error(e); }
 }
 /* 「予定と状況」の中から赤(まだ)のものだけを「今やること」に並べる */
 function renderHomeNow() {
@@ -5305,6 +5339,7 @@ window.openSection = function(sec) {
   if (sec === "reports") { location.href = "reports.html"; return; }
   if (sec === "slides") { location.href = "slideshow.html"; return; }
   if (sec === "edithist") { location.href = "history.html"; return; }
+  if (sec === "library") { location.href = "library.html"; return; }
   if (sec === "help") { location.href = "help.html"; return; }
   if (sec === "kyoka") { location.href = "kyoka.html"; return; }
   if (sec === "horei") { location.href = "horei.html"; return; }
