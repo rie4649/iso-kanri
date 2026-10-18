@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>環境への取り組み | 株式会社関根商店</title>
 <link rel="icon" href="icon-192.png">
-<style id="pageStyle">@page { size: A4 landscape; margin: 10mm; }</style>
+<style id="pageStyle">@page { size: A4 landscape; margin: 10mm; }body.kiosk #bar, body.kiosk .noKiosk, body.kiosk .noPrintBar { display:none !important; } body.kiosk { padding-top:0 !important; }
+</style>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
 html, body { height:100%; }
@@ -264,6 +265,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="history.js"></script>
 <script src="registers.js"></script>
 <script src="survey-items.js"></script>
 <script src="contract-stats.js"></script>
@@ -437,6 +439,7 @@ const PAGES = [
   { key:"diesel", ch:4, icon:"⛽", name:"軽油使用量", purpose:"diesel", render: renderDiesel },
   { key:"lifeline", ch:4, icon:"⚡", name:"ライフライン(電気・ガス・水道)", purpose:"lifeline", render: renderLifeline },
   { key:"freon", ch:4, icon:"🌡️", name:"フロン排出抑制法簡易点検", purpose:"freon", render: renderFreon },
+  { key:"co2", ch:4, icon:"🌍", name:"CO₂排出量（会社全体）", render: renderCo2 },
   { key:"safety", ch:4, icon:"🦺", name:"安全衛生パトロール", purpose:"safety", render: renderSafety },
   { key:"clean", ch:4, icon:"🧹", name:"クリーン度チェック", purpose:"clean", render: renderClean },
   { key:"metal", ch:4, icon:"🔩", name:"金属拾い上げ", purpose:"metal", render: renderMetal },
@@ -1267,6 +1270,40 @@ async function calDocOpen(fileId, colName, url){
   } catch(e){ if (w) w.close(); alert("開けませんでした: "+e.message); }
 }
 
+/* ---------- CO₂排出量（会社全体）：軽油・電気・ガスなど・フロンの記録から自動で計算 ----------
+   軽油 2.58 kg-CO₂/L(軽油の画面と同じ)、電気・ガスはライフラインの種類に入れた係数、フロンは漏えい量×GWP */
+async function renderCo2(p){
+  const [dr, types, lr, fr, fe] = await Promise.all([col("dieselRecords"), col("lifelineTypes"), col("lifelineRecords"), col("freonRecords"), col("freonEquipments")]);
+  const lit = x => Number(x.totalLiters) || (x.vehicles||[]).reduce((a,v) => a + (Number(v.liters)||0), 0);
+  const fac = {}; types.forEach(t => fac[t.name] = Number(t.co2Factor) || 0);
+  const gwp = {}; fe.forEach(e => gwp[e.name] = Number(e.gwp) || 0);
+  const fys = [...new Set(dr.map(x => fyOf(x.yearMonth)).concat(lr.map(x => fyOf(x.yearMonth))).concat(fr.map(x => fyOf(x.date))).filter(Boolean))].sort().slice(-5);
+  if (!fys.length) return await head(p, "") + empty("軽油・ライフライン・フロンの記録が入ると、自動で計算します");
+  const cats = [["軽油（トラック・重機）", "#1e3a5f"]].concat(types.filter(t => Number(t.co2Factor)).map((t, i) => [t.name, ["#f59e0b", "#0ea5e9", "#a855f7", "#64748b"][i % 4]])).concat([["フロン（漏えい）", "#ef4444"]]);
+  const val = (fy, c) => c === "軽油（トラック・重機）" ? dr.filter(x => fyOf(x.yearMonth) === fy).reduce((a, x) => a + lit(x) * 2.58, 0) / 1000
+    : c === "フロン（漏えい）" ? fr.filter(x => fyOf(x.date) === fy).reduce((a, x) => a + (Number(x.leakedG)||0) / 1000 * (gwp[x.equipment]||0), 0) / 1000
+    : lr.filter(x => fyOf(x.yearMonth) === fy).reduce((a, x) => a + (x.types||[]).filter(t => t.name === c).reduce((b, t) => b + (Number(t.usage)||0), 0), 0) * (fac[c]||0) / 1000;
+  const months = fy => new Set(dr.filter(x => fyOf(x.yearMonth) === fy).map(x => x.yearMonth)).size;
+  const T = fys.map(fy => { const parts = cats.map(([c]) => val(fy, c)); return { fy, parts, sum: parts.reduce((a, b) => a + b, 0), n: months(fy) }; });
+  const max = Math.max(...T.map(t => t.sum), 1), W = 120, H = 260;
+  // 年度ごとの積み上げ棒グラフ(SVG)
+  const bars = T.map((t, i) => { let y = H; const x = 60 + i * (W + 30);
+    const segs = t.parts.map((v, k) => { const h = v / max * (H - 30); y -= h; return h > 0.5 ? '<rect x="'+x+'" y="'+y.toFixed(1)+'" width="'+W+'" height="'+h.toFixed(1)+'" fill="'+cats[k][1]+'"><title>'+esc(cats[k][0])+' '+num(v, 1)+' t</title></rect>' : ''; }).join("");
+    return segs + '<text x="'+(x + W/2)+'" y="'+(y - 8).toFixed(1)+'" text-anchor="middle" font-size="18" font-weight="800" fill="#0f172a">'+num(t.sum, 1)+' t</text>'+
+      '<text x="'+(x + W/2)+'" y="'+(H + 24)+'" text-anchor="middle" font-size="16" fill="#334155">'+esc(fyLabel(t.fy))+(t.n && t.n < 12 ? '（'+t.n+'か月）' : '')+'</text>'; }).join("");
+  const svg = '<svg viewBox="0 0 '+(80 + T.length * (W + 30))+' '+(H + 40)+'" style="width:100%;max-width:'+(80 + T.length * (W + 30))+'px;height:auto;display:block;margin:6px 0 10px;">'+
+    '<line x1="40" y1="'+H+'" x2="'+(60 + T.length * (W + 30))+'" y2="'+H+'" stroke="#94a3b8"/>'+bars+'</svg>';
+  const legend = '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:15px;margin-bottom:8px;">'+cats.map(([c, col]) => '<span><span style="display:inline-block;width:14px;height:14px;background:'+col+';border-radius:3px;vertical-align:-2px;margin-right:4px;"></span>'+esc(c)+'</span>').join("")+'</div>';
+  const last = T[T.length - 1], prev = T[T.length - 2];
+  const kpis = '<div class="kpis"><div class="kpi"><div class="k">'+esc(fyLabel(last.fy))+'のCO₂排出量</div><div class="v">'+num(last.sum, 1)+'<small>トンCO₂</small></div>'+(last.n && last.n < 12 ? '<div class="note">'+last.n+'か月分（途中）</div>' : '')+'</div>'+
+    (prev && prev.sum ? '<div class="kpi"><div class="k">前の年度</div><div class="v">'+num(prev.sum, 1)+'<small>トンCO₂</small></div></div>' : '')+
+    '<div class="kpi"><div class="k">いちばん多いもの</div><div class="v" style="font-size:24px;">'+esc(cats[last.parts.indexOf(Math.max(...last.parts))][0])+'</div><div class="note">'+num(Math.max(...last.parts) / (last.sum || 1) * 100)+'%</div></div></div>';
+  const tbl = '<div class="tw"><table class="t"><tr><th>年度</th>'+cats.map(c => '<th>'+esc(c[0])+'</th>').join("")+'<th>合計</th></tr>'+
+    T.map(t => '<tr><td class="c nw">'+esc(fyLabel(t.fy))+'</td>'+t.parts.map(v => '<td class="r">'+num(v, 2)+'</td>').join("")+'<td class="r"><b>'+num(t.sum, 2)+'</b></td></tr>').join("")+'</table></div>';
+  return await head(p, "軽油・電気・ガス・フロンの記録から自動で計算（単位：トンCO₂）") + kpis + legend + svg + tbl +
+    '<div class="note">係数：軽油 2.58 kg-CO₂/L、電気・ガスはライフラインの種類に入れた係数、フロンは漏えい量×地球温暖化係数（GWP）。途中の年度は入力済みの月までの合計です。</div>';
+}
+
 /* ---------- 水質検査 ---------- */
 let waterMatched = new Set(), byTestIds = {};   // 検査の行に並べた写真(ページ下の「写真」には出さない)
 async function renderWater(p){
@@ -1642,6 +1679,8 @@ async function show(i){
       '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="go(0)">目次へ</button><button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="printCurrent()">このページを印刷</button></div>' : '');
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
+/* スライドショー(slideshow.html)の中で見せるときは、上の操作バーを出さない */
+if (/[?&]kiosk=1/.test(location.search)) document.body.classList.add("kiosk");
 // 上のバーが2段・3段になっても、ページの中身がバーの下に隠れないようにする
 function fitBar(){ const b = document.getElementById("bar"), st = document.getElementById("stage"); if (b && st) st.style.paddingTop = (b.offsetHeight + 16)+"px"; }
 window.addEventListener("resize", fitBar); window.addEventListener("load", fitBar); setTimeout(fitBar, 300);

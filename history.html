@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>直した履歴 | ISO管理</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .flt { display:flex; gap:8px; flex-wrap:wrap; align-items:center; background:#fff; border:1px solid var(--line); border-radius:6px; padding:8px 12px; margin-bottom:10px; font-size:13px; }
+  .flt select, .flt input { padding:6px 8px; font-size:14px; border:1px solid var(--line); border-radius:6px; }
+  .h { background:#fff; border:1px solid var(--line); border-left:5px solid #94a3b8; border-radius:6px; padding:9px 12px; margin-bottom:6px; }
+  .h.add { border-left-color:#16a34a; } .h.chg { border-left-color:#2563eb; } .h.del { border-left-color:#dc2626; }
+  .h .top { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:14px; }
+  .h .op { font-weight:800; border-radius:999px; padding:1px 9px; font-size:12px; color:#fff; background:#64748b; }
+  .h.add .op { background:#16a34a; } .h.chg .op { background:#2563eb; } .h.del .op { background:#dc2626; }
+  .h .w { color:#475569; font-size:12.5px; } .h .ttl { font-weight:800; flex:1; min-width:180px; }
+  .diff { font-size:12.5px; margin-top:6px; border-top:1px dashed var(--line); padding-top:5px; display:none; }
+  .diff.show { display:block; } .diff table { border-collapse:collapse; width:100%; } .diff td, .diff th { border:1px solid #e2e8f0; padding:3px 6px; vertical-align:top; text-align:left; }
+  .diff th { background:#f8fafc; white-space:nowrap; } .diff .o { color:#b91c1c; text-decoration:line-through; } .diff .n { color:#166534; }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>🕘 直した履歴</h1>
+  <div class="sub">アプリで記録を足した・直した・消したときの履歴です。間違えて直した・消したときは「元に戻す」で戻せます</div></div>
+</header>
+<div class="wrap">
+  <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方（ここを押すと開きます）<span class="cl">ISO 7.5.3 文書化した情報の管理</span></summary>
+    <div style="margin-top:6px;line-height:1.8;">
+    <b>■ 何が残る？</b>：だれが（その端末で入れた記録者の名前）・いつ・どの画面で・何を足した／直した／消したか。「中身を見る」で、前と後の違いが見られます。<br>
+    <b>■ 元に戻す</b>：直した記録は直す前の中身に、消した記録はもう一度入れ直します。足した記録は消します。戻したことも履歴に残ります。<br>
+    <b>■ 戻せないもの</b>：写真やPDFの中身、とても長い文は履歴では省略しているので、「元に戻す」は出ません。月1回のバックアップから戻します。<br>
+    <b>■ 古い履歴</b>：1年半より前の履歴は、この画面を開いたときに自動で消えます。</div>
+  </details>
+  <div class="flt">
+    <label>種類 <select id="fCol" onchange="render()"></select></label>
+    <label>だれ <select id="fBy" onchange="render()"></select></label>
+    <label>した事 <select id="fOp" onchange="render()"><option value="">すべて</option><option value="追加">足した</option><option value="変更">直した</option><option value="削除">消した</option></select></label>
+    <label>言葉 <input id="fQ" placeholder="中身で探す" oninput="render()" style="width:140px;"></label>
+    <span id="cnt" style="margin-left:auto;color:#64748b;"></span>
+  </div>
+  <div id="list"><div class="empty">読み込み中…</div></div>
+  <div class="bar" style="justify-content:center;margin-top:10px;"><button class="btn" id="more" onclick="loadMore()" style="display:none;">もっと前を見る</button></div>
+</div>
+<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;display:none;z-index:99;"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="history.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const H = "isoHistory";
+/* 記録の種類(コレクション)の日本語名。ここにないものは英字のまま出る */
+const COLNAME = { isoRegisters:"ISOの計画・記録の表", isoEvents:"カレンダー・出来事", waterTests:"水質検査", noiseChecks:"騒音チェック", compressorInspections:"圧縮機定期点検",
+  metalRecords:"金属拾い上げ", cleanlinessChecks:"クリーン度チェック", dieselRecords:"軽油使用量", lifelineRecords:"ライフライン", freonRecords:"フロン簡易点検", safetyPatrols:"安全衛生パトロール",
+  trainingRecords:"教育訓練", isoCorrectives:"是正処置", isoAudits:"内部監査", isoMgmtReviews:"マネジメントレビュー", isoHoreiEval:"順守評価", isoPhotos:"写真の記録", isoPermitScopes:"許可の内容",
+  isoSurveyAnswers:"委託先調査票の回答", isoSurvey:"委託先調査票(Astemo)", emsDocs:"EMS文書", emsDocFiles:"EMS文書の版", emsDocReviews:"文書の見直し", isoSettings:"設定", companyInfo:"会社情報",
+  isoVolumes:"取扱量", isoReports:"届出・報告の期限", isoNewHire:"新入社員研修の記録", isoKyokaDocs:"許可一覧", envManuals:"環境手順書", sdgsGoals:"SDGs目標", sdgsProgress:"SDGs進捗",
+  isoCustMonthly:"顧客対応の月ごと", isoShokakiDocs:"消火器・防火", eventMarks:"カレンダーのマーク", activityTypes:"活動の種類", isoPhotoSettings:"写真の設定" };
+const cn = c => COLNAME[c] || c;
+const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(window._tt); window._tt = setTimeout(() => t.style.display = "none", 2600); }
+let rows = [], lastDoc = null;
+const PAGE = 300;
+async function load(first){
+  try {
+    let q = db.collection(H).orderBy("ms", "desc").limit(PAGE); if (!first && lastDoc) q = q.startAfter(lastDoc);
+    const s = await q.get(); lastDoc = s.docs[s.docs.length - 1] || lastDoc;
+    rows = rows.concat(s.docs.map(d => ({ _id: d.id, ...d.data() })));
+    document.getElementById("more").style.display = s.docs.length === PAGE ? "" : "none";
+    fillFilters(); render();
+  } catch(e){ document.getElementById("list").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; }
+}
+function loadMore(){ load(false); }
+function fillFilters(){
+  const sel = (id, vals, lab) => { const el = document.getElementById(id), cur = el.value; el.innerHTML = '<option value="">すべて</option>' + vals.map(v => '<option value="'+esc(v)+'">'+esc(lab ? lab(v) : v)+'</option>').join(""); el.value = cur; };
+  sel("fCol", [...new Set(rows.map(r => r.col))].sort((a, b) => cn(a).localeCompare(cn(b), "ja")), cn);
+  sel("fBy", [...new Set(rows.map(r => r.by || "（名前なし）"))].sort());
+}
+const titleOf = r => { const d = { ...(r.before || {}), ...(r.after || {}) }; return d.name || d.title || d.theme || d.content || d.event || d.scenario || d.agenda || d.company || d.place || d.targetName || d.date || d.yearMonth || r.id || ""; };
+const show = v => v == null ? "" : typeof v === "object" ? (v.seconds != null ? new Date(v.seconds * 1000).toLocaleString("ja-JP") : JSON.stringify(v)) : String(v);
+function render(){
+  const fc = document.getElementById("fCol").value, fb = document.getElementById("fBy").value, fo = document.getElementById("fOp").value, fq = document.getElementById("fQ").value.trim();
+  const L = rows.filter(r => (!fc || r.col === fc) && (!fb || (r.by || "（名前なし）") === fb) && (!fo || String(r.op).startsWith(fo)) && (!fq || JSON.stringify([r.before, r.after]).includes(fq)));
+  document.getElementById("cnt").textContent = L.length + "件";
+  document.getElementById("list").innerHTML = L.length ? L.map(r => { const k = String(r.op).startsWith("追加") ? "add" : String(r.op).startsWith("削除") ? "del" : "chg";
+    const canUndo = !r.trimmed && !r.big && !r.undone && r.id && ((k === "add") || (r.before && (k === "chg" || k === "del")));
+    return '<div class="h '+k+'"><div class="top"><span class="op">'+esc(r.op)+'</span><span class="ttl">'+esc(cn(r.col))+'：'+esc(String(titleOf(r)).slice(0, 50))+'</span>'+
+      '<span class="w">'+esc(new Date(r.ms).toLocaleString("ja-JP"))+'　'+esc(r.by || "（名前なし）")+'　'+esc(r.page || "")+'</span>'+
+      '<button class="btn sm" onclick="this.closest(\'.h\').querySelector(\'.diff\').classList.toggle(\'show\')">中身を見る</button>'+
+      (canUndo ? '<button class="btn sm del" onclick="undo(\''+r._id+'\')">元に戻す</button>' : (r.undone ? '<span class="w">戻し済み</span>' : (r.trimmed || r.big ? '<span class="w">写真・長い文があるので履歴からは戻せません</span>' : '')))+'</div>'+
+      '<div class="diff">'+diffHtml(r)+'</div></div>'; }).join("") : '<div class="empty">履歴がありません</div>';
+}
+function diffHtml(r){
+  const b = r.before || {}, a = r.after || {}, ks = [...new Set(Object.keys(a).concat(String(r.op).startsWith("削除") || !r.merge ? Object.keys(b) : []))].filter(k => !["updatedAt","recAt","createdAt","createdMs"].includes(k));
+  if (!ks.length) return '<div class="w">中身の記録はありません</div>';
+  return '<table><tr><th>項目</th><th>前</th><th>後</th></tr>' + ks.map(k => { const o = show(b[k]), n = show(a[k]); if (o === n) return "";
+    return '<tr><th>'+esc(k)+'</th><td class="o">'+esc(o.slice(0, 400))+'</td><td class="n">'+esc(String(r.op).startsWith("削除") ? "" : n.slice(0, 400))+'</td></tr>'; }).join("") + '</table>';
+}
+async function undo(hid){
+  const r = rows.find(x => x._id === hid); if (!r) return;
+  const k = String(r.op).startsWith("追加") ? "add" : String(r.op).startsWith("削除") ? "del" : "chg";
+  const msg = k === "add" ? "この足した記録を消します。よろしいですか？" : k === "del" ? "消した記録を、もう一度入れ直します。よろしいですか？" : "この記録を、直す前の中身に戻します（そのあとに直したところも戻ります）。よろしいですか？";
+  if (!confirm(msg)) return;
+  try {
+    const ref = db.collection(r.col).doc(r.id);
+    if (k === "add") await ref.delete(); else await ref.set(r.before);
+    await db.collection(H).doc(hid).update({ undone: true, undoneBy: (localStorage.getItem("isoRecBy") || ""), undoneMs: Date.now() });
+    r.undone = true; render(); toast("元に戻しました");
+  } catch(e){ toast("戻せませんでした: " + e.message); }
+}
+/* 1年半より前の履歴は消す(1日1回だけ) */
+(async function cleanup(){
+  try { const key = "isoHistClean", t = new Date().toDateString(); if (localStorage.getItem(key) === t) return; localStorage.setItem(key, t);
+    const lim = Date.now() - 548 * 86400000, s = await db.collection(H).where("ms", "<", lim).limit(400).get();
+    if (s.empty) return; const b = db.batch(); s.docs.forEach(d => b.delete(d.ref)); await b.commit();
+  } catch(e){}
+})();
+load(true);
+</script>
+</body>
+</html>

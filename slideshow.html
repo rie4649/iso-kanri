@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スライドショー | ISO管理</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .set { background:#fff; border:1px solid var(--line); border-radius:6px; padding:12px 14px; margin-bottom:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .set .nm { flex:1; min-width:200px; font-size:16px; font-weight:800; } .set .nm small { display:block; font-weight:normal; color:#64748b; font-size:12.5px; }
+  .play { font-size:16px !important; padding:10px 20px !important; }
+  label.lb { display:block; font-size:13px; font-weight:700; color:#334155; margin:12px 0 4px; }
+  .ed input, .ed select, .ed textarea { width:100%; box-sizing:border-box; padding:8px 10px; font-size:15px; border:1px solid var(--line); border-radius:6px; }
+  .tabs2 { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; } .tabs2 button { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font-weight:700; cursor:pointer; font-size:13px; }
+  .tabs2 button.on { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; max-height:340px; overflow:auto; padding:2px; }
+  .grid .ph { position:relative; border:2px solid transparent; border-radius:6px; overflow:hidden; cursor:pointer; background:#f1f5f9; }
+  .grid .ph img { width:100%; height:92px; object-fit:cover; display:block; } .grid .ph div { font-size:11px; padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .grid .ph.on { border-color:#16a34a; } .grid .ph.on:after { content:"✔"; position:absolute; top:4px; right:6px; background:#16a34a; color:#fff; border-radius:50%; width:22px; height:22px; text-align:center; line-height:22px; font-weight:800; }
+  .pages { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:6px; }
+  .pages label { display:flex; gap:6px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:6px; padding:7px 9px; font-size:13.5px; cursor:pointer; }
+  .order { border:1px solid var(--line); border-radius:6px; background:#fff; max-height:300px; overflow:auto; }
+  .order .o { display:flex; gap:8px; align-items:center; padding:6px 8px; border-bottom:1px solid var(--line2); font-size:13.5px; }
+  .order .o img { width:56px; height:40px; object-fit:cover; border-radius:4px; } .order .o .ic { width:56px; text-align:center; font-size:22px; }
+  .order .o span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* 再生画面 */
+  #pl { position:fixed; inset:0; background:#000; z-index:200; display:none; }
+  #pl.show { display:block; }
+  #pl .sl { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .6s; }
+  #pl .sl.on { opacity:1; }
+  #pl img { max-width:100%; max-height:100%; object-fit:contain; }
+  #pl iframe { width:100%; height:100%; border:none; background:#e8ecf4; }
+  #pl .cap { position:absolute; left:0; right:0; bottom:0; padding:18px 28px; background:linear-gradient(transparent, rgba(0,0,0,.75)); color:#fff; font-size:26px; font-weight:700; }
+  #pl .tx { color:#fff; text-align:center; padding:40px; } #pl .tx h2 { font-size:56px; margin:0 0 20px; } #pl .tx p { font-size:28px; white-space:pre-wrap; line-height:1.7; opacity:.9; }
+  #ctl { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); display:flex; gap:10px; background:rgba(15,23,42,.85); padding:8px 12px; border-radius:999px; transition:opacity .4s; z-index:5; }
+  #ctl button { background:#fff; border:none; border-radius:999px; width:52px; height:52px; font-size:20px; cursor:pointer; }
+  #ctl .cnt { color:#fff; align-self:center; font-size:14px; min-width:60px; text-align:center; }
+  #pl.idle #ctl { opacity:0; } #pl.idle { cursor:none; }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>🖥️ スライドショー（展示用）</h1>
+  <div class="sub">見せたい写真や「環境への取り組み」のページを選んで、自動で流します（待合・展示のモニター用）。監査で話しながら見せるときは「環境への取り組み」を使います</div></div>
+</header>
+<div class="wrap">
+  <div class="bar" style="margin-bottom:10px;"><button class="btn pri" onclick="openEd('')">＋ 新しいセットを作る</button></div>
+  <div id="sets"><div class="empty">読み込み中…</div></div>
+
+  <div class="card ed" id="ed" style="display:none;margin-top:14px;">
+    <h2 style="font-size:17px;color:var(--navy);margin:0 0 6px;" id="edTtl">セットを作る</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="flex:2;min-width:220px;"><label class="lb" for="sName">セットの名前</label><input id="sName" placeholder="例：視察の待ち時間用"></div>
+      <div style="flex:1;min-width:140px;"><label class="lb" for="sSec">1枚を見せる秒数</label><select id="sSec"><option>5</option><option>8</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></div>
+      <div style="flex:1;min-width:140px;"><label class="lb" for="sCap">写真の説明</label><select id="sCap"><option value="1">出す</option><option value="0">出さない</option></select></div>
+    </div>
+    <label class="lb">① 写真を選ぶ（押すと選べます）</label>
+    <div class="tabs2" id="phTabs"></div>
+    <div class="grid" id="phGrid"></div>
+    <label class="lb">② 環境への取り組みのページを選ぶ</label>
+    <div class="pages" id="pgList"></div>
+    <label class="lb">③ 文字だけのスライド（あいさつなど）</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="tTitle" placeholder="大きい文字（例：ようこそ 関根商店へ）" style="flex:1;min-width:200px;"><input id="tBody" placeholder="小さい文字（任意）" style="flex:2;min-width:200px;"><button class="btn" onclick="addText()">＋ 足す</button></div>
+    <label class="lb">流す順番（▲▼で入れかえ）</label>
+    <div class="order" id="order"></div>
+    <div class="bar" style="margin-top:12px;"><button class="btn del" id="delBtn" onclick="delSet()" style="margin-right:auto;">このセットを消す</button><button class="btn" onclick="closeEd()">キャンセル</button><button class="btn" onclick="preview()">▶ ためしに流す</button><button class="btn pri" onclick="saveSet()">保存</button></div>
+  </div>
+</div>
+
+<!-- 再生 -->
+<div id="pl"><div id="slA" class="sl"></div><div id="slB" class="sl"></div>
+  <div id="ctl"><button onclick="move(-1)" title="前へ">◀</button><button id="pBtn" onclick="pause()" title="止める・流す">⏸</button><button onclick="move(1)" title="次へ">▶</button><span class="cnt" id="cnt"></span><button onclick="stop()" title="おわる">✕</button></div>
+</div>
+<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;display:none;z-index:300;"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="history.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* 保存先：isoSettings/slides { sets:[{ id, name, sec, cap, items:[{t:"photo",id} | {t:"page",key} | {t:"text",title,body}] }] }
+   写真は「写真の記録」(isoPhotos＝小さい写真・isoPhotoFiles＝大きい写真)、ページは「環境への取り組み」(show.html)をそのまま使う */
+const SET_REF = db.collection("isoSettings").doc("slides");
+const PAGES = [["policy","🌿 環境方針"],["history","📜 沿革"],["org","🏢 組織図"],["numbers","✨ 数字で見る関根商店"],["equip","🚛 主な設備・車両"],["kyoka","📜 許可一覧"],["permit","許可の内容"],
+  ["sdgs","🎯 環境目標・SDGs"],["records","📁 保管・掲示の状況"],["training","🎓 教育訓練"],["calendar","📅 年間の活動"],["water","🧪 水質検査"],["noise","🔊 騒音チェック"],["diesel","⛽ 軽油使用量"],
+  ["lifeline","⚡ ライフライン"],["co2","🌍 CO₂排出量"],["safety","🦺 安全衛生パトロール"],["clean","🧹 クリーン度チェック"],["metal","🔩 金属拾い上げ"],["donation","🤝 地域貢献"],["dash","📋 ひと目で分かるまとめ"]];
+const GROUPS = [["all","すべて"],["vehicle","車両"],["equip","設備"],["record","保管・掲示・現場"],["event","出来事"]];
+let sets = [], photos = [], editId = "", items = [], phGroup = "all";
+const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const uid = () => "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(window._tt); window._tt = setTimeout(() => t.style.display = "none", 2600); }
+
+SET_REF.onSnapshot(d => { sets = d.exists ? (d.data().sets || []) : []; renderSets(); }, e => toast("読み込みエラー: "+e.message));
+db.collection("isoPhotos").onSnapshot(s => { photos = s.docs.map(d => ({ id:d.id, ...d.data() })).sort((a, b) => String(b.shotDate||"").localeCompare(String(a.shotDate||"")) || (b.createdMs||0) - (a.createdMs||0)); if (document.getElementById("ed").style.display !== "none") renderPh(); renderSets(); }, () => {});
+const phOf = id => photos.find(p => p.id === id);
+const capOf = p => p ? (p.targetName || "") + (p.memo && p.kind !== "event" ? "　" + p.memo : "") : "";
+function renderSets(){
+  document.getElementById("sets").innerHTML = sets.length ? sets.map(s => { const n = (s.items || []).length;
+    return '<div class="set"><div class="nm">'+esc(s.name||"(名前なし)")+'<small>'+n+'枚・1枚 '+(s.sec||10)+'秒（1周 約'+Math.ceil(n * (s.sec||10) / 60)+'分）</small></div>'+
+      '<button class="btn pri play" onclick="play(\''+s.id+'\')">▶ 流す</button><button class="btn" onclick="openEd(\''+s.id+'\')">編集</button></div>'; }).join("")
+    : '<div class="empty">まだセットがありません。「＋ 新しいセットを作る」から、見せたい写真やページを選んでください</div>';
+}
+/* ---------- 編集 ---------- */
+function openEd(id){
+  editId = id; const s = id ? (sets.find(x => x.id === id) || {}) : { name:"", sec:10, cap:1, items:[] };
+  items = JSON.parse(JSON.stringify(s.items || []));
+  document.getElementById("edTtl").textContent = id ? "セットを直す" : "セットを作る";
+  document.getElementById("sName").value = s.name || ""; document.getElementById("sSec").value = String(s.sec || 10); document.getElementById("sCap").value = String(s.cap ?? 1);
+  document.getElementById("delBtn").style.display = id ? "" : "none";
+  document.getElementById("ed").style.display = ""; renderPh(); renderPages(); renderOrder();
+  document.getElementById("ed").scrollIntoView({ behavior:"smooth" });
+}
+function closeEd(){ document.getElementById("ed").style.display = "none"; }
+function renderPh(){
+  document.getElementById("phTabs").innerHTML = GROUPS.map(([k, l]) => '<button class="'+(phGroup === k ? "on" : "")+'" onclick="phGroup=\''+k+'\';renderPh()">'+l+'</button>').join("");
+  const L = photos.filter(p => phGroup === "all" || p.kind === phGroup);
+  document.getElementById("phGrid").innerHTML = L.length ? L.map(p => '<div class="ph'+(items.some(x => x.t === "photo" && x.id === p.id) ? " on" : "")+'" onclick="togglePh(\''+p.id+'\')"><img src="'+(p.thumb||"")+'" alt=""><div>'+esc(capOf(p))+'</div></div>').join("")
+    : '<div class="note">この分類の写真はまだありません（写真の記録に入れると出ます）</div>';
+}
+function togglePh(id){ const i = items.findIndex(x => x.t === "photo" && x.id === id); if (i >= 0) items.splice(i, 1); else items.push({ t:"photo", id }); renderPh(); renderOrder(); }
+function renderPages(){
+  document.getElementById("pgList").innerHTML = PAGES.map(([k, l]) => '<label><input type="checkbox"'+(items.some(x => x.t === "page" && x.key === k) ? " checked" : "")+' onchange="togglePg(\''+k+'\',this.checked)">'+esc(l)+'</label>').join("");
+}
+function togglePg(k, on){ const i = items.findIndex(x => x.t === "page" && x.key === k); if (on && i < 0) items.push({ t:"page", key:k }); if (!on && i >= 0) items.splice(i, 1); renderOrder(); }
+function addText(){ const t = document.getElementById("tTitle").value.trim(); if (!t) { toast("大きい文字を入れてください"); return; }
+  items.push({ t:"text", title:t, body: document.getElementById("tBody").value.trim() }); document.getElementById("tTitle").value = ""; document.getElementById("tBody").value = ""; renderOrder(); }
+function label(x){ if (x.t === "photo") { const p = phOf(x.id); return { img: p && p.thumb, txt: p ? capOf(p) || "写真" : "（消えた写真）" }; }
+  if (x.t === "page") return { ic:"📄", txt: (PAGES.find(p => p[0] === x.key) || [0, x.key])[1] }; return { ic:"🔤", txt: x.title + (x.body ? "　" + x.body : "") }; }
+function renderOrder(){
+  document.getElementById("order").innerHTML = items.length ? items.map((x, i) => { const L = label(x);
+    return '<div class="o">'+(L.img ? '<img src="'+L.img+'" alt="">' : '<div class="ic">'+L.ic+'</div>')+'<span>'+(i+1)+'. '+esc(L.txt)+'</span>'+
+      '<button class="btn sm" onclick="mv('+i+',-1)"'+(i ? '' : ' disabled')+'>▲</button><button class="btn sm" onclick="mv('+i+',1)"'+(i < items.length - 1 ? '' : ' disabled')+'>▼</button><button class="btn sm del" onclick="items.splice('+i+',1);renderOrder();renderPh();renderPages()">✕</button></div>'; }).join("")
+    : '<div class="note" style="padding:10px;">上で写真やページを選ぶと、ここに並びます</div>';
+}
+function mv(i, d){ const j = i + d; if (j < 0 || j >= items.length) return; [items[i], items[j]] = [items[j], items[i]]; renderOrder(); }
+function current(){ return { id: editId || uid(), name: document.getElementById("sName").value.trim() || "セット", sec: Number(document.getElementById("sSec").value) || 10, cap: Number(document.getElementById("sCap").value), items }; }
+async function saveSet(){
+  if (!items.length) { toast("写真かページを1つ以上選んでください"); return; }
+  const s = current(), next = sets.filter(x => x.id !== s.id).concat([s]);
+  try { await SET_REF.set({ sets: next }, { merge: true }); editId = s.id; closeEd(); toast("保存しました"); } catch(e){ toast("エラー: "+e.message); }
+}
+async function delSet(){ const s = sets.find(x => x.id === editId); if (!s || !confirm("「"+s.name+"」を消しますか？（写真そのものは消えません）")) return;
+  try { await SET_REF.set({ sets: sets.filter(x => x.id !== editId) }, { merge: true }); closeEd(); toast("消しました"); } catch(e){ toast("エラー: "+e.message); } }
+function preview(){ if (!items.length) { toast("写真かページを選んでください"); return; } startPlay(current()); }
+
+/* ---------- 再生(全画面・自動でめくる・最後まで行ったら最初から) ---------- */
+let P = null, idx = 0, timer = null, paused = false, front = "slA", idleT = null;
+const full = {};
+function play(id){ const s = sets.find(x => x.id === id); if (s) startPlay(s); }
+function startPlay(s){
+  P = s; idx = 0; paused = false; document.getElementById("pBtn").textContent = "⏸";
+  document.getElementById("pl").classList.add("show");
+  try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch(e){}
+  showSlide(); wake();
+}
+async function photoSrc(id){
+  if (full[id]) return full[id];
+  try { const d = await db.collection("isoPhotoFiles").doc(id).get(); if (d.exists) { const v = String(d.data().data || ""); full[id] = v.startsWith("data:") ? v : "data:" + (d.data().type || "image/jpeg") + ";base64," + v; return full[id]; } } catch(e){}
+  const p = phOf(id); return p ? p.thumb : "";
+}
+async function showSlide(){
+  clearTimeout(timer); if (!P) return;
+  const L = P.items; if (!L.length) return; idx = (idx + L.length) % L.length;
+  const x = L[idx], back = front === "slA" ? "slB" : "slA", el = document.getElementById(back);
+  if (x.t === "photo") { const p = phOf(x.id), src = await photoSrc(x.id);
+    el.innerHTML = '<img src="'+src+'" alt="">' + (P.cap && p && capOf(p) ? '<div class="cap">'+esc(capOf(p))+(p.shotDate ? '<span style="font-size:18px;font-weight:normal;opacity:.85;">　'+esc(String(p.shotDate).replace(/-/g, "/"))+'</span>' : '')+'</div>' : ''); }
+  else if (x.t === "page") el.innerHTML = '<iframe src="show.html?kiosk=1#'+esc(x.key)+'"></iframe>';
+  else el.innerHTML = '<div class="tx"><h2>'+esc(x.title)+'</h2>'+(x.body ? '<p>'+esc(x.body)+'</p>' : '')+'</div>';
+  document.getElementById(front).classList.remove("on"); el.classList.add("on"); front = back;
+  setTimeout(() => { const o = document.getElementById(back === "slA" ? "slB" : "slA"); if (!o.classList.contains("on")) o.innerHTML = ""; }, 700);
+  document.getElementById("cnt").textContent = (idx + 1) + " / " + L.length;
+  const nx = L[(idx + 1) % L.length]; if (nx && nx.t === "photo") photoSrc(nx.id);   // 次の写真を先に読んでおく
+  if (!paused) timer = setTimeout(() => { idx++; showSlide(); }, (P.sec || 10) * 1000 * (x.t === "page" ? 1.5 : 1));
+}
+function move(d){ idx += d; showSlide(); wake(); }
+function pause(){ paused = !paused; document.getElementById("pBtn").textContent = paused ? "▶" : "⏸"; if (paused) clearTimeout(timer); else showSlide(); wake(); }
+function stop(){ clearTimeout(timer); P = null; document.getElementById("pl").classList.remove("show"); ["slA","slB"].forEach(k => { const e = document.getElementById(k); e.innerHTML = ""; e.classList.remove("on"); });
+  try { document.fullscreenElement && document.exitFullscreen(); } catch(e){} }
+function wake(){ const pl = document.getElementById("pl"); pl.classList.remove("idle"); clearTimeout(idleT); idleT = setTimeout(() => pl.classList.add("idle"), 2500); }
+document.getElementById("pl").addEventListener("mousemove", wake);
+document.getElementById("pl").addEventListener("touchstart", wake, { passive:true });
+document.addEventListener("keydown", e => { if (!P) return;
+  if (e.key === "Escape") stop(); else if (e.key === "ArrowRight") move(1); else if (e.key === "ArrowLeft") move(-1); else if (e.key === " ") { e.preventDefault(); pause(); } });
+</script>
+</body>
+</html>
