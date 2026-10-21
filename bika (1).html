@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美化活動・ゾーン担当</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .zt { border-collapse:collapse; width:100%; background:#fff; font-size:14px; }
+  .zt th, .zt td { border:1px solid var(--line); padding:6px 6px; vertical-align:top; }
+  .zt th { background:#dbeafe; color:var(--navy); white-space:nowrap; text-align:left; width:7.5em; }
+  .pc { display:inline-block; min-width:92px; margin:3px; padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:#fff; text-align:center; vertical-align:top; cursor:default; }
+  .pc .nm { font-weight:700; font-size:15px; }
+  .pc .hn { display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; margin-top:2px; }
+  .hn.A { background:#fee2e2; color:#b91c1c; } .hn.B { background:#dbeafe; color:#1d4ed8; } .hn.N { background:#f3f4f6; color:var(--muted); }
+  .pc .lst { font-size:11px; color:var(--muted); margin-top:2px; line-height:1.4; }
+  .pc.sel { border:2px solid var(--navy); background:#eef2f7; }
+  .pc.off { opacity:.45; }
+  .pick .pc { cursor:pointer; }
+  .rec { display:flex; gap:10px; align-items:flex-start; }
+  .rec .d { flex:0 0 108px; font-weight:700; color:var(--navy); }
+  .rec .b { flex:1; min-width:0; }
+  .tag.plan { background:#fef3c7; color:#92400e; border-color:#fde68a; } .tag.done { background:var(--okBg); color:var(--ok); border-color:#bbf7d0; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; } .chips button { border:1px solid var(--line); background:#fff; border-radius:16px; padding:5px 12px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .chips button.on { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .bulk { border-collapse:collapse; width:100%; font-size:14px; } .bulk td, .bulk th { border-bottom:1px solid var(--line2); padding:5px 4px; } .bulk select { padding:6px; font-size:14px; }
+  .pt { border-collapse:collapse; background:#fff; font-size:16px; min-width:100%; }
+  .pt th, .pt td { border:1px solid #9ca3af; padding:8px 10px; text-align:center; white-space:nowrap; }
+  .pt th { background:#cfe2f3; color:var(--navy); text-align:left; }
+  .pt td.h { font-size:14px; font-weight:700; } .pt td.h.A { color:#b91c1c; } .pt td.h.B { color:#1d4ed8; }
+  .pt .ls { display:block; font-size:10.5px; color:var(--muted); font-weight:normal; }
+  .work { font-size:13px; font-weight:700; padding:6px 10px; border-radius:6px; margin-top:6px; display:inline-block; }
+  #printArea { display:none; }
+  @media print {
+    body > *:not(#printArea) { display:none !important; }
+    #printArea { display:block; }
+    @page { size:A4 landscape; margin:10mm; }
+    #printArea table { border-collapse:collapse; width:100%; font-size:15pt; }
+    #printArea th, #printArea td { border:1px solid #000; padding:6px 8px; text-align:center; }
+    #printArea th { background:#cfe2f3 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; text-align:left; }
+  }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>美化活動・ゾーン担当</h1><div class="sub">社内図(EMS-B-01)のゾーン担当と班。しなの木通り草刈り・上小環境美化活動などは、この表を見て決めて記録します</div></div>
+</header>
+<div class="wrap">
+  <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方(ここを押すと開きます)<span class="cl">6.2 / 地域貢献</span></summary>
+    <div style="margin-top:6px;line-height:1.8;font-size:14px;">
+    <b>■ ゾーン担当表</b>：ISO管理の「会社情報 → 従業員名簿」の人を、担当ゾーンと班(A班・B班)で並べた表です。「担当・班を変える」で全員をまとめて直せます(名簿にも反映されます)。<br>
+    <b>■ 美化活動の記録</b>：「＋ 予定・記録を追加」で日付と活動を選び、表から行く人を押して選びます(草刈りは基本2人)。その日がA班休み・B班休みのときは、休みの班の人が薄く表示されます。各人の下には前回行った日が出るので、決めるときの参考にしてください。<br>
+    <b>■ 予定 → 実施</b>：決まっていないうちは「予定」で保存し、終わったら「実施済み」にします。ISO管理のカレンダーに自動で載り、実施済みは地域貢献の回数にも数えられます。</div></details>
+
+  <div class="bar"><button class="btn pri" onclick="openRec()">＋ 予定・記録を追加</button><button class="btn" onclick="openBulk()">担当・班を変える</button><button class="btn" onclick="printZone()">🖨️ 表を印刷</button></div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0;"><h2 style="font-size:16px;color:var(--navy);flex:1;">ゾーン担当表</h2><div class="chips" id="viewChips" style="margin:0;"></div></div>
+  <div id="zoneBox"><div class="empty">読み込み中…</div></div>
+
+  <h2 style="font-size:16px;color:var(--navy);margin:18px 0 6px;">美化活動の予定・記録</h2>
+  <div class="chips" id="kindChips"></div>
+  <div id="recBox"><div class="empty">読み込み中…</div></div>
+</div>
+
+<!-- 予定・記録 -->
+<div class="bg" id="recBg" onclick="if(event.target===this)closeRec()"><div class="modal" style="max-width:720px;">
+  <h2 id="recTtl">美化活動の予定・記録</h2>
+  <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px;">
+    <div><label for="rDate">日付</label><input id="rDate" type="date" onchange="drawPick()"></div>
+    <div><label for="rKind">活動</label><select id="rKind" onchange="drawPick()"></select></div>
+    <div><label for="rStatus">状態</label><select id="rStatus"><option value="予定">予定（まだ決定でない）</option><option value="実施">実施済み</option></select></div>
+  </div>
+  <div id="rWork"></div>
+  <label>行く人（表から押して選ぶ・もう一度押すと外れます）<span id="rCount" style="margin-left:8px;color:var(--navy);"></span></label>
+  <div id="rPick" class="pick"></div>
+  <label for="rExtra">表にいない人（任意・「、」区切り）</label><input id="rExtra" placeholder="例：社長">
+  <label for="rMemo">メモ</label><input id="rMemo" placeholder="例：機械移動のため◯◯さんと交代／雨で延期">
+  <div class="mBtns"><button class="btn del" id="rDel" style="margin-right:auto;" onclick="delRec()">削除</button><button class="btn" onclick="closeRec()">キャンセル</button><button class="btn pri" onclick="saveRec()">保存</button></div>
+</div></div>
+
+<!-- 担当・班をまとめて変える -->
+<div class="bg" id="bulkBg" onclick="if(event.target===this)closeBulk()"><div class="modal" style="max-width:640px;">
+  <h2>担当ゾーン・班を変える</h2>
+  <div class="note" style="margin-top:0;">従業員名簿の全員が並んでいます。変えたら下の「保存」を押してください。人の追加・削除はISO管理の「会社情報 → 従業員名簿」で行います。</div>
+  <div style="max-height:60vh;overflow:auto;margin-top:8px;"><table class="bulk" id="bulkTbl"></table></div>
+  <div class="mBtns"><button class="btn" onclick="closeBulk()">キャンセル</button><button class="btn pri" onclick="saveBulk()">保存</button></div>
+</div></div>
+
+<!-- 活動の種類を追加 -->
+<div id="printArea"></div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* =====================================================================
+   美化活動・ゾーン担当
+   Firestore:
+     isoRoster   … ISO管理の従業員名簿(会社情報)。ここで zone(担当ゾーン)・han("A"/"B"/"")を読み書きする
+     isoBika     … 美化活動の予定・記録：date・kind(活動名)・status("予定"/"実施")・memberIds・members(名前)・extra・memo・eventId・createdMs
+     companyInfo/bikaSettings … zones(ゾーンの並び)・kinds(活動の種類)
+     isoEvents   … ISO管理のカレンダー。保存するたびに1件を作る/直す(予定は「◯◯（予定）」、実施は活動名そのまま＝地域貢献に数える)
+     activityTypes … 地域貢献の活動名。活動の種類をここにも登録して、実施済みが地域貢献の回数に入るようにする
+     workCalendars … マスター管理の就業カレンダー(全休/A班休み/B班休み)。休みの班の人を薄く出すのに使う
+   ===================================================================== */
+const DEFAULT_ZONES = ["ACゾーン", "BDゾーン", "Eゾーン", "Fゾーン", "倉庫・駐車場"];
+const DEFAULT_KINDS = ["しなの木通り草刈り", "上小環境美化活動"];
+let zView = (() => { try { return localStorage.getItem("bikaView") || "table"; } catch (e) { return "table"; } })();
+let roster = [], recs = [], settings = { zones: DEFAULT_ZONES, kinds: DEFAULT_KINDS }, marks = [], acts = [], workCals = [], kindFlt = "all", recEdit = null, picked = new Set();
+let toastTimer;
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2800); }
+function esc(t){ return String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const pad = n => String(n).padStart(2, "0");
+const today = () => { const d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+const fd = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return s || ""; const w = "日月火水木金土"[new Date(Number(m[1]), Number(m[2])-1, Number(m[3])).getDay()]; return Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3])+"("+w+")"; };
+const fds = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[2])+"/"+Number(m[3]) : ""; };
+const active = r => r.name && !(r.leaveDate && r.leaveDate < today());
+const sortR = l => l.slice().sort((a,b) => (a.zoneOrder ?? a.order ?? 99999) - (b.zoneOrder ?? b.order ?? 99999) || (a.createdMs||0) - (b.createdMs||0));
+const zones = () => settings.zones && settings.zones.length ? settings.zones : DEFAULT_ZONES;
+const kinds = () => { const k = settings.kinds && settings.kinds.length ? settings.kinds.slice() : DEFAULT_KINDS.slice(); recs.forEach(r => { if (r.kind && !k.includes(r.kind)) k.push(r.kind); }); return k; };
+
+/* ---- 就業カレンダー(マスター管理と同じ読み方) ---- */
+const WORK_NORM = { "A":"A班休み", "B":"B班休み", "A班休":"A班休み", "B班休":"B班休み" };
+function workDayOf(ds){ const c = workCals.find(c => c.start <= ds && ds <= c.end); if (!c) return null; const o = (c.overrides || {})[ds]; const v = o ? (o === "出勤" ? "" : o) : ((c.days || {})[ds] || ""); return WORK_NORM[v] || v; }
+function offHan(ds){ const w = workDayOf(ds); return w === "全休" ? "ALL" : w === "A班休み" ? "A" : w === "B班休み" ? "B" : ""; }
+
+/* ---- 読み込み ---- */
+db.collection("isoRoster").onSnapshot(s => { roster = s.docs.map(d => ({ id:d.id, ...d.data() })); drawAll(); }, e => console.error(e));
+db.collection("isoBika").onSnapshot(s => { recs = s.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => String(b.date||"").localeCompare(String(a.date||"")) || (b.createdMs||0) - (a.createdMs||0)); drawAll(); }, e => console.error(e));
+db.collection("companyInfo").doc("bikaSettings").onSnapshot(d => { if (d.exists) settings = Object.assign({ zones: DEFAULT_ZONES, kinds: DEFAULT_KINDS }, d.data()); drawAll(); }, e => console.error(e));
+db.collection("eventMarks").get().then(s => marks = s.docs.map(d => ({ id:d.id, ...d.data() }))).catch(() => {});
+db.collection("activityTypes").get().then(s => acts = s.docs.map(d => ({ id:d.id, ...d.data() }))).catch(() => {});
+db.collection("workCalendars").where("owner", "==", "sekine").get().then(s => { workCals = s.docs.map(d => d.data()); }).catch(() => {});
+
+/* その人が前回その活動に行った日(実施済みのみ) */
+function lastOf(id, kind){ const r = recs.find(x => x.status === "実施" && x.kind === kind && (x.memberIds || []).includes(id)); return r ? r.date : ""; }
+function personCard(r, opts){
+  opts = opts || {};
+  const h = r.han === "A" || r.han === "B" ? r.han : "N";
+  const kList = opts.kind ? [opts.kind] : kinds();
+  const lst = kList.map(k => { const d = lastOf(r.id, k); return d ? (opts.kind ? "前回 " : k.replace(/しなの木通り|活動/g, "")+" ")+String(d).slice(0,4)+"/"+fds(d) : (opts.kind ? "まだ行っていません" : ""); }).filter(Boolean);
+  return '<div class="pc'+(opts.sel ? ' sel' : '')+(opts.off ? ' off' : '')+'"'+(opts.click ? ' onclick="togglePick(\''+r.id+'\')"' : '')+'>'+
+    '<div class="nm">'+esc(r.name)+'</div><span class="hn '+h+'">'+(h === "N" ? "班なし" : h+"班")+'</span>'+(opts.off ? '<span class="hn N" style="margin-left:3px;">休み</span>' : '')+
+    (lst.length ? '<div class="lst">'+esc(lst.join(" ／ "))+'</div>' : '')+'</div>';
+}
+function zoneRows(cardFn){
+  const act = sortR(roster.filter(active));
+  const rows = zones().map(z => [z, act.filter(r => r.zone === z)]);
+  const none = act.filter(r => !zones().includes(r.zone));
+  if (none.length) rows.push(["担当ゾーンなし", none]);
+  return '<table class="zt">'+rows.map(([z, l]) => '<tr><th>'+esc(z)+'<div style="font-size:11px;font-weight:normal;color:var(--muted);">'+l.length+'名</div></th><td>'+(l.length ? l.map(cardFn).join("") : '<span class="note">(まだいません)</span>')+'</td></tr>').join("")+'</table>';
+}
+/* 紙の表(しなの木通り草刈り・2026/10/21時点)の担当と班。名簿の名前の頭(名字)で合わせて、まだ誰にも担当が入っていないときに一度で入れられる */
+const PAPER_TABLE = {
+  "ACゾーン": [["西澤","A"],["清水","A"],["仙石","B"],["深澤","A"],["水野","B"],["春原","A"]],
+  "BDゾーン": [["桑野","A"],["小泉","B"],["上野","B"],["伊部","B"],["中村","B"]],
+  "Eゾーン": [["金子","A"],["大日方","A"],["塩川","A"]],
+  "Fゾーン": [["古川","B"],["石原","B"],["宮嶋","A"],["長村","A"],["川村","A"]],
+  "倉庫・駐車場": [["高橋","A"],["松下","B"]]
+};
+const normName = s => String(s || "").replace(/[\s　]/g, "").normalize("NFKC");
+function paperMatches(){
+  const act = roster.filter(active), hit = [], miss = [];
+  Object.entries(PAPER_TABLE).forEach(([z, l]) => l.forEach(([sur, han], i) => {
+    const c = act.filter(r => normName(r.name).startsWith(normName(sur)));
+    if (c.length === 1) hit.push({ r: c[0], zone: z, han, i }); else miss.push(sur + (c.length > 1 ? "（同じ名字が" + c.length + "人）" : "（名簿にいない）"));
+  }));
+  return { hit, miss };
+}
+async function applyPaper(){
+  const { hit, miss } = paperMatches();
+  if (!confirm("紙の表の担当と班を " + hit.length + "人に入れます。" + (miss.length ? "\n合わなかった人：" + miss.join("、") + "\n（あとで「担当・班を変える」で入れてください）" : "") + "\nよろしいですか？")) return;
+  const batch = db.batch(); let k = 0;
+  hit.forEach(h => batch.set(db.collection("isoRoster").doc(h.r.id), { zone: h.zone, han: h.han, zoneOrder: k++ }, { merge: true }));
+  try { await batch.commit(); toast("表の担当を入れました"); } catch (e) { toast("保存できませんでした: " + e.message); }
+}
+/* 紙と同じ形の表(ゾーンの行の下に班の行)。名前の下に前回の美化活動 */
+function paperTable(){
+  const act = sortR(roster.filter(active));
+  const rows = zones().map(z => [z, act.filter(r => r.zone === z)]);
+  const none = act.filter(r => !zones().includes(r.zone)); if (none.length) rows.push(["担当ゾーンなし", none]);
+  const w = Math.max(1, ...rows.map(([, l]) => l.length));
+  const last = r => { let best = ""; kinds().forEach(k => { const d = lastOf(r.id, k); if (d > best) best = d; }); return best; };
+  const td = (l, f) => Array.from({ length: w }, (_, i) => l[i] ? f(l[i]) : '<td></td>').join("");
+  return '<div style="overflow-x:auto;"><table class="pt">'+rows.map(([z, l]) =>
+    '<tr><th>'+esc(z)+'</th>'+td(l, r => { const d = last(r); return '<td><b>'+esc(String(r.name).split(/[\s　]+/)[0])+'</b>'+(d ? '<span class="ls">前回 '+esc(fds(d))+'</span>' : '')+'</td>'; })+'</tr>'+
+    '<tr><td class="h" style="background:#f9fafb;">班</td>'+td(l, r => '<td class="h '+(r.han || "")+'">'+esc(r.han || "")+'</td>')+'</tr>').join("")+'</table></div>';
+}
+function drawAll(){
+  const zb = document.getElementById("zoneBox");
+  if (!roster.length) zb.innerHTML = '<div class="empty">従業員名簿がまだ空です。ISO管理の「会社情報 → 従業員名簿」で人を登録してください。</div>';
+  document.getElementById("viewChips").innerHTML = [["table","紙と同じ表"],["card","カード"]].map(([k, l]) => '<button class="'+(zView === k ? 'on' : '')+'" onclick="zView=\''+k+'\';try{localStorage.setItem(\'bikaView\',zView)}catch(e){};drawAll()">'+l+'</button>').join("");
+  if (!roster.length) {}
+  else zb.innerHTML = (zView === "table" ? paperTable() : zoneRows(r => personCard(r))) + (roster.filter(active).every(r => !r.zone) ? (() => { const pm = paperMatches(); return '<div class="card" style="border-left:4px solid #15803d;margin-top:8px;"><b>紙の表の担当をそのまま入れられます</b><div class="note" style="margin:2px 0 8px;">名簿の名字と合わせて、'+pm.hit.length+'人のゾーンと班を入れます。'+(pm.miss.length ? '合わない人：'+esc(pm.miss.join("、")) : '')+'</div><button class="btn pri" onclick="applyPaper()">紙の表の担当を入れる</button></div>'; })() + '<div class="note">まだ誰にも担当ゾーンが入っていません。上の「担当・班を変える」で全員分をまとめて入れられます。</div>' : '');
+  const ks = kinds();
+  document.getElementById("kindChips").innerHTML = [["all","すべて"]].concat(ks.map(k => [k, k])).map(([k, l]) => '<button class="'+(kindFlt === k ? 'on' : '')+'" onclick="kindFlt=\''+esc(k)+'\';drawAll()">'+esc(l)+'<b style="margin-left:4px;">'+(k === "all" ? recs.length : recs.filter(r => r.kind === k).length)+'</b></button>').join("");
+  const list = recs.filter(r => kindFlt === "all" || r.kind === kindFlt);
+  const rb = document.getElementById("recBox");
+  rb.innerHTML = !list.length ? '<div class="empty">まだ記録がありません。「＋ 予定・記録を追加」から入れてください。</div>' : list.map(r => {
+    const names = (r.memberIds || []).map(id => (roster.find(x => x.id === id) || {}).name).filter(Boolean);
+    const all = names.length ? names : (r.members || []);
+    const ex = r.extra ? String(r.extra).split(/[、,]/).map(s => s.trim()).filter(Boolean) : [];
+    return '<div class="card"><div class="rec"><div class="d">'+esc(fd(r.date))+'</div><div class="b"><span class="tag '+(r.status === "実施" ? 'done' : 'plan')+'">'+(r.status === "実施" ? '実施済み' : '予定')+'</span><b>'+esc(r.kind)+'</b>'+
+      '<div style="margin-top:4px;font-size:14px;">'+(all.concat(ex).map(esc).join("・") || '<span class="note">(行く人が未定)</span>')+'</div>'+(r.memo ? '<div class="note" style="margin-top:2px;">'+esc(r.memo)+'</div>' : '')+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">'+(r.status !== "実施" ? '<button class="btn sm fix" onclick="markDone(\''+r.id+'\')">実施済みにする</button>' : '')+'<button class="btn sm" onclick="openRec(\''+r.id+'\')">修正</button></div></div></div>';
+  }).join("");
+}
+
+/* ---- 予定・記録 ---- */
+function openRec(id){
+  recEdit = id ? recs.find(r => r.id === id) : null;
+  document.getElementById("recTtl").textContent = recEdit ? "美化活動の予定・記録を修正" : "美化活動の予定・記録を追加";
+  document.getElementById("rDate").value = recEdit ? recEdit.date || "" : today();
+  const ks = kinds(); const cur = recEdit ? recEdit.kind : (kindFlt !== "all" ? kindFlt : ks[0]);
+  document.getElementById("rKind").innerHTML = ks.map(k => '<option'+(k === cur ? ' selected' : '')+'>'+esc(k)+'</option>').join("") + '<option value="__new">＋ ほかの活動を追加…</option>';
+  document.getElementById("rStatus").value = recEdit ? recEdit.status || "予定" : "予定";
+  document.getElementById("rExtra").value = recEdit ? recEdit.extra || "" : "";
+  document.getElementById("rMemo").value = recEdit ? recEdit.memo || "" : "";
+  picked = new Set(recEdit ? recEdit.memberIds || [] : []);
+  document.getElementById("rDel").style.display = recEdit ? "" : "none";
+  drawPick();
+  document.getElementById("recBg").classList.add("show");
+}
+function closeRec(){ document.getElementById("recBg").classList.remove("show"); }
+function togglePick(id){ if (picked.has(id)) picked.delete(id); else picked.add(id); drawPick(); }
+function drawPick(){
+  const ks = document.getElementById("rKind");
+  if (ks.value === "__new"){
+    const v = (prompt("活動の名前（例：河川清掃）") || "").trim();
+    if (v){ if (![...ks.options].some(o => o.value === v)){ const o = document.createElement("option"); o.textContent = v; ks.insertBefore(o, ks.lastElementChild); } ks.value = v; }
+    else ks.selectedIndex = 0;
+  }
+  const kind = ks.value, ds = document.getElementById("rDate").value, off = ds ? offHan(ds) : "";
+  const w = ds ? workDayOf(ds) : null;
+  document.getElementById("rWork").innerHTML = w === null || !ds ? '' :
+    '<span class="work" style="background:'+(off ? '#fef3c7;color:#92400e' : '#f0fdf4;color:#166534')+';">'+esc(fd(ds))+'は '+(w === "全休" ? '全休' : w || '出勤日')+(off === "A" || off === "B" ? '（'+off+'班の人は薄く出しています）' : '')+'</span>';
+  document.getElementById("rPick").innerHTML = roster.length ? zoneRows(r => personCard(r, { kind, sel: picked.has(r.id), off: off === "ALL" || (off && r.han === off), click: true })) : '<div class="note">従業員名簿がまだ空です</div>';
+  const n = picked.size;
+  document.getElementById("rCount").textContent = n ? n+"人 選択中" + (/草刈/.test(kind) && n !== 2 ? "（草刈りは基本2人）" : "") : "";
+}
+async function ensureActivityType(kind){
+  if (acts.some(a => (a.name || "").trim() === kind)) return;
+  try { const ref = await db.collection("activityTypes").add({ name: kind }); acts.push({ id: ref.id, name: kind }); } catch (e) { console.error(e); }
+}
+function eventMark(){ const m = marks.find(m => m.countsAsActivity) || marks.find(m => /地域/.test(m.name || "")); return m ? m.name : ""; }
+async function syncEvent(r){
+  const names = (r.memberIds || []).map(id => (roster.find(x => x.id === id) || {}).name).filter(Boolean)
+    .concat(r.extra ? String(r.extra).split(/[、,]/).map(s => s.trim()).filter(Boolean) : []);
+  const ev = { date: r.date, title: r.status === "実施" ? r.kind : r.kind + "（予定）", mark: eventMark(), notes: (names.length ? "参加：" + names.join("・") : "参加：未定") + (r.memo ? "／" + r.memo : ""), src: "bika", updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  if (r.eventId){ try { await db.collection("isoEvents").doc(r.eventId).update(ev); return r.eventId; } catch (e) { /* 消えていたら作り直す */ } }
+  const ref = await db.collection("isoEvents").add({ ...ev, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  return ref.id;
+}
+async function saveRec(){
+  const kind = document.getElementById("rKind").value;
+  const data = { date: document.getElementById("rDate").value, kind, status: document.getElementById("rStatus").value,
+    memberIds: [...picked].filter(id => roster.some(r => r.id === id)),
+    extra: document.getElementById("rExtra").value.trim(), memo: document.getElementById("rMemo").value.trim() };
+  data.members = data.memberIds.map(id => roster.find(r => r.id === id).name);
+  if (!data.date){ toast("日付を入れてください"); return; }
+  if (!kind || kind === "__new"){ toast("活動を選んでください"); return; }
+  try {
+    if (!(settings.kinds || DEFAULT_KINDS).includes(kind)) { settings.kinds = (settings.kinds && settings.kinds.length ? settings.kinds : DEFAULT_KINDS).concat([kind]); await db.collection("companyInfo").doc("bikaSettings").set({ kinds: settings.kinds }, { merge: true }); }
+    await ensureActivityType(kind);
+    let id = recEdit ? recEdit.id : null;
+    if (id) await db.collection("isoBika").doc(id).set(data, { merge: true });
+    else { const ref = await db.collection("isoBika").add({ ...data, createdMs: Date.now() }); id = ref.id; }
+    const eventId = await syncEvent({ ...(recEdit || {}), ...data });
+    await db.collection("isoBika").doc(id).set({ eventId }, { merge: true });
+    closeRec(); toast("保存しました（カレンダーにも載せました）");
+  } catch (e) { toast("保存できませんでした: " + e.message); }
+}
+async function markDone(id){
+  const r = recs.find(x => x.id === id); if (!r) return;
+  if (!confirm(fd(r.date) + "「" + r.kind + "」を実施済みにしますか？")) return;
+  try { await db.collection("isoBika").doc(id).set({ status: "実施" }, { merge: true }); await ensureActivityType(r.kind); const eventId = await syncEvent({ ...r, status: "実施" }); if (eventId !== r.eventId) await db.collection("isoBika").doc(id).set({ eventId }, { merge: true }); toast("実施済みにしました"); }
+  catch (e) { toast("保存できませんでした: " + e.message); }
+}
+async function delRec(){
+  if (!recEdit || !confirm("この予定・記録を削除しますか？（カレンダーからも消えます）")) return;
+  try { if (recEdit.eventId) await db.collection("isoEvents").doc(recEdit.eventId).delete().catch(() => {}); await db.collection("isoBika").doc(recEdit.id).delete(); closeRec(); toast("削除しました"); }
+  catch (e) { toast("削除できませんでした: " + e.message); }
+}
+
+/* ---- 担当ゾーン・班をまとめて変える ---- */
+function openBulk(){
+  const act = sortR(roster.filter(active));
+  const zo = r => { const i = zones().indexOf(r.zone); return i < 0 ? 99 : i; };
+  act.sort((a, b) => zo(a) - zo(b));
+  document.getElementById("bulkTbl").innerHTML = '<tr><th style="text-align:left;">名前</th><th>担当ゾーン</th><th>班</th><th>表の並び</th></tr>' + act.map((r, i) =>
+    '<tr data-id="'+r.id+'"><td><b>'+esc(r.name)+'</b><div class="note" style="margin:0;">'+esc([r.kind, r.title].filter(Boolean).join("・"))+'</div></td>'+
+    '<td><select class="bz">'+['<option value="">(なし)</option>'].concat(zones().map(z => '<option'+(r.zone === z ? ' selected' : '')+'>'+esc(z)+'</option>')).join("")+'</select></td>'+
+    '<td><select class="bh"><option value="">なし</option><option'+(r.han === "A" ? ' selected' : '')+'>A</option><option'+(r.han === "B" ? ' selected' : '')+'>B</option></select></td>'+
+    '<td style="white-space:nowrap;"><button class="btn sm" onclick="bulkMove(this,-1)">▲</button> <button class="btn sm" onclick="bulkMove(this,1)">▼</button></td></tr>').join("");
+  document.getElementById("bulkBg").classList.add("show");
+}
+function closeBulk(){ document.getElementById("bulkBg").classList.remove("show"); }
+function bulkMove(btn, dir){ const tr = btn.closest("tr"); const sib = dir < 0 ? tr.previousElementSibling : tr.nextElementSibling; if (!sib || !sib.dataset.id) return; if (dir < 0) tr.parentNode.insertBefore(tr, sib); else tr.parentNode.insertBefore(sib, tr); }
+async function saveBulk(){
+  const batch = db.batch(); let n = 0;
+  document.querySelectorAll("#bulkTbl tr[data-id]").forEach((tr, i) => {
+    const r = roster.find(x => x.id === tr.dataset.id); if (!r) return;
+    const zone = tr.querySelector(".bz").value, han = tr.querySelector(".bh").value;
+    if (r.zone !== zone || (r.han || "") !== han || r.zoneOrder !== i) { batch.set(db.collection("isoRoster").doc(r.id), { zone, han, zoneOrder: i }, { merge: true }); n++; }
+  });
+  try { if (n) await batch.commit(); closeBulk(); toast(n ? "保存しました" : "変更はありませんでした"); }
+  catch (e) { toast("保存できませんでした: " + e.message); }
+}
+
+/* ---- 表の印刷(紙と同じ：ゾーンの行の下に班の行) ---- */
+function printZone(){
+  const act = sortR(roster.filter(active));
+  const rows = zones().map(z => [z, act.filter(r => r.zone === z)]);
+  const w = Math.max(1, ...rows.map(([, l]) => l.length));
+  const cells = (l, f) => Array.from({ length: w }, (_, i) => '<td>'+(l[i] ? esc(f(l[i])) : '')+'</td>').join("");
+  const recent = recs.slice(0, 8).map(r => '<tr><td style="white-space:nowrap;">'+esc(fd(r.date))+'</td><td style="text-align:left;">'+esc(r.kind)+(r.status === "実施" ? '' : '（予定）')+'</td><td colspan="'+Math.max(1, w - 1)+'" style="text-align:left;">'+esc((r.members || []).concat(r.extra ? String(r.extra).split(/[、,]/).map(s => s.trim()).filter(Boolean) : []).join("・"))+'</td></tr>').join("");
+  document.getElementById("printArea").innerHTML = '<div style="text-align:center;font-size:20pt;font-weight:bold;margin-bottom:8px;">ゾーン担当・美化活動</div>'+
+    '<table>'+rows.map(([z, l]) => '<tr><th>'+esc(z)+'</th>'+cells(l, r => r.name)+'</tr><tr><td>班</td>'+cells(l, r => r.han || "")+'</tr>').join("")+'</table>'+
+    (recent ? '<table style="margin-top:14px;font-size:12pt;"><tr><th>日付</th><th>活動</th><th colspan="'+Math.max(1, w - 1)+'">行った人</th></tr>'+recent+'</table>' : '');
+  setTimeout(() => window.print(), 50);
+}
+</script>
+</body>
+</html>
