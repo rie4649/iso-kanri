@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>法規制一覧</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif; }
+  body { background:#f4f4f5; padding-bottom:60px; }
+  header { background:#1e3a8a; color:#fff; padding:14px 16px; }
+  header h1 { font-size:19px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:2px; }
+  .wrap { padding:12px; max-width:760px; margin:0 auto; }
+  .backBtn { width:100%; padding:12px; border:none; border-radius:12px; background:#555; color:#fff; font-size:15px; font-weight:bold; margin-bottom:12px; }
+  .note { font-size:12px; color:#71717a; line-height:1.7; margin-bottom:12px; }
+  .catHead { font-size:16px; font-weight:bold; color:#1e3a8a; margin:18px 0 8px; border-bottom:2px solid #1e3a8a; padding-bottom:4px; }
+  .law { background:#fff; border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-left:6px solid #1e3a8a; }
+  .law h2 { font-size:16px; margin-bottom:2px; }
+  .meta { font-size:12px; color:#71717a; line-height:1.6; }
+  .act { font-size:13px; color:#52525b; line-height:1.7; margin-top:6px; }
+  .egov { margin-top:10px; background:#f0fdf4; border-radius:10px; padding:10px; font-size:13px; line-height:1.8; color:#166534; }
+  .egov b { font-size:14px; }
+  .loading { color:#a1a1aa; }
+  .openBtn { display:inline-block; margin-top:10px; border:none; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:bold; background:#166534; color:#fff; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚖️ 法規制一覧</h1>
+  <div class="sub">株式会社関根商店に適用される法令。改正情報はe-Gov法令APIから自動取得</div>
+</header>
+
+<div class="wrap">
+<button class="backBtn" onclick="location.href='index.html'">← ISO管理に戻る</button>
+<div class="note">緑の枠は<b>e-Gov法令APIから自動取得した現行名称と改正情報</b>です。ページを開くたびに国のデータベースへ確認しに行くので、法律が改正されると「最新の改正公布」の日付が新しくなります。日付が変わっていたら「📖 全文」で中身を確認してください。</div>
+<button class="backBtn" style="background:#166534;margin-bottom:0;" onclick="location.href='plan.html#legal'">✅ 順守評価は「法的要求事項特定書(EMS-A-05)」で記録する(年1回) ›</button>
+<div class="note" style="margin-top:6px;">順守評価の記録は <b>EMS-A-05 のチェックシート</b>に一本化しました。ここは法令を見る場所です。各法令カードには、A-05で付けた最新の評価が出ます。</div>
+<div id="lawList"></div>
+<div id="evalHistory"></div>
+</div>
+
+<!-- 順守評価モーダル -->
+<div id="evalBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;overflow:auto;padding:16px;" onclick="if(event.target===this)closeEval()">
+  <div style="background:#fff;border-radius:14px;padding:16px;max-width:560px;margin:20px auto;">
+    <h2 style="font-size:17px;margin-bottom:8px;">✅ 順守評価</h2>
+    <label style="display:block;font-size:13px;font-weight:bold;color:#52525b;margin:8px 0 4px;">評価日</label>
+    <input type="date" id="evalDate" style="width:100%;padding:10px;font-size:15px;border:1px solid #d4d4d8;border-radius:10px;">
+    <label style="display:block;font-size:13px;font-weight:bold;color:#52525b;margin:8px 0 4px;">評価者</label>
+    <input type="text" id="evalUser" placeholder="例: 理絵" style="width:100%;padding:10px;font-size:15px;border:1px solid #d4d4d8;border-radius:10px;">
+    <label style="display:block;font-size:13px;font-weight:bold;color:#52525b;margin:10px 0 4px;">各法令の順守状況(タップで○⇔×)</label>
+    <div id="evalList"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button style="flex:1;padding:12px;border:none;border-radius:10px;background:#e4e4e7;color:#3f3f46;font-size:15px;font-weight:bold;" onclick="closeEval()">キャンセル</button>
+      <button style="flex:1;padding:12px;border:none;border-radius:10px;background:#166534;color:#fff;font-size:15px;font-weight:bold;" onclick="saveEval()">保存</button>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:200;white-space:nowrap;"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="legal-evals.js"></script>
+<script>
+/* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
+   ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
+     → 画面に戻ると自動で再開します
+   ・夜間(19時〜翌6時)は、30分さわらなければ休止します(モニター出しっぱなし対策)
+     → 画面をタップすると再開、朝6時には自動で再開します
+   ※このブロックは全アプリ共通です。時間を変えるときは下の数字だけ変えてください */
+(function(){
+  if(!window.firebase || !firebase.firestore) return;
+  var NIGHT_FROM = 19;              // 夜間休止の開始(時)
+  var NIGHT_TO   = 6;               // 夜間休止の終了(時)
+  var HIDDEN_WAIT = 5*60*1000;      // 見えなくなってから休止するまで(5分)
+  var NIGHT_IDLE  = 30*60*1000;     // 夜間、さわらずに休止するまで(30分)
+
+  var subs = [], paused = false, reason = '', hiddenTimer = null, lastInput = Date.now(), overlay = null;
+  function isNight(){ var h = new Date().getHours(); return h >= NIGHT_FROM || h < NIGHT_TO; }
+  function isVisible(){ return document.visibilityState !== 'hidden'; }
+
+  // onSnapshot(リアルタイム監視)を、止めたり再開したりできる形に包む
+  function wrap(proto){
+    if(!proto) return;
+    var orig = proto.onSnapshot;
+    if(!orig || orig.__fsSaver) return;
+    var w = function(){
+      var s = { ref:this, args:Array.prototype.slice.call(arguments), unsub:null, dead:false };
+      s.start = function(){ if(!s.dead && !s.unsub) s.unsub = orig.apply(s.ref, s.args); };
+      s.stop  = function(){ if(s.unsub){ try{ s.unsub(); }catch(e){} s.unsub = null; } };
+      subs.push(s);
+      if(!paused) s.start();
+      return function(){ s.dead = true; s.stop(); var i = subs.indexOf(s); if(i >= 0) subs.splice(i, 1); };
+    };
+    w.__fsSaver = true;
+    proto.onSnapshot = w;
+  }
+  wrap(firebase.firestore.Query && firebase.firestore.Query.prototype);
+  wrap(firebase.firestore.CollectionReference && firebase.firestore.CollectionReference.prototype);
+  wrap(firebase.firestore.DocumentReference && firebase.firestore.DocumentReference.prototype);
+
+  function showOverlay(){
+    if(!document.body) return;
+    if(!overlay){
+      overlay = document.createElement('div');
+      overlay.id = 'fsSaverOverlay';
+      overlay.setAttribute('style', 'position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:16px;cursor:pointer;');
+      overlay.innerHTML = '<div style="background:#fff;color:#1f2937;border-radius:16px;padding:24px 22px;max-width:420px;width:100%;text-align:center;font-family:sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);">'
+        + '<div style="font-size:42px;line-height:1;">💤</div>'
+        + '<div style="font-size:20px;font-weight:bold;margin:10px 0 8px;">通信を休止しています</div>'
+        + '<div style="font-size:14px;line-height:1.7;color:#4b5563;">夜間(' + NIGHT_FROM + '時〜翌' + NIGHT_TO + '時)は、Firebaseの無料枠を節約するため自動で休止します。<br>朝' + NIGHT_TO + '時に自動で再開します。</div>'
+        + '<div style="margin-top:16px;background:#16a34a;color:#fff;border-radius:999px;padding:12px;font-size:16px;font-weight:bold;">👆 タップして再開</div>'
+        + '</div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+  }
+  function hideOverlay(){ if(overlay) overlay.style.display = 'none'; }
+
+  function pause(why){
+    if(paused) return;
+    paused = true; reason = why;
+    subs.forEach(function(s){ s.stop(); });
+    if(why === 'night') showOverlay();
+  }
+  function resume(byTap){
+    lastInput = Date.now();
+    if(!paused) return;
+    paused = false; reason = '';
+    // タップで再開したときは、そのタップが下のボタンに届かないよう少し待ってから幕を外す
+    if(byTap) setTimeout(hideOverlay, 500); else hideOverlay();
+    subs.forEach(function(s){ s.start(); });
+  }
+
+  // 画面の表示・非表示
+  document.addEventListener('visibilitychange', function(){
+    if(isVisible()){
+      if(hiddenTimer){ clearTimeout(hiddenTimer); hiddenTimer = null; }
+      resume(false);
+    }else if(!hiddenTimer){
+      hiddenTimer = setTimeout(function(){ hiddenTimer = null; if(!isVisible()) pause('hidden'); }, HIDDEN_WAIT);
+    }
+  });
+
+  // さわったら「使っている」とみなす(休止中なら再開)
+  ['pointerdown','touchstart','keydown','wheel'].forEach(function(ev){
+    window.addEventListener(ev, function(e){
+      if(paused && reason === 'night'){ resume(true); return; }
+      lastInput = Date.now();
+    }, { capture:true, passive:true });
+  });
+
+  // 1分ごとに夜間・朝の判定
+  setInterval(function(){
+    if(!isVisible()) return;
+    if(!paused && isNight() && Date.now() - lastInput > NIGHT_IDLE) pause('night');
+    else if(paused && reason === 'night' && !isNight()) resume(false);
+  }, 60*1000);
+
+  // 確認用(ブラウザのコンソールで fsSaver.status() と打つと状態が見られます)
+  window.fsSaver = {
+    status: function(){ return { paused:paused, reason:reason, listeners:subs.length }; },
+    pause: function(){ pause('night'); },
+    resume: function(){ resume(false); }
+  };
+})();
+</script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+let toastTimer;
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.style.opacity=1; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.style.opacity=0,2500); }
+</script>
+
+<script>
+function esc(t){ return String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// 適用法令の定義(e-Gov法令IDつき)
+const LAWS = [
+  // ---- 環境関係 ----
+  { cat:"🌿 環境関係", name:"廃棄物処理法", official:"廃棄物の処理及び清掃に関する法律", num:"昭和45年法律第137号", id:"345AC0000000137",
+    act:"産業廃棄物の収集運搬・処分業。自治体ごとの許可を受けて事業を行う。" },
+  { cat:"🌿 環境関係", name:"再生資源利用促進法", official:"資源の有効な利用の促進に関する法律", num:"平成3年法律第48号", id:"403AC0000000048",
+    act:"金属スクラップ等の再資源化(リサイクル)そのものが当社の事業。" },
+  { cat:"🌿 環境関係", name:"水質汚濁防止法", official:"水質汚濁防止法", num:"昭和45年法律第138号", id:"345AC0000000138",
+    act:"場内排水の水質管理。定期的に水質検査を実施し記録する。" },
+  { cat:"🌿 環境関係", name:"大気汚染防止法", official:"大気汚染防止法", num:"昭和43年法律第97号", id:"343AC0000000097",
+    act:"重機・車両の排ガス、フロン類使用機器の管理。" },
+  { cat:"🌿 環境関係", name:"騒音規制法", official:"騒音規制法", num:"昭和43年法律第98号", id:"343AC0000000098",
+    act:"重機・圧縮機等の稼働に伴う騒音の管理。" },
+  { cat:"🌿 環境関係", name:"振動規制法", official:"振動規制法", num:"昭和51年法律第64号", id:"351AC0000000064",
+    act:"重機・圧縮機等の稼働に伴う振動の管理。" },
+  { cat:"🌿 環境関係", name:"消防法(危険物)", official:"消防法", num:"昭和23年法律第186号", id:"323AC0000000186",
+    act:"少量危険物(廃油等)・指定可燃物の貯蔵取扱い、消火器の設置と点検。" },
+  // ---- 交通・運送関係 ----
+  { cat:"🚚 交通・運送関係", name:"道路交通法", official:"道路交通法", num:"昭和35年法律第105号", id:"335AC0000000105",
+    act:"トラック・重機運搬など日々の運転業務全般。免許・積載・運転ルール。" },
+  { cat:"🚚 交通・運送関係", name:"道路運送車両法", official:"道路運送車両法", num:"昭和26年法律第185号", id:"326AC0000000185",
+    act:"車両の登録・車検・点検整備(点検ラクラクの日常点検もこの法律が根拠)。" },
+  { cat:"🚚 交通・運送関係", name:"貨物自動車運送事業法", official:"貨物自動車運送事業法", num:"平成元年法律第83号", id:"401AC0000000083",
+    act:"貨物運送に関わる事業運営のルール。" }
+];
+
+// カテゴリごとの公式情報源(わかりやすい解説・改正情報の確認先)
+const SOURCES = {
+  "🌿 環境関係": [
+    { t:"環境省 報道発表資料", d:"法改正や新制度の発表がまずここに出ます", u:"https://www.env.go.jp/press/" },
+    { t:"環境省 法令・告示・通達", d:"環境関連の法令・告示のまとめ", u:"https://www.env.go.jp/hourei/" },
+    { t:"総務省消防庁", d:"消防法・危険物関係のお知らせ", u:"https://www.fdma.go.jp/" }
+  ],
+  "🚚 交通・運送関係": [
+    { t:"警察庁 交通局", d:"道路交通法の改正はここでわかりやすく解説されます", u:"https://www.npa.go.jp/bureau/traffic/" },
+    { t:"国土交通省 自動車局", d:"車検・整備・運送事業のルール変更", u:"https://www.mlit.go.jp/jidosha/" },
+    { t:"長野県警察", d:"県内の交通ルール・取締り情報", u:"https://www.pref.nagano.lg.jp/police/" }
+  ]
+};
+function sourcesCard(cat){
+  const list = SOURCES[cat];
+  if(!list) return "";
+  return `<div class="law" style="border-left-color:#b45309;background:#fffbeb;">
+    <h2 style="font-size:14px;">📚 わかりやすい確認先(公式)</h2>
+    ${list.map(x=>`<div style="margin-top:8px;"><a href="${x.u}" target="_blank" style="font-size:14px;font-weight:bold;color:#b45309;">🔗 ${esc(x.t)}</a><div class="meta">${esc(x.d)}</div></div>`).join("")}
+  </div>`;
+}
+
+// カードを描画(カテゴリ見出しつき)
+const box = document.getElementById("lawList");
+let html = "", lastCat = "";
+LAWS.forEach((l,i)=>{
+  if(l.cat !== lastCat){
+    if(lastCat) html += sourcesCard(lastCat);
+    html += `<div class="catHead">${esc(l.cat)}</div>`;
+    lastCat = l.cat;
+  }
+  html += `
+  <div class="law">
+    <h2>⚖️ ${esc(l.name)}</h2>
+    ${l.official!==l.name ? `<div class="meta">正式名称: ${esc(l.official)}</div>` : ""}
+    <div class="meta">${esc(l.num)}</div>
+    <div class="act">${esc(l.act)}</div>
+    <div style="margin-top:8px;font-size:13px;" id="eval${i}"><span class="loading">順守評価を読み込み中…</span></div>
+    <div class="egov" id="egov${i}"><span class="loading">🌐 e-Govから改正情報を取得中…</span></div>
+    <a class="openBtn" href="https://laws.e-gov.go.jp/law/${l.id}" target="_blank">📖 全文を読む(e-Gov)</a>
+  </div>`;
+});
+html += sourcesCard(lastCat);
+box.innerHTML = html;
+
+/* ---- 順守評価 ---- */
+let evals = [];
+let evalMarks = {};
+// 順守評価：EMS-A-05(isoRegisters の legal)の年度の点検 ＋ 以前ここで記録した分(isoHoreiEval・見るだけ)
+let oldEvals = [], legalRegs = [];
+db.collection("isoHoreiEval").onSnapshot(snap=>{ oldEvals = snap.docs.map(d=>({id:d.id, ...d.data()})); drawEvals(); }, err=>console.error(err));
+db.collection("isoRegisters").where("reg","==","legal").onSnapshot(snap=>{ legalRegs = snap.docs.map(d=>({id:d.id, ...d.data()})); drawEvals(); }, err=>console.error(err));
+function drawEvals(){
+  evals = legalEvalsFrom(oldEvals, legalRegs);
+  const latest = evals[0];
+  LAWS.forEach((l,i)=>{
+    const el = document.getElementById("eval"+i);
+    if(!el) return;
+    const mark = latest ? legalEvalFor(latest.results, l) : null;
+    const who = latest ? `(${esc(latest.date)} ${esc(latest.evaluator||"")}${latest.src === "A-05" ? "・EMS-A-05" : "・以前の記録"})` : "";
+    if(mark === "○") el.innerHTML = `✅ 順守評価: <b style="color:#166534;">順守</b>${who}`;
+    else if(mark === "×") el.innerHTML = `⚠️ 順守評価: <b style="color:#b91c1c;">要改善</b>${who}`;
+    else if(mark === "－") el.innerHTML = `順守評価: 非該当${who}`;
+    else el.innerHTML = latest ? `順守評価: この法令はA-05の最新の点検にありません${who}` : `順守評価: まだ記録がありません`;
+  });
+  const h = document.getElementById("evalHistory");
+  h.innerHTML = evals.length ? `<div class="catHead">✅ 順守評価の履歴</div>` + evals.map(ev=>{
+    const ng = Object.values(ev.results||{}).filter(v=>v==="×").length;
+    const a05 = ev.src === "A-05";
+    return `<div class="law" style="border-left-color:${a05 ? "#166534" : "#9ca3af"};display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;"><b>${esc(ev.date)}</b>　${a05 ? `EMS-A-05 ${esc(ev.fy)}年度の点検` : "以前の記録(法規制一覧)"}　評価者: ${esc(ev.evaluator||"")}　${ng?`<span style="color:#b91c1c;font-weight:bold;">要改善 ${ng}件</span>`:`<span style="color:#166534;font-weight:bold;">要改善なし</span>`}</div>
+      ${a05 ? `<button onclick="location.href='plan.html#legal'" style="border:none;border-radius:8px;background:#e0f2fe;color:#0369a1;padding:8px 14px;font-size:13px;font-weight:bold;">A-05を開く</button>` : ""}
+    </div>`;
+  }).join("") : "";
+}
+
+let editEvalId = null;
+window.openEval = function(id){
+  editEvalId = id || null;
+  const ev = id ? evals.find(x=>x.id===id) : null;
+  const d = new Date();
+  document.getElementById("evalDate").value = ev ? ev.date : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  document.getElementById("evalUser").value = ev ? (ev.evaluator||"") : (evals[0]?.evaluator||"");
+  evalMarks = {};
+  LAWS.forEach(l=>{ evalMarks[l.name] = (ev && ev.results && ev.results[l.name]) || "○"; });
+  renderEvalList();
+  document.getElementById("evalBg").style.display = "block";
+};
+function renderEvalList(){
+  document.getElementById("evalList").innerHTML = LAWS.map(l=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f1f1f2;">
+      <div style="flex:1;font-size:14px;font-weight:bold;">${esc(l.name)}</div>
+      <button onclick="toggleEval('${esc(l.name)}')" style="min-width:52px;padding:9px 0;border:none;border-radius:10px;font-size:16px;font-weight:bold;${evalMarks[l.name]==="○"?"background:#dcfce7;color:#15803d;":"background:#fee2e2;color:#b91c1c;"}">${evalMarks[l.name]}</button>
+    </div>`).join("");
+}
+window.toggleEval = function(name){
+  evalMarks[name] = evalMarks[name]==="○" ? "×" : "○";
+  renderEvalList();
+};
+window.closeEval = function(){ document.getElementById("evalBg").style.display = "none"; };
+window.saveEval = async function(){
+  const date = document.getElementById("evalDate").value;
+  if(!date){ toast("評価日を入れてください"); return; }
+  const data = { date, evaluator: document.getElementById("evalUser").value.trim(), results: {...evalMarks} };
+  try{
+    if(editEvalId) await db.collection("isoHoreiEval").doc(editEvalId).update(data);
+    else await db.collection("isoHoreiEval").add(data);
+    closeEval(); toast("✅ 順守評価を保存しました");
+  }catch(e){ toast("❌ 保存に失敗: "+e.message); }
+};
+
+// e-Gov法令API(v2)で現行名称・改正情報を取得
+LAWS.forEach(async (l,i)=>{
+  const el = document.getElementById("egov"+i);
+  try{
+    const res = await fetch("https://laws.e-gov.go.jp/api/2/laws?law_id=" + l.id, { signal: AbortSignal.timeout(10000) });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const law = (data.laws && data.laws[0]) || {};
+    const rev = law.revision_info || {};
+    const info = law.law_info || {};
+    const bits = [];
+    if(rev.law_title) bits.push(`現行名称: <b>${esc(rev.law_title)}</b>`);
+    // 改正に関する情報をあるだけ拾う(APIの項目名の違いに強くする)
+    const amendDate = rev.amendment_promulgate_date || rev.amendment_date || "";
+    if(amendDate) bits.push(`最新の改正公布: <b>${esc(String(amendDate).slice(0,10))}</b>`);
+    const enfDate = rev.amendment_enforcement_date || rev.enforcement_date || "";
+    if(enfDate) bits.push(`施行日: <b>${esc(String(enfDate).slice(0,10))}</b>`);
+    const amendTitle = rev.amendment_law_title || "";
+    if(amendTitle) bits.push(`<span style="font-size:12px;">改正した法律: ${esc(amendTitle)}</span>`);
+    if(!bits.length && info.promulgation_date) bits.push(`公布日: <b>${esc(String(info.promulgation_date).slice(0,10))}</b>`);
+    el.innerHTML = bits.length
+      ? "🌐 " + bits.join("<br>") + '<br><span style="font-size:11px;">(e-Gov法令APIから自動取得。どこが変わったかの条文は📖全文で確認)</span>'
+      : "🌐 e-Govに接続できました(詳細は📖全文から)";
+  }catch(e){
+    el.innerHTML = '🌐 <span style="font-size:12px;">改正情報を取得できませんでした(通信の問題かもしれません)。📖全文ボタンからは確実に見られます。</span>';
+  }
+});
+</script>
+</body>
+</html>
