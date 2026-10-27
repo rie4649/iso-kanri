@@ -8,7 +8,7 @@
    ===================================================================== */
 (function(){
   const WARN_DAYS = 120;   // 期限の何日前から「更新の準備」を知らせるか(更新の申請は期限の2〜3か月前から)
-  const norm = s => String(s || "").normalize("NFKC").replace(/株式会社|\(株\)|㈱/g, "株").replace(/[\s　()（）・]/g, "").toLowerCase();
+  const norm = s => String(s || "").normalize("NFKC").replace(/株式会社|\(株\)|㈱/g, "株").replace(/[\s　()（）・]/g, "").replace(/測り|計り|量り|秤/g, "はかり").toLowerCase();
   const pad = n => String(n).padStart(2, "0");
   // いろいろな形の日付を "YYYY-MM-DD" に(Timestamp・数字・2026/3/31・2026年3月31日・R8.3.31 など)
   function toYmd(v){
@@ -39,7 +39,8 @@
     const used = new Set(), rows = [];
     permits.slice().sort((a, b) => ((a.order ?? 999) - (b.order ?? 999)) || String(a.area || "").localeCompare(String(b.area || ""), "ja")).forEach(p => {
       const label = labelOf(p) || p.name || "(名前なし)", nl = norm(label), nn = norm(p.permitNumber);
-      const gk = Object.keys(groups).find(k => !used.has(k) && norm(k) === nl) || (nn.length >= 4 ? Object.keys(groups).find(k => !used.has(k) && norm(k).includes(nn)) : null);
+      const gk = Object.keys(groups).find(k => !used.has(k) && norm(k) === nl) || (nn.length >= 4 ? Object.keys(groups).find(k => !used.has(k) && norm(k).includes(nn)) : null)
+        || Object.keys(groups).find(k => !used.has(k) && norm(k).length >= 4 && nl.includes(norm(k)));   // 例：PDF「大型測り検査」→ 業務管理「長野県 大型はかり検査」
       if (gk) used.add(gk);
       const l = gk ? groups[gk] : [], pdf = l[0] || null, pdfExp = l.find(d => (d.dateKind || "許可期限") === "許可期限");
       const e = findExp(p), exp = e.date, pdfDate = pdfExp ? toYmd(pdfExp.date) : "";
