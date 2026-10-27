@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内部監査</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .step { display:flex; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:10px; cursor:pointer; }
+  .step:hover { border-color:var(--navy2); }
+  .step .no { flex:0 0 40px; height:40px; border-radius:50%; background:var(--navy); color:#fff; font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .step .bd { flex:1; min-width:0; }
+  .step .ttl { font-size:16px; font-weight:700; color:var(--navy); }
+  .step .ds { font-size:13px; color:var(--muted); margin-top:2px; line-height:1.6; }
+  .step .st { font-size:13px; font-weight:700; margin-top:4px; }
+  .step .go { flex:0 0 auto; font-size:20px; color:var(--navy); }
+  .ok { color:var(--ok); } .ng { color:var(--warn); }
+  .arrow { text-align:center; color:var(--muted); margin:-6px 0 4px; font-size:14px; }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>内部監査</h1><div class="sub">9.2 内部監査・10.2 是正処置。毎年10月〜2月に、①〜④の順に進めます</div></div>
+</header>
+<div class="wrap" style="max-width:760px;">
+  <div class="note" style="margin:0 0 12px;">内部監査に関係する画面をここにまとめました。番号の順に進めると、監査で聞かれる記録（EMS-C-01・C-02・C-03・C-06・C-07）がそろいます。</div>
+  <div id="steps"><div class="empty">読み込み中…</div></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* 内部監査のまとめページ。入力はそれぞれの画面(ISOの計画・リスクの台帳 isoRegisters ／ 監査・是正の記録 kiroku.html)で行い、ここは件数と最終日を見せて案内するだけ */
+const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const fd = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : ""; };
+// 監査の年度：8月〜翌7月(ISO管理の年度と同じ)
+const fyOf = ds => { const m = String(ds||"").match(/^(\d{4})-(\d{2})/); if (!m) return null; return Number(m[2]) >= 8 ? Number(m[1]) : Number(m[1]) - 1; };
+const curFy = fyOf(new Date().toISOString().slice(0,10));
+const STEPS = [
+  { no:"①", ttl:"内部監査の計画（日程・分担）", ds:"どの部署・仕事を、誰が、いつ監査するかを決める（EMS-C-01）。9月ごろ。", go:"plan.html#auditPlan", reg:"auditPlan" },
+  { no:"②", ttl:"内部監査チェックシート", ds:"監査の日に、項目ごとに確認して記録する（EMS-C-02）。", go:"plan.html#auditCheck", reg:"auditCheck" },
+  { no:"③", ttl:"内部監査アンケート", ds:"質問を作る → 印刷して配る（スマホでもOK）→ 回答を入れる → 集計（EMS-C-03）。", go:"kansa-survey.html", reg:"auditSurvey" },
+  { no:"④", ttl:"監査の結果・是正処置", ds:"指摘と対応、事故・苦情・不適合の原因と対策を記録する（EMS-C-06・C-07）。", go:"kiroku.html", col:["isoAudits","isoCorrectives"] },
+  { no:"参考", ttl:"外部審査の指摘と対応", ds:"審査機関の審査で受けた指摘と、その対応。", go:"plan.html#extAudit", reg:"extAudit" }
+];
+(async () => {
+  let rg = [], au = [], co = [], sv = [];
+  try {
+    const [a, b, c] = await Promise.all([db.collection("isoRegisters").get(), db.collection("isoAudits").get(), db.collection("isoCorrectives").get()]);
+    rg = a.docs.map(d => d.data()).filter(r => !r.draft); au = b.docs.map(d => d.data()); co = c.docs.map(d => d.data());
+    try { sv = (await db.collection("isoAuditSurveyAns").get()).docs.map(d => d.data()); } catch (e) {}
+  } catch (e) { console.error(e); }
+  const box = document.getElementById("steps");
+  box.innerHTML = STEPS.map((s, i) => {
+    let list = s.reg ? rg.filter(r => r.reg === s.reg).concat(s.reg === "auditSurvey" ? sv : []) : au.concat(co);
+    const ds = list.map(r => r.date).filter(Boolean).sort(), last = ds[ds.length - 1] || "";
+    const thisFy = list.filter(r => fyOf(r.date) === curFy).length;
+    const open = s.col ? au.concat(co).filter(x => x.status === "open").length : 0;
+    const st = !list.length ? '<span class="ng">まだ記録がありません</span>' :
+      '<span class="'+(thisFy ? 'ok' : 'ng')+'">今年度 '+thisFy+'件</span>　全部で '+list.length+'件'+(last ? '・最新 '+fd(last) : '')+(open ? '　<span class="ng">対応中 '+open+'件</span>' : '');
+    return (i > 0 && i < 4 ? '<div class="arrow">▼</div>' : i === 4 ? '<div style="height:10px;"></div>' : '')+
+      '<div class="step" onclick="location.href=\''+s.go+'\'"><div class="no" style="'+(s.no === "参考" ? 'font-size:12px;background:#6b7280;' : '')+'">'+s.no+'</div><div class="bd"><div class="ttl">'+esc(s.ttl)+'</div><div class="ds">'+esc(s.ds)+'</div><div class="st">'+st+'</div></div><div class="go">›</div></div>';
+  }).join("");
+})();
+</script>
+</body>
+</html>

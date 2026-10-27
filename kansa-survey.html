@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内部監査アンケート</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .sec { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .sec h3 { font-size:16px; color:var(--navy); margin:0 0 6px; }
+  .qrow { border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; background:#fff; }
+  .qrow .hd { display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .qrow .no { background:var(--navy); color:#fff; border-radius:50%; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; font-size:13px; flex:0 0 26px; }
+  .qrow .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:6px 10px; }
+  .qrow label { font-size:12px; margin:4px 0 2px; }
+  .chkl { display:inline-flex !important; align-items:center; gap:6px; font-size:13px !important; font-weight:normal; width:auto; }
+  .chkl input { width:18px !important; height:18px; margin:0; }
+  .ans { border-bottom:1px dashed var(--line); padding:10px 0; }
+  .ans .q { font-size:15px; font-weight:700; white-space:pre-wrap; }
+  .ans .ex { font-size:12px; color:var(--muted); }
+  .opt { display:inline-flex; align-items:center; gap:6px; margin:6px 12px 2px 0; font-size:15px; font-weight:normal; width:auto; }
+  .opt input { width:20px !important; height:20px; margin:0; }
+  .head2 { font-size:14px; font-weight:800; color:#0e7490; margin:12px 0 0; }
+  .sum { border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; background:#fff; }
+  .bar2 { display:flex; align-items:center; gap:8px; font-size:14px; margin:3px 0; }
+  .bar2 .b { height:14px; background:#0e7490; border-radius:4px; }
+  .who { display:flex; flex-wrap:wrap; gap:6px; } .who span { padding:3px 10px; border-radius:999px; font-size:13px; background:#f1f5f9; cursor:pointer; } .who span.done { background:#dcfce7; color:#166534; }
+  .txts div { font-size:14px; padding:3px 0; border-bottom:1px dotted #e5e7eb; white-space:pre-wrap; } .txts small { color:var(--muted); }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" id="backBtn" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>🗳️ 内部監査アンケート（EMS-C-03）</h1><div class="sub">9.2 内部監査。①質問を作る → ②印刷して配る（スマホでもOK）→ ③回答を入れる → ④集計</div></div>
+</header>
+<div class="wrap" style="max-width:900px;">
+  <div class="bar" style="margin-bottom:8px;align-items:center;"><label style="margin:0;">年度</label><select id="fySel" style="width:auto;"></select><span class="note" id="fyNote"></span></div>
+  <div class="tabs" id="tabs">
+    <button data-t="make" class="on">① 質問を作る</button>
+    <button data-t="print">② 印刷して配る</button>
+    <button data-t="input">③ 回答を入れる<small id="cntSmall"></small></button>
+    <button data-t="sum">④ 集計</button>
+  </div>
+  <div id="pMake"></div>
+  <div id="pPrint" style="display:none;"></div>
+  <div id="pInput" style="display:none;"></div>
+  <div id="pSum" style="display:none;"></div>
+</div>
+<div id="toast"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* =====================================================================
+   内部監査アンケート(EMS-C-03) 2026/10
+   ・質問は年度ごと：isoAuditSurveyForms/{年度(例 2026)} = { items:[{ id, sec(見出し), text, ex(例), type:"text"|"yn"|"choice", opts:[…], reason:bool }], title, updatedMs }
+     前の年度の質問をコピーして直せる
+   ・回答：isoAuditSurveyAns(1人1件) = { fy, name, date, ans:{ [質問id]: { c:選んだもの, t:書いたこと } }, recBy, updatedMs }
+   ・紙で配って、集めた回答を「③ 回答を入れる」で入れる。スマホで本人が答えることもできる(このページ#answer)
+   ・今までの回答(ISOの計画の台帳 reg=auditSurvey)はそのまま残っている
+   ===================================================================== */
+const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const today = () => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+const fyOf = ds => { const m = String(ds||"").match(/^(\d{4})-(\d{2})/); return m ? (Number(m[2]) >= 8 ? Number(m[1]) : Number(m[1]) - 1) : null; };
+const fyLabel = y => y + "-" + (y + 1) + "年度";
+const fdj = s => { const m = String(s||"").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? Number(m[1])+"/"+Number(m[2])+"/"+Number(m[3]) : ""; };
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600); }
+const nid = () => "q" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const TYPES = [["text", "書いて答える"], ["yn", "ある ・ ない"], ["choice", "○をつける（選ぶ）"]];
+const YN = ["ある", "ない"];
+const DEFAULT_ITEMS = () => [
+  { sec:"", text:"自分の担当ゾーンで整理整頓がしにくい場所、または「これがあれば便利だな」と思うものはありますか？", ex:"", type:"text" },
+  { sec:"", text:"ISOでは「気候変動は、どの会社にも影響する」と考えています。\n大雨 → 停電や浸水で仕事が止まる／猛暑 → 熱中症など作業する人の安全\n地球温暖化に対して、私たちができることはありますか？", ex:"電気のむだを減らす", type:"text" },
+  { sec:"", text:"マニフェストで困ったことはありますか？", ex:"電子マニフェストの意味がわからない", type:"text" },
+  { sec:"", text:"社内のトラックや設備・道具で、修理したいところや点検が必要なものはありますか？", ex:"事務所のすきま風", type:"text" },
+  { sec:"", text:"お客様に頼まれたことに、声をかけて対応していますか？ 頼まれたことを書いてください。", ex:"ドラム缶のふたを作ってほしい", type:"choice", opts:["してる", "してない"], reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"最近ヒヤッとしたことがあった", type:"yn", reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"危険だと思う作業がある", type:"yn", reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"改善したい安全面がある", type:"yn", reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"事故につながりそうな場所がある", type:"yn", reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"使いにくい・危険を感じる道具がある", type:"yn", reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"足元が滑りやすい・つまずきやすい場所がある", type:"yn", reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"前回の改善（来客用の白線・社内のバックミラー）は役に立っている？", type:"choice", opts:["なってる", "なってない"], reason:true },
+  { sec:"安全・ヒヤリハットチェック（「ある」のときは理由を書いてね）", text:"社内でトラックをバックするとき、危ない場所がある？（ある人は改善策も一緒に考えてね）", type:"yn", reason:true },
+  { sec:"", text:"その他、思っていることを何でも書いてね！", type:"text" }
+].map(x => ({ id: nid(), ex: "", opts: [], reason: false, ...x }));
+
+let fy = fyOf(today()), form = null, forms = {}, ans = [], roster = [], legacy = [];
+const ANSWER_MODE = location.hash === "#answer";
+
+async function loadAll(){
+  const [fs, as, rs, rg] = await Promise.all([db.collection("isoAuditSurveyForms").get(), db.collection("isoAuditSurveyAns").get(), db.collection("isoRoster").get().catch(() => null), db.collection("isoRegisters").get().catch(() => null)]);
+  forms = {}; fs.docs.forEach(d => forms[d.id] = d.data());
+  ans = as.docs.map(d => ({ id: d.id, ...d.data() }));
+  const t = today(); roster = rs ? rs.docs.map(d => d.data()).filter(r => r.name && !(r.leaveDate && r.leaveDate < t) && !(r.joinDate && r.joinDate > t)).sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999)) : [];
+  legacy = rg ? rg.docs.map(d => d.data()).filter(r => r.reg === "auditSurvey" && !r.draft) : [];
+}
+function pickForm(){
+  form = forms[String(fy)] ? JSON.parse(JSON.stringify(forms[String(fy)])) : null;
+}
+const items = () => (form && form.items) || [];
+const fyAns = () => ans.filter(a => a.fy === fy);
+
+/* ---------- ① 質問を作る ---------- */
+function renderMake(){
+  const el = document.getElementById("pMake");
+  if (!form) {
+    const prev = Object.keys(forms).map(Number).filter(y => y < fy).sort((a, b) => b - a)[0];
+    el.innerHTML = '<div class="sec"><h3>'+fyLabel(fy)+'の質問がまだありません</h3><div class="note">どれかを押して始めます。あとから自由に直せます。</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+
+      (prev ? '<button class="btn pri" onclick="startFrom('+prev+')">'+fyLabel(prev)+'の質問をコピーして作る</button>' : '')+
+      '<button class="btn '+(prev ? '' : 'pri')+'" onclick="startFrom(0)">いつもの質問（前の紙のアンケート）から作る</button></div></div>';
+    return;
+  }
+  const L = items();
+  el.innerHTML = '<div class="note" style="margin-bottom:8px;">質問を直したら、下の「💾 質問を保存」を押してください。見出しが同じ質問は、紙では1つのまとまりとして並びます。</div>' +
+    L.map((q, i) => '<div class="qrow"><div class="hd"><span class="no">'+(i+1)+'</span><b style="flex:1;">'+esc(q.text.split("\n")[0].slice(0, 40))+'</b>'+
+      '<button class="btn sm" onclick="mv('+i+',-1)">▲</button><button class="btn sm" onclick="mv('+i+',1)">▼</button><button class="btn sm del" onclick="rmQ('+i+')">✕</button></div>'+
+      '<div class="grid"><div><label>見出し（まとまりの名前・なくてもOK）</label><input data-i="'+i+'" data-k="sec" value="'+esc(q.sec)+'" placeholder="例：安全・ヒヤリハットチェック"></div>'+
+      '<div><label>答え方</label><select data-i="'+i+'" data-k="type">'+TYPES.map(([k, l]) => '<option value="'+k+'"'+(q.type === k ? ' selected' : '')+'>'+l+'</option>').join("")+'</select></div></div>'+
+      '<label>質問</label><textarea data-i="'+i+'" data-k="text" style="min-height:52px;">'+esc(q.text)+'</textarea>'+
+      '<div class="grid"><div><label>例（なくてもOK）</label><input data-i="'+i+'" data-k="ex" value="'+esc(q.ex)+'" placeholder="例：電気のむだを減らす"></div>'+
+      (q.type === "choice" ? '<div><label>選ぶもの（「、」で区切る）</label><input data-i="'+i+'" data-k="opts" value="'+esc((q.opts || []).join("、"))+'" placeholder="してる、してない"></div>' : '<div></div>')+'</div>'+
+      (q.type !== "text" ? '<label class="chkl" style="margin-top:6px;"><input type="checkbox" data-i="'+i+'" data-k="reason"'+(q.reason ? ' checked' : '')+'> 理由・内容も書いてもらう</label>' : '')+'</div>').join("") +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--bg,#f4f6f9);padding:8px 0;">'+
+      '<button class="btn" onclick="addQ()">＋ 質問を足す</button><button class="btn pri" onclick="saveForm()">💾 質問を保存</button>'+
+      '<button class="btn" style="margin-left:auto;" onclick="resetForm()">いつもの質問に戻す</button></div>';
+  el.querySelectorAll("[data-k]").forEach(inp => inp.onchange = () => { const q = form.items[Number(inp.dataset.i)], k = inp.dataset.k;
+    if (k === "reason") q.reason = inp.checked; else if (k === "opts") q.opts = inp.value.split(/[、,，\s]+/).filter(Boolean);
+    else { q[k] = inp.value; if (k === "type") { if (q.type === "choice" && !(q.opts || []).length) q.opts = ["はい", "いいえ"]; renderMake(); } } });
+}
+window.startFrom = y => { form = { items: y ? JSON.parse(JSON.stringify(forms[String(y)].items)) : DEFAULT_ITEMS() }; saveForm(); };
+window.mv = (i, d) => { const L = form.items, j = i + d; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; renderMake(); };
+window.rmQ = i => { if (!confirm("この質問を消しますか？（保存を押すと確定）")) return; form.items.splice(i, 1); renderMake(); };
+window.addQ = () => { form.items.push({ id: nid(), sec: "", text: "", ex: "", type: "text", opts: [], reason: false }); renderMake(); window.scrollTo(0, document.body.scrollHeight); };
+window.resetForm = () => { if (!confirm("いつもの質問（前の紙のアンケート）に戻しますか？")) return; form.items = DEFAULT_ITEMS(); renderMake(); };
+window.saveForm = async () => {
+  form.items = form.items.filter(q => String(q.text || "").trim());
+  await db.collection("isoAuditSurveyForms").doc(String(fy)).set({ items: form.items, fy, updatedMs: Date.now() });
+  forms[String(fy)] = JSON.parse(JSON.stringify(form)); toast("質問を保存しました"); renderAll();
+};
+
+/* ---------- 紙(印刷) ---------- */
+function qHtmlPaper(q, n){
+  const ch = q.type === "yn" ? YN : q.type === "choice" ? (q.opts || []) : [];
+  return '<tr><td class="c">'+n+'</td><td style="white-space:pre-wrap">'+esc(q.text)+(q.ex ? '<div class="ex">例：'+esc(q.ex)+'</div>' : '')+'</td><td>'+
+    (ch.length ? '<div class="ch">'+ch.map(esc).join("　・　")+'</div>' : '')+(q.type === "text" || q.reason ? '<div style="height:'+(q.type === "text" ? 58 : 26)+'px"></div>' : '')+'</td></tr>';
+}
+function paper(name){
+  const L = items(); let last = null, n = 0, rows = "";
+  L.forEach(q => { if ((q.sec || "") !== last) { last = q.sec || ""; if (last) rows += '<tr><td colspan="3" class="sh">'+esc(last)+'</td></tr>'; } rows += qHtmlPaper(q, ++n); });
+  return '<div class="pg"><h1>内部監査アンケート（'+fyLabel(fy)+'）<span>EMS-C-03</span></h1><div class="who">日付：　　　年　　月　　日　　　氏名：<b>'+esc(name)+'</b></div>'+
+    '<div class="lead">毎年にたようなアンケートになりますが、よろしくお願いします。書き終わったら事務所に出してください。</div>'+
+    '<table><tr><th style="width:30px">No.</th><th style="width:48%">質問</th><th>回答（○をつける・書く）</th></tr>'+rows+'</table></div>';
+}
+function renderPrint(){
+  const el = document.getElementById("pPrint");
+  if (!form) { el.innerHTML = '<div class="empty">先に「① 質問を作る」で質問を作ってください</div>'; return; }
+  const url = location.href.split("#")[0] + "#answer";
+  el.innerHTML = '<div class="sec"><h3>🖨️ 紙で配る</h3><div class="note">名簿（会社情報 → 従業員名簿）の'+roster.length+'名分、名前を入れて印刷します。名前なしの用紙を1枚だけ印刷することもできます。</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn pri" onclick="printPaper(false)">全員分を印刷（名前入り）</button><button class="btn" onclick="printPaper(true)">名前なしで1枚</button></div></div>'+
+    '<div class="sec"><h3>📱 スマホで答えてもらう（使うときだけ）</h3><div class="note">下のアドレスを社内のLINEなどで送ると、本人がスマホで名前を選んで答えられます。答えはそのまま「③ 回答を入れる」に入ります（紙と両方使ってもOK）。</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;"><input id="ansUrl" readonly value="'+esc(url)+'" style="flex:1;min-width:220px;"><button class="btn" onclick="copyUrl()">コピー</button><button class="btn" onclick="window.open(\''+esc(url)+'\',\'_blank\')">開いてみる</button></div></div>';
+}
+window.copyUrl = () => { const i = document.getElementById("ansUrl"); i.select(); try { navigator.clipboard.writeText(i.value); } catch(e){ document.execCommand("copy"); } toast("コピーしました"); };
+window.printPaper = blank => {
+  const names = blank || !roster.length ? [""] : roster.map(r => r.name);
+  const w = window.open("", "_blank");
+  w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>内部監査アンケート EMS-C-03</title><style>'+
+    'body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;margin:0;padding:16px;font-size:12.5px;line-height:1.55;color:#111}.bar{position:sticky;top:0;background:#f1f5f9;padding:8px;margin:-16px -16px 14px;text-align:center}'+
+    '.bar button{font-size:15px;padding:8px 18px;border-radius:8px;border:1px solid #1e3a5f;background:#1e3a5f;color:#fff;font-weight:700}h1{font-size:17px;margin:0 0 6px;border-bottom:2px solid #1e3a5f;display:flex;justify-content:space-between}h1 span{font-size:12px;font-weight:normal}'+
+    '.who{margin:4px 0}.lead{font-size:11.5px;color:#444;margin-bottom:4px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #555;padding:4px 6px;vertical-align:top}th{background:#e2e8f0}.c{text-align:center}.sh{background:#f1f5f9;font-weight:800}'+
+    '.ex{font-size:11px;color:#555}.ch{font-size:13px;letter-spacing:1px}.pg{page-break-after:always;margin-bottom:24px}@media print{.bar{display:none}body{padding:0}@page{size:A4;margin:10mm}}</style></head><body>'+
+    '<div class="bar"><button onclick="print()">🖨️ 印刷する（'+names.length+'枚）</button></div>'+names.map(paper).join("")+'</body></html>');
+  w.document.close();
+};
+
+/* ---------- ③ 回答を入れる ---------- */
+let cur = null;
+function renderInput(){
+  const el = document.getElementById("pInput");
+  if (!form) { el.innerHTML = '<div class="empty">'+(ANSWER_MODE ? 'まだアンケートの準備ができていません' : '先に「① 質問を作る」で質問を作ってください')+'</div>'; return; }
+  const A = fyAns(), done = new Set(A.map(a => a.name));
+  el.innerHTML = '<div class="sec">'+(ANSWER_MODE ? '<h3>名前を選んで、答えてください</h3>' : '<h3>だれの回答を入れますか？</h3><div class="note">集めた紙を見ながら、1人ずつ入れます。緑は入力済み（押すと直せます）。</div>')+
+    '<div class="who" style="margin-top:6px;">'+roster.map(r => '<span class="'+(done.has(r.name) ? 'done' : '')+'" onclick="pickWho(\''+esc(r.name)+'\')">'+(done.has(r.name) ? '✓ ' : '')+esc(r.name)+'</span>').join("")+
+    '<span onclick="pickWho(prompt(\'名前（名簿にない人）\')||\'\')">＋ 名簿にない人</span></div>'+
+    (ANSWER_MODE ? '' : '<div class="note" style="margin-top:6px;">入力済み '+A.length+'名 ／ 名簿 '+roster.length+'名'+(roster.length - roster.filter(r => done.has(r.name)).length ? '（まだ '+(roster.length - roster.filter(r => done.has(r.name)).length)+'名）' : '')+'</div>')+'</div>'+
+    '<div id="formBox"></div>';
+  if (cur) drawForm();
+}
+window.pickWho = nm => { nm = String(nm || "").trim(); if (!nm) return; const a = fyAns().find(x => x.name === nm); cur = { id: a ? a.id : "", name: nm, date: a ? a.date : today(), ans: a ? JSON.parse(JSON.stringify(a.ans || {})) : {} }; drawForm(); document.getElementById("formBox").scrollIntoView({ behavior: "smooth" }); };
+function drawForm(){
+  const box = document.getElementById("formBox"); let last = null;
+  box.innerHTML = '<div class="sec"><h3>'+esc(cur.name)+' さんの回答'+(cur.id ? '（入力済み・直せます）' : '')+'</h3><label>日付</label><input type="date" id="aDate" value="'+esc(cur.date)+'" style="max-width:200px;">'+
+    items().map((q, i) => { let h = ""; if ((q.sec || "") !== last) { last = q.sec || ""; if (last) h += '<div class="head2">'+esc(last)+'</div>'; }
+      const a = cur.ans[q.id] || {}, ch = q.type === "yn" ? YN : q.type === "choice" ? (q.opts || []) : [];
+      return h + '<div class="ans"><div class="q">'+(i+1)+'. '+esc(q.text)+'</div>'+(q.ex ? '<div class="ex">例：'+esc(q.ex)+'</div>' : '')+
+        (ch.length ? '<div>'+ch.map(c => '<label class="opt"><input type="radio" name="r_'+q.id+'" value="'+esc(c)+'"'+(a.c === c ? ' checked' : '')+' onchange="setA(\''+q.id+'\',\'c\',this.value)">'+esc(c)+'</label>').join("")+'<label class="opt" style="color:#94a3b8;font-size:13px;"><input type="radio" name="r_'+q.id+'" value=""'+(!a.c ? ' checked' : '')+' onchange="setA(\''+q.id+'\',\'c\',\'\')">空らん</label></div>' : '')+
+        (q.type === "text" || q.reason ? '<textarea placeholder="'+(q.type === "text" ? "書いてあったこと" : "理由・内容")+'" style="min-height:'+(q.type === "text" ? 60 : 40)+'px;" onchange="setA(\''+q.id+'\',\'t\',this.value)">'+esc(a.t || "")+'</textarea>' : '')+'</div>'; }).join("")+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="btn pri" onclick="saveAns()">💾 保存する</button><button class="btn" onclick="cur=null;renderInput()">やめる</button>'+
+    (cur.id && !ANSWER_MODE ? '<button class="btn del" style="margin-left:auto;" onclick="delAns()">この回答を消す</button>' : '')+'</div></div>';
+}
+window.setA = (id, k, v) => { cur.ans[id] = cur.ans[id] || {}; cur.ans[id][k] = v; };
+window.saveAns = async () => {
+  const d = { fy, name: cur.name, date: document.getElementById("aDate").value || today(), ans: cur.ans, updatedMs: Date.now(), src: ANSWER_MODE ? "スマホ" : "紙から入力" };
+  try {
+    if (cur.id) await db.collection("isoAuditSurveyAns").doc(cur.id).set(d, { merge: true });
+    else { const r = await db.collection("isoAuditSurveyAns").add({ ...d, createdMs: Date.now() }); cur.id = r.id; }
+    toast(ANSWER_MODE ? "送りました。ありがとうございました！" : cur.name + " さんの回答を保存しました");
+    await loadAll(); cur = null; renderAll();
+  } catch (e) { alert("保存できませんでした: " + e.message); }
+};
+window.delAns = async () => { if (!confirm(cur.name + " さんの回答を消しますか？")) return; await db.collection("isoAuditSurveyAns").doc(cur.id).delete(); toast("消しました"); await loadAll(); cur = null; renderAll(); };
+
+/* ---------- ④ 集計 ---------- */
+function renderSum(){
+  const el = document.getElementById("pSum"), A = fyAns(), done = new Set(A.map(a => a.name));
+  const lg = legacy.filter(r => fyOf(r.date) === fy);
+  if (!form || !A.length) { el.innerHTML = '<div class="empty">'+fyLabel(fy)+'の回答はまだありません'+(lg.length ? '<br><br>この年度は、前の入れ方（ISOの計画の台帳）で '+lg.length+'件の回答があります。<a href="plan.html#auditSurvey">そちらを見る ›</a>' : '')+'</div>'; return; }
+  const not = roster.filter(r => !done.has(r.name)).map(r => r.name);
+  let last = null;
+  el.innerHTML = '<div class="sec"><h3>回答 '+A.length+'名'+(roster.length ? ' ／ 名簿 '+roster.length+'名' : '')+'</h3>'+(not.length ? '<div class="note">まだの人：'+not.map(esc).join("・")+'</div>' : '<div class="note" style="color:#166534;">全員の回答が入っています</div>')+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn pri" onclick="printSum()">🖨️ 集計を印刷（監査の資料）</button></div></div>'+
+    '<div id="sumBody">'+items().map((q, i) => { let h = ""; if ((q.sec || "") !== last) { last = q.sec || ""; if (last) h += '<div class="head2" style="margin:14px 0 6px;">'+esc(last)+'</div>'; }
+      const ch = q.type === "yn" ? YN : q.type === "choice" ? (q.opts || []) : [], vals = A.map(a => (a.ans || {})[q.id] || {});
+      const tx = A.map(a => ({ n: a.name, a: (a.ans || {})[q.id] || {} })).filter(x => String(x.a.t || "").trim());
+      return h + '<div class="sum"><div style="font-weight:700;white-space:pre-wrap;">'+(i+1)+'. '+esc(q.text)+'</div>'+
+        (ch.length ? ch.map(c => { const n = vals.filter(v => v.c === c).length; return '<div class="bar2"><span style="width:80px;">'+esc(c)+'</span><span class="b" style="width:'+Math.round(n / A.length * 240)+'px;'+(/ある|してない|なってない/.test(c) ? 'background:#dc2626;' : '')+'"></span><b>'+n+'名</b></div>'; }).join("") +
+          (vals.filter(v => !v.c).length ? '<div class="bar2" style="color:#94a3b8;"><span style="width:80px;">空らん</span>'+vals.filter(v => !v.c).length+'名</div>' : '') : '')+
+        (tx.length ? '<div class="txts" style="margin-top:6px;">'+tx.map(x => '<div>'+(x.a.c ? '【'+esc(x.a.c)+'】' : '')+esc(x.a.t)+' <small>（'+esc(x.n)+'）</small></div>').join("")+'</div>' : (ch.length ? '' : '<div class="note">書いてあった人はいません</div>'))+'</div>'; }).join("")+'</div>';
+}
+window.printSum = () => {
+  const w = window.open("", "_blank");
+  w.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>内部監査アンケート 集計</title><style>body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;margin:0;padding:16px;font-size:12.5px;color:#111}'+
+    'h1{font-size:17px;border-bottom:2px solid #1e3a5f}.sum{border:1px solid #999;padding:6px 8px;margin-bottom:6px;break-inside:avoid}.bar2{display:flex;gap:6px;align-items:center}.bar2 .b{height:10px;background:#555;display:inline-block}.head2{font-weight:800;margin:10px 0 4px}'+
+    '.txts div{border-bottom:1px dotted #ccc;padding:2px 0}.bar{text-align:center;margin-bottom:10px}@media print{.bar{display:none}@page{size:A4;margin:10mm}}</style></head><body><div class="bar"><button onclick="print()">🖨️ 印刷する</button></div>'+
+    '<h1>内部監査アンケート 集計（'+fyLabel(fy)+'）EMS-C-03</h1><div>回答 '+fyAns().length+'名　印刷日 '+fdj(today())+'</div>'+document.getElementById("sumBody").innerHTML+'</body></html>');
+  w.document.close();
+};
+
+/* ---------- 共通 ---------- */
+function renderFySel(){
+  const ys = new Set([fyOf(today()), ...Object.keys(forms).map(Number), ...ans.map(a => a.fy)].filter(y => y != null));
+  document.getElementById("fySel").innerHTML = [...ys].sort((a, b) => b - a).map(y => '<option value="'+y+'"'+(y === fy ? ' selected' : '')+'>'+fyLabel(y)+'</option>').join("");
+  document.getElementById("fyNote").textContent = "（" + fy + "年8月〜" + (fy + 1) + "年7月）";
+  document.getElementById("cntSmall").textContent = form ? "入力済み " + fyAns().length + "名" : "";
+}
+function renderAll(){ pickForm(); renderFySel(); renderMake(); renderPrint(); renderInput(); renderSum(); }
+document.getElementById("fySel").onchange = e => { fy = Number(e.target.value); cur = null; renderAll(); };
+function tab(t){ document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  ["make", "print", "input", "sum"].forEach(k => document.getElementById("p" + k[0].toUpperCase() + k.slice(1)).style.display = k === t ? "" : "none"); }
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => tab(b.dataset.t));
+(async () => {
+  try { await loadAll(); renderAll(); } catch (e) { document.getElementById("pMake").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; }
+  if (ANSWER_MODE) { document.getElementById("tabs").style.display = "none"; document.querySelector(".wrap > .bar").style.display = "none"; document.getElementById("backBtn").style.display = "none"; document.querySelector("header .sub").textContent = "名前を選んで、答えてください。最後に「保存する」を押すと送られます。"; tab("input"); }
+})();
+</script>
+</body>
+</html>
