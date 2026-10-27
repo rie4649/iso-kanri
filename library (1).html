@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>書類の置き場 | ISO管理</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .fl { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; margin-bottom:12px; }
+  .fl button { background:#fff; border:1.5px solid var(--line); border-radius:8px; padding:10px; text-align:left; cursor:pointer; font-size:14px; font-weight:800; color:#1e3a5f; }
+  .fl button small { display:block; font-weight:normal; color:#64748b; font-size:11.5px; margin-top:2px; }
+  .fl button.on { border-color:var(--navy); background:#eef2ff; }
+  .doc { background:#fff; border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .doc .nm { flex:1; min-width:220px; font-size:15px; font-weight:800; cursor:pointer; } .doc .nm small { display:block; font-weight:normal; color:#64748b; font-size:12px; }
+  .use { display:inline-block; font-size:11px; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; border-radius:999px; padding:0 7px; margin:2px 3px 0 0; font-weight:700; }
+  label.lb { display:block; font-size:13px; font-weight:700; color:#334155; margin:10px 0 4px; }
+  .modal input[type=text], .modal select, .modal textarea { width:100%; box-sizing:border-box; padding:8px 10px; font-size:15px; border:1px solid var(--line); border-radius:6px; }
+  .chk { display:flex; gap:8px; align-items:center; font-size:14px; padding:4px 0; cursor:pointer; } .chk input { width:18px; height:18px; }
+  .pick4 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+  .pk { display:block; background:#fff; border:2px solid var(--line); border-radius:10px; padding:14px; text-decoration:none; color:var(--ink); text-align:left; cursor:pointer; font:inherit; }
+  .pk:hover { border-color:var(--navy2); } .pk b { display:block; font-size:17px; color:var(--navy); }
+  .pk span { display:block; font-size:13px; color:#64748b; margin-top:3px; line-height:1.5; } .pk em { display:block; font-style:normal; font-size:13px; font-weight:700; color:#2563eb; margin-top:6px; }
+  .pk.here { border-color:#93c5fd; background:#eff6ff; } details.pk summary { list-style:none; } details.pk summary::-webkit-details-marker { display:none; }
+  .sub4 a { display:block; padding:9px 8px; margin-top:6px; border-radius:6px; background:#f8fafc; border:1px solid var(--line2); color:var(--navy); text-decoration:none; font-size:14px; font-weight:700; }
+  .drop { border:2px dashed #93c5fd; background:#eff6ff; border-radius:8px; padding:18px; text-align:center; color:#1e3a5f; font-weight:700; cursor:pointer; }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>📁 書類・写真を入れる</h1>
+  <div class="sub">何を入れるかを選ぶと、正しい場所が開きます</div></div>
+</header>
+<div class="wrap">
+  <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方（ここを押すと開きます）<span class="cl">ISO 7.5 文書化した情報</span></summary>
+    <div style="margin-top:6px;line-height:1.8;">
+    <b>■ まず「何を入れますか？」から選ぶ</b>：写真は「写真の記録」、EMS番号のある書類は「EMS文書管理」、計量証明書・許可証などは記録の画面へ。どれでもない資料だけ、この下の置き場に入れます。<br>
+    <b>■ 置き場に入れる</b>：「＋ 資料を入れる」でPDFや写真を選び、名前・フォルダ・使う場所を選んで保存。<b>写真は何枚でもまとめて選べます</b>（名前は1つずつ直せます）。大きいPDF（環境マニュアルなど）も入ります。<br>
+    <b>■ 間違えて入れたとき</b>：一覧の「消す」か、ホームのフォルダの中の「直す・消す」から消せます。<br>
+    <b>■ どこから見られる？</b>：ホームの「📁 書類・資料の置き場」の同じフォルダ。使う場所で「新入社員研修の教材」を選ぶと研修の「編集」から教材に選べ、「環境への取り組み」を選ぶと審査・視察の画面の「資料」に出ます。<br>
+    <b>■ 新しい版が来たら</b>：古いものを「消す」か、名前に「（旧）」を付けて、新しいものを入れます。<br>
+    <b>■ EMS文書（番号つきの書類）</b>は今までどおり「EMS文書管理」で版を管理します。ここは、それ以外の資料の置き場です。</div>
+  </details>
+  <h2 style="font-size:17px;color:var(--navy);margin:4px 0 8px;">何を入れますか？</h2>
+  <div class="pick4">
+    <a class="pk" href="photos.html?mode=rec"><b>📷 写真</b><span>許可シール・掲示板・保管場所・現場の様子</span><em>→ 写真の記録</em></a>
+    <a class="pk" href="photos.html"><b>🚛 車両・設備の写真</b><span>車両1台ずつ・圧縮機など</span><em>→ 写真の記録（車両・設備）</em></a>
+    <a class="pk" href="docs.html"><b>🔢 EMS番号のある書類</b><span>EMS-A-◯◯・B-◯◯・C-◯◯ の原本PDF</span><em>→ EMS文書管理</em></a>
+    <details class="pk"><summary><b>🧾 記録の証拠の書類</b><span>計量証明書・許可証・消防の報告書・感謝状</span><em>→ 押すと行き先が出ます</em></summary>
+      <div class="sub4">
+        <a href="index.html#sec=waterTest">🧪 水質検査の計量証明書 → 水質検査の記録の📎</a>
+        <a href="https://rie4649.github.io/sekine-master/" target="_blank">📜 許可証 → マスタ管理の「📜許可証」</a>
+        <a href="shokaki.html">🧯 消防の点検報告書・消火器の書類 → 消火器・防火管理</a>
+        <a href="index.html#sec=donation">🤝 感謝状・寄付の御礼 → 地域貢献の活動の「📎書類を添付」</a>
+      </div></details>
+    <button class="pk here" onclick="openEd('')"><b>📁 それ以外の資料</b><span>会社案内・研修の教材・法令の案内・契約書など</span><em>→ このページ（下の置き場）に入れる</em></button>
+  </div>
+  <h2 style="font-size:16px;color:var(--navy);margin:18px 0 6px;">📁 資料の置き場（ここに入っているもの）</h2>
+  <div class="fl" id="fl"></div>
+  <div class="bar" style="margin-bottom:8px;"><button class="btn pri" onclick="openEd('')">＋ 資料を入れる</button><input id="q" type="search" placeholder="🔍 名前で探す" oninput="render()" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;min-width:200px;"></div>
+  <div id="inboxNote" class="note" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:8px;"></div>
+  <div id="bulk" style="display:none;position:sticky;top:0;z-index:5;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 12px;margin-bottom:8px;"></div>
+  <div id="list"><div class="empty">読み込み中…</div></div>
+</div>
+
+<div class="bg" id="edBg" onclick="if(event.target===this)closeEd()"><div class="modal">
+  <h2 id="edTtl">資料を入れる</h2>
+  <div id="fileBox"><label class="drop" for="fIn">📄 ここを押して、PDF・写真を選ぶ（何枚でもまとめて選べます）<br><small style="font-weight:normal;" id="fName">まだ選んでいません</small></label>
+    <input type="file" id="fIn" accept="application/pdf,image/*,.docx,.xlsx" multiple style="display:none;" onchange="picked(this.files)">
+    <div id="multiBox"></div></div>
+  <div id="nameBox"><label class="lb" for="eName">名前</label><input type="text" id="eName" placeholder="例：環境マニュアル（2025年版）"></div>
+  <label class="lb" for="eFolder">フォルダ<span id="eFolderNote" style="font-weight:normal;color:#64748b;"></span></label><select id="eFolder"></select>
+  <label class="lb">使う場所（ほかの画面にも出す）</label><div id="eUses"></div>
+  <label class="lb" for="eMemo">メモ（任意）</label><input type="text" id="eMemo" placeholder="例：2025年4月改訂">
+  <div class="note" id="eStep"></div>
+  <div class="mBtns"><button class="btn del" style="margin-right:auto;" id="eDel" onclick="delDoc()">消す</button><button class="btn" onclick="closeEd()">キャンセル</button><button class="btn pri" id="eSave" onclick="saveDoc()">保存</button></div>
+</div></div>
+<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;display:none;z-index:99;"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="history.js"></script>
+<script src="library.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(window._tt); window._tt = setTimeout(() => t.style.display = "none", 2600); }
+const fdTs = ms => { if (!ms) return ""; const d = new Date(ms); return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate(); };
+const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + "MB" : Math.round((n || 0) / 1024) + "KB";
+let docs = [], folder = "", editId = "", files = [];
+// #f=フォルダ … そのフォルダを開く ／ #add=フォルダ … そのフォルダに入れる画面を開く ／ #edit=書類ID … その書類の編集(消す)を開く
+const hm = location.hash.match(/^#(f|add|edit)=([\w-]+)/); if (hm && hm[1] !== "edit") folder = hm[2];
+db.collection(Library.COL).onSnapshot(s => { docs = s.docs.map(d => ({ id: d.id, ...d.data() })); render();
+  if (hm && !window._added) { window._added = true; if (hm[1] === "add") openEd(""); else if (hm[1] === "edit" && docs.some(d => d.id === hm[2])) { const d = docs.find(x => x.id === hm[2]); folder = d.folder || "other"; render(); openEd(d.id); } } }, e => toast("読み込みエラー: "+e.message));
+let sel = new Set();
+function togglePick(cb){ if (cb.checked) sel.add(cb.value); else sel.delete(cb.value); renderBulk(); }
+function renderBulk(){
+  const el = document.getElementById("bulk"); if (!el) return;
+  if (!sel.size) { el.style.display = "none"; return; }
+  el.style.display = "";
+  el.innerHTML = '<b>'+sel.size+'件 選んでいます</b>　<select id="bFolder" style="margin-top:6px;"><option value="">フォルダはそのまま</option>'+Library.FOLDERS.map(([k, ic, nm]) => '<option value="'+k+'">'+ic+' '+esc(nm)+' へ移す</option>').join("")+'</select>'+
+    '<div style="margin:6px 0;">使う場所に足す：'+Library.USES.map(([k, l]) => '<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 12px 2px 0;font-size:13px;font-weight:normal;width:auto;"><input type="checkbox" class="bUse" value="'+k+'" style="width:18px;height:18px;margin:0;flex:0 0 auto;">'+esc(l)+'</label>').join("")+'</div>'+
+    '<button class="btn pri" onclick="bulkApply()">まとめて変える</button> <button class="btn" onclick="sel.clear();render()">選ぶのをやめる</button>';
+}
+async function bulkApply(){
+  const f = document.getElementById("bFolder").value, add = [...document.querySelectorAll(".bUse:checked")].map(c => c.value);
+  if (!f && !add.length) { toast("移すフォルダか、使う場所を選んでください"); return; }
+  try { for (const id of sel) { const d = docs.find(x => x.id === id); if (!d) continue; const up = { updatedMs: Date.now() };
+      if (f) up.folder = f; if (add.length) up.uses = [...new Set((d.uses || []).concat(add))]; await db.collection(Library.COL).doc(id).update(up); }
+    toast(sel.size + "件 変えました"); sel.clear(); render();
+  } catch(e){ toast("エラー: "+e.message); }
+}
+function render(){
+  const cnt = k => docs.filter(d => (d.folder || "other") === k).length;
+  document.getElementById("fl").innerHTML = '<button class="'+(folder ? "" : "on")+'" onclick="folder=\'\';render()">すべて<small>'+docs.length+'件</small></button>' +
+    Library.FOLDERS.map(([k, ic, nm]) => '<button class="'+(folder === k ? "on" : "")+'" onclick="folder=\''+k+'\';render()">'+ic+' '+esc(nm)+'<small>'+cnt(k)+'件</small></button>').join("");
+  const q = document.getElementById("q").value.trim();
+  const L = docs.filter(d => (!folder || (d.folder || "other") === folder) && (!q || String(d.name).includes(q))).sort((a, b) => String(a.name).localeCompare(String(b.name), "ja"));
+  document.getElementById("list").innerHTML = L.length ? L.map(d => { const f = Library.FOLDERS.find(x => x[0] === (d.folder || "other")) || Library.FOLDERS.find(x => x[0] === "other");
+    return '<div class="doc"><input type="checkbox" class="pick" value="'+d.id+'"'+(sel.has(d.id) ? ' checked' : '')+' onclick="event.stopPropagation();togglePick(this)" style="width:22px;height:22px;flex:0 0 auto;" title="まとめて移すときに選ぶ"><div class="nm" onclick="Library.open(db,\''+d.id+'\')">'+Library.icon(d)+' '+esc(d.name)+'<small>'+f[1]+' '+esc(f[2])+'　'+kb(d.size)+'　'+fdTs(d.createdMs)+(d.recBy ? '　'+esc(d.recBy) : '')+(d.memo ? '　'+esc(d.memo) : '')+'</small>'+
+      (d.uses || []).map(u => '<span class="use">'+esc((Library.USES.find(x => x[0] === u) || [0, u])[1])+'</span>').join("")+'</div>'+
+      '<button class="btn sm pri" onclick="Library.open(db,\''+d.id+'\')">開く</button><button class="btn sm" onclick="openEd(\''+d.id+'\')">編集</button><button class="btn sm del" onclick="quickDel(\''+d.id+'\')">消す</button></div>'; }).join("")
+    : '<div class="empty">'+(folder ? 'このフォルダにはまだ書類がありません。' : 'まだ書類がありません。')+'「＋ 資料を入れる」から入れてください</div>';
+  const ni = docs.filter(d => d.folder === "inbox").length;
+  document.getElementById("inboxNote").innerHTML = ni ? '📥 とりあえず置き場に、まだ分けていないものが <b>'+ni+'件</b> あります。左の□に☑を付けて「まとめて変える」か、1つずつ「編集」でフォルダと使う場所を決めます。' : '';
+  document.getElementById("inboxNote").style.display = ni ? "" : "none";
+  renderBulk();
+}
+const baseName = n => String(n || "").replace(/\.[^.]+$/, "");
+/* 選んだファイル。1つなら今までどおり「名前」欄、2つ以上なら1つずつ名前を直せる一覧を出す(フォルダ・使う場所・メモは全部に同じものが入る) */
+function picked(list){
+  files = [...(list || [])];
+  const n = files.length, one = n === 1;
+  document.getElementById("fName").textContent = !n ? "まだ選んでいません" : one ? files[0].name + "（" + kb(files[0].size) + "）" : n + "件 選びました（合計 " + kb(files.reduce((a, f) => a + f.size, 0)) + "）";
+  document.getElementById("nameBox").style.display = n > 1 ? "none" : "";
+  document.getElementById("eFolderNote").textContent = n > 1 ? "（" + n + "件 全部ここに入ります）" : "";
+  if (one && !document.getElementById("eName").value) document.getElementById("eName").value = baseName(files[0].name);
+  const imgs = files.filter(f => String(f.type).startsWith("image/")).length;
+  document.getElementById("eStep").innerHTML = imgs ? '📷 写真が'+imgs+'枚あります。賞状・SDGs・地域貢献の写真はこのまま保存でOKです（使う場所を選ぶと、その画面に出ます）。許可シール・掲示板・現場の点検の写真は<a href="photos.html?mode=rec">写真の記録</a>のほうが、調査票にも出て便利です。' : "";
+  document.getElementById("multiBox").innerHTML = n > 1 ? '<label class="lb">名前（1つずつ直せます・✕でやめる）</label>' + files.map((f, i) =>
+    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;"><span style="flex:0 0 auto;">'+(String(f.type).startsWith("image/") ? "🖼️" : "📄")+'</span><input type="text" class="mName" data-i="'+i+'" value="'+esc(baseName(f.name))+'" style="flex:1;"><small style="flex:0 0 auto;color:#64748b;">'+kb(f.size)+'</small><button type="button" class="btn sm" onclick="dropFile('+i+')">✕</button></div>').join("") : "";
+}
+function dropFile(i){ const names = [...document.querySelectorAll(".mName")].map(x => x.value); files.splice(i, 1); names.splice(i, 1); picked(files); document.querySelectorAll(".mName").forEach((x, k) => x.value = names[k]); if (files.length === 1) document.getElementById("eName").value = names[0]; }
+async function quickDel(id){ const d = docs.find(x => x.id === id); if (!d || !confirm("「"+d.name+"」を消しますか？\n（元には戻せません）")) return;
+  try { await Library.remove(db, d); toast("消しました"); } catch(e){ toast("エラー: "+e.message); } }
+function openEd(id){
+  editId = id; files = []; document.getElementById("multiBox").innerHTML = ""; document.getElementById("nameBox").style.display = ""; document.getElementById("eFolderNote").textContent = ""; const d = id ? (docs.find(x => x.id === id) || {}) : { folder: folder || "inbox", uses: [] };
+  document.getElementById("edTtl").textContent = id ? "資料の編集" : "資料を入れる";
+  document.getElementById("fileBox").style.display = id ? "none" : "";
+  document.getElementById("fIn").value = ""; document.getElementById("fName").textContent = "まだ選んでいません";
+  document.getElementById("eName").value = d.name || ""; document.getElementById("eMemo").value = d.memo || ""; document.getElementById("eStep").textContent = "";
+  document.getElementById("eFolder").innerHTML = Library.FOLDERS.map(([k, ic, nm, s]) => '<option value="'+k+'"'+(k === (d.folder || "other") ? " selected" : "")+'>'+ic+' '+esc(nm)+(s ? '（'+esc(s)+'）' : '')+'</option>').join("");
+  document.getElementById("eUses").innerHTML = Library.USES.map(([k, l, w]) => '<label class="chk"><input type="checkbox" value="'+k+'"'+((d.uses || []).includes(k) ? " checked" : "")+'>'+esc(l)+(w ? '<small style="display:block;font-weight:normal;color:#64748b;margin-left:26px;">→ '+esc(w)+'</small>' : '')+'</label>').join("") +
+    '<div class="note" style="margin-top:4px;">わからなければ何も選ばなくて大丈夫です。あとで「編集」から選べます。</div>';
+  document.getElementById("eDel").style.display = id ? "" : "none";
+  document.getElementById("edBg").classList.add("show");
+}
+function closeEd(){ document.getElementById("edBg").classList.remove("show"); }
+async function saveDoc(){
+  const multi = !editId && files.length > 1;
+  const name = document.getElementById("eName").value.trim(); if (!multi && !name) { toast("名前を入れてください"); return; }
+  if (!editId && !files.length) { toast("書類（PDF・写真）を選んでください"); return; }
+  const big = files.filter(f => f.size > 15 * 1048576); if (big.length) { toast("15MBより大きいファイルは入れられません：" + big.map(f => f.name).join("、")); return; }
+  let by = ""; try { by = localStorage.getItem("isoRecBy") || ""; } catch(e){}
+  const meta = { name, folder: document.getElementById("eFolder").value, uses: [...document.querySelectorAll("#eUses input:checked")].map(c => c.value), memo: document.getElementById("eMemo").value.trim(), recBy: by,
+    recDate: new Date().toISOString().slice(0, 10), updatedMs: Date.now() };
+  const btn = document.getElementById("eSave"); btn.disabled = true;
+  try {
+    if (editId) await db.collection(Library.COL).doc(editId).update(meta);
+    else if (!multi) await Library.save(db, files[0], meta, (i, n) => { document.getElementById("eStep").textContent = "保存中… " + i + " / " + n; });
+    else {
+      const names = [...document.querySelectorAll(".mName")].map(x => x.value.trim());
+      for (let k = 0; k < files.length; k++) {
+        await Library.save(db, files[k], { ...meta, name: names[k] || baseName(files[k].name) }, (i, n) => { document.getElementById("eStep").textContent = "保存中… " + (k + 1) + " / " + files.length + " 件目" + (n > 1 ? "（" + i + "/" + n + "）" : ""); });
+      }
+    }
+    closeEd(); toast(multi ? files.length + "件 入れました" : "保存しました");
+  } catch(e){ toast("エラー: "+e.message); }
+  btn.disabled = false;
+}
+async function delDoc(){ const d = docs.find(x => x.id === editId); if (!d || !confirm("「"+d.name+"」を消しますか？")) return;
+  try { await Library.remove(db, d); closeEd(); toast("消しました"); } catch(e){ toast("エラー: "+e.message); } }
+</script>
+</body>
+</html>
