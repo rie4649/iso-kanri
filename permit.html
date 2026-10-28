@@ -252,5 +252,6 @@ function askDel(){
 function confirmAns(ok){ document.getElementById("confirmBg").classList.remove("show"); if (ok && confirmCb) confirmCb(); confirmCb = null; }
 window.addEventListener("beforeunload", e => { if (dirty){ e.preventDefault(); e.returnValue = ""; } });
 </script>
+<script src="help-toggle.js"></script>
 </body>
 </html>

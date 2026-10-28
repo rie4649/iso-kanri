@@ -618,5 +618,6 @@ window.addEventListener("error", e => { const l = document.getElementById("list"
 loadAll().catch(e => { document.getElementById("list").innerHTML = '<div class="empty" style="color:#b91c1c;">読み込みエラー: '+esc(e.message||e)+'<br>この画面を写真に撮ってClaudeに送ってください</div>'; });
 setTimeout(() => { const l = document.getElementById("list"); if (l && /読み込み中/.test(l.textContent)) l.innerHTML = '<div class="empty" style="color:#b91c1c;">データの読み込みに時間がかかっています。ネットの接続を確認して、Ctrl+Shift+R で再読み込みしてください。</div>'; }, 20000);
 </script>
+<script src="help-toggle.js"></script>
 </body>
 </html>

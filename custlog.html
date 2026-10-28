@@ -166,5 +166,6 @@ async function saveMemo(m, v){ if ((monthly[m] || {}).memo === v) return; try { 
 async function saveMan(m, k, v){ v = String(v).trim(); try { await db.collection("isoCustMonthly").doc(m).set({ [k]: v === "" ? firebase.firestore.FieldValue.delete() : Number(v) }, { merge:true }); const o = monthly[m] = monthly[m] || {}; if (v === "") delete o[k]; else o[k] = Number(v); render(); toast("保存しました"); } catch(e){ toast("保存できませんでした: "+e.message); } }
 load();
 </script>
+<script src="help-toggle.js"></script>
 </body>
 </html>

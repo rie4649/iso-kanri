@@ -188,6 +188,7 @@ const EMS = (function(){
     const ref = db.collection(FILES).doc();
     const info = await writeChunks(ref.id, file);
     await ref.set({ code, docNo: meta.docNo || ("EMS-"+code+(meta.ver ? "-"+meta.ver : "")), ver: meta.ver || "", title: meta.title || docName(code), date: meta.date || "", author: meta.author || "", memo: meta.memo || "", ...info, createdMs: Date.now(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    return ref.id;
   }
   async function edit(id, meta, file){
     const f = files.find(x => x.id === id); if (!f) throw new Error("見つかりません");

@@ -294,5 +294,6 @@ function tab(t){ document.querySelectorAll("#tabs button").forEach(b => b.classL
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => tab(b.dataset.t));
 (async () => { try { await load(); renderMat(); renderList(); fill(null); if (location.hash === "#do") tab("do"); } catch (e) { document.getElementById("mat").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; } })();
 </script>
+<script src="help-toggle.js"></script>
 </body>
 </html>

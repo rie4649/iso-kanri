@@ -46,6 +46,7 @@
   #lb img { max-width:100%; max-height:80vh; border-radius:4px; }
   #lb .cap { color:#fff; font-size:15px; text-align:center; }
   #lb .x { position:absolute; top:12px; right:16px; }
+  #upCard, #evCard { display:none !important; }   /* 2026/10：入れるのは library.html(写真・書類)の1か所に */
 </style>
 </head>
 <body>
@@ -57,7 +58,7 @@
 </header>
 
 <div class="wrap">
-<details style="background:#fff;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.8;">
+<details class="howto" style="background:#fff;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.8;">
   <summary style="font-weight:700;color:var(--navy);cursor:pointer;">使い方（ここを押すと開きます）</summary>
   <div style="margin-top:6px;"><b>■ 車両・設備</b>：車両・圧縮機・エアコンなどの写真。名前で自動的に「主な設備・車両」「圧縮機定期点検」「フロン排出抑制法簡易点検」「軽油使用量」に出ます。</div>
   <div style="margin-top:6px;"><b>■ 保管・掲示・現場の様子</b>：項目ごとに「編集」で<b>写真を出すページ</b>を選びます（例：水質検査の様子 → 水質検査、積替え保管場所の様子 → 許可の内容）。</div>
@@ -66,6 +67,7 @@
   <div style="margin-top:6px;"><b>■ 迷ったら</b>：日付のある出来事 → 出来事／いつ見ても同じ様子（掲示・表示・保管・点検のやり方）→ 保管・掲示・現場の様子／車両・機械そのもの → 車両・設備</div>
   <div style="margin-top:6px;"><b>■ 書類は入れない</b>：計量証明書・許可証・点検報告書などの書類は、それぞれの記録（水質検査の添付、許可一覧、消火器・防火管理など）に入れます。</div>
 </details>
+<a href="library.html" style="display:block;text-align:center;background:#1e3a5f;color:#fff;border-radius:12px;padding:16px;margin-bottom:12px;text-decoration:none;font-size:18px;font-weight:800;">📥 写真・PDFを入れる<span style="display:block;font-size:13px;font-weight:normal;opacity:.9;margin-top:2px;">入れるのは「写真・書類」の1か所だけ。入れたあと「どこに使う？」でここの項目を選びます</span></a>
 <div class="seg">
   <button id="m_veh" onclick="setMode('veh')">車両・設備<small>主な設備・車両／フロン点検／圧縮機点検／軽油に表示</small></button>
   <button id="m_rec" onclick="setMode('rec')">保管・掲示・現場の様子<small>項目ごとに選んだページに表示</small></button>
@@ -812,5 +814,6 @@ async function saveCat(){
 }
 setMode(mode);
 </script>
+<script src="help-toggle.js"></script>
 </body>
 </html>
