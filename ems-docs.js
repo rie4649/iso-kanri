@@ -79,6 +79,12 @@ const EMS = (function(){
         did = true;
       }
     }
+    if (!flag.links202610b){   // 2026/10/28 アプリに画面ができた書類をつなぐ：A-01→環境マニュアルを読む、B-01→写真の記録(社内図)、C-03→内部監査アンケート
+      await flagRef.set({ links202610b:true }, { merge:true });
+      for (const [code, link] of [["A-01", "manualbook"], ["B-01", "photos"], ["C-03", "kansa"]]){
+        const ex = await db.collection(DOCS).doc(code).get(); if (ex.exists && !ex.data().abolished) { await db.collection(DOCS).doc(code).update({ link }); }
+      }
+    }
     if (!flag.aboInfo1){   // 2026/10/14 相談で決定: 情報公開検討書(A-23・C-09 同じ名前が2つ)を廃止
       await flagRef.set({ aboInfo1:true }, { merge:true });
       const reason = "外部への情報公開の判断は、環境マニュアル7.4.3の表で決めている。記録は「コミュニケーション・苦情」と行政照会記録、公開内容は「環境への取り組み」で管理するため廃止。";

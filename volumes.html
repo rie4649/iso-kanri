@@ -53,7 +53,8 @@
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;"><div><label for="rFy">いちばん新しい年度</label><select id="rFy"></select></div><div><label for="rDate">日付</label><input id="rDate" type="date"></div><div><label for="rVer">版数</label><input id="rVer" placeholder="例: 03"></div></div>
   <label for="rCat">対象</label><select id="rCat"><option value="産廃">産廃（産業廃棄物インプット報告書）</option><option value="非鉄・金属">非鉄・金属</option><option value="all">両方</option></select>
   <label for="rAnalysis">全体の分析（上記の分析より…）</label><textarea id="rAnalysis" rows="4" placeholder="例: 客先への声掛けを通じ、廃棄物の排出傾向・分別状況・改善可能性を共有し…"></textarea>
-  <div class="note">表の「傾向」と「考察」は、この画面の数字と考察から自動で入ります。全体の分析は保存されて、次に作るときも出ます。</div>
+  <label for="rReflect">取り組みへの反映（分析をもとに、環境目標・環境側面・お客様への声かけなどで何をするか）</label><textarea id="rReflect" rows="3" placeholder="例: 廃プラが年々増加 → お客様に分別のお願いを継続し、環境目標「適正なリサイクル」に分別率を追加。8月の環境側面の見直しで規模を3に上げる"></textarea>
+  <div class="note">表の「傾向」と「考察」は、この画面の数字と考察から自動で入ります。全体の分析と取り組みへの反映は保存されて、次に作るときも出ます。（審査の指摘 MDF-02「推移の傾向分析を行い取り組みに反映」への対応になります）</div>
   <div class="mBtns"><button class="btn" onclick="previewReport()">先に見る・印刷</button><span style="flex:1"></span><button class="btn" onclick="closeReport()">閉じる</button><button class="btn pri" id="rSave" onclick="makeReport()">PDFを作って登録</button></div>
 </div></div>
 <div id="toast"></div>
@@ -188,8 +189,8 @@ function openReport(){
   document.getElementById("rFy").innerHTML = ys.slice().reverse().map(y => '<option value="'+y+'">'+y+'年度（'+fyLabel(y)+'）</option>').join("");
   document.getElementById("rDate").value = today(); document.getElementById("rCat").value = cat === "エネルギー" ? "all" : cat;
   const last = typeof EMS !== "undefined" ? EMS.filesOf("A-17")[0] : null; document.getElementById("rVer").value = last && last.ver ? String(Number(last.ver) + 1).padStart(2, "0") : "01";
-  document.getElementById("rAnalysis").value = repText[document.getElementById("rFy").value] || "";
-  document.getElementById("rFy").onchange = () => { document.getElementById("rAnalysis").value = repText[document.getElementById("rFy").value] || ""; };
+  const fillRep = () => { const y = document.getElementById("rFy").value; document.getElementById("rAnalysis").value = repText[y] || ""; document.getElementById("rReflect").value = repText["reflect_" + y] || ""; };
+  fillRep(); document.getElementById("rFy").onchange = fillRep;
   document.getElementById("repBg").classList.add("show");
 }
 function closeReport(){ document.getElementById("repBg").classList.remove("show"); }
@@ -205,14 +206,17 @@ function reportPages(){
   const body = '<div style="font-size:12px;line-height:1.8;margin-bottom:6px;"><b>対象期間：</b>'+(y-2)+'年8月〜'+(y+1)+'年7月（3期比較）　<b>目的：</b>受け入れ量の推移を評価し、削減方針および環境負荷低減策を導くため</div>'+
     '<table style="border-collapse:collapse;width:100%;margin-bottom:8px;"><tr>'+th("品名","20%")+ys.map(k => th(k+"年度")).join("")+th("傾向","11%")+th("考察","28%")+'</tr>'+rows+'</table>'+
     '<div style="font-size:11px;color:#333;margin-bottom:8px;">↑＝前年度より10％以上増　↓＝10％以上減　→＝横ばい（±10％未満）。「年々」は3期続けて同じ向き。</div>'+
-    '<div style="font-weight:bold;font-size:13px;margin:6px 0 4px;border-bottom:1.5px solid #1e3a5f;color:#1e3a5f;">上記の分析より</div><div style="border:1px solid #111;padding:6px 8px;font-size:12px;white-space:pre-wrap;min-height:80px;line-height:1.7;">'+esc(document.getElementById("rAnalysis").value)+'</div>';
+    '<div style="font-weight:bold;font-size:13px;margin:6px 0 4px;border-bottom:1.5px solid #1e3a5f;color:#1e3a5f;">上記の分析より</div><div style="border:1px solid #111;padding:6px 8px;font-size:12px;white-space:pre-wrap;min-height:80px;line-height:1.7;">'+esc(document.getElementById("rAnalysis").value)+'</div>'+
+    '<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;border-bottom:1.5px solid #1e3a5f;color:#1e3a5f;">取り組みへの反映</div><div style="border:1px solid #111;padding:6px 8px;font-size:12px;white-space:pre-wrap;min-height:60px;line-height:1.7;">'+esc(document.getElementById("rReflect").value)+'</div>';
   const page = '<div class="fp" style="width:794px;min-height:1123px;box-sizing:border-box;padding:28px 34px;background:#fff;font-family:\'Yu Gothic\',\'Hiragino Sans\',\'Meiryo\',sans-serif;color:#111;position:relative;">'+
     '<div style="display:flex;gap:12px;align-items:stretch;margin-bottom:10px;"><div style="flex:1;border:1.5px solid #111;background:#d9d9d9;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:bold;text-align:center;padding:6px;"><div style="font-size:13px;">環境側面調査記録まとめ</div><div style="font-size:19px;letter-spacing:.05em;">'+esc(title)+'</div></div>'+
     '<table style="border-collapse:collapse;font-size:11px;width:250px;">'+[["文書番号",docNo],["作成者","環境管理責任者"],["日付",date.replace(/-/g, ".")],["記入者",document.getElementById("by").value.trim()]].map(([k,v]) => '<tr><td style="border:1px solid #111;padding:3px 6px;width:62px;background:#f3f4f6;">'+k+'</td><td style="border:1px solid #111;padding:3px 6px;">'+esc(v)+'</td></tr>').join("")+'</table></div>'+body+
     '<div style="position:absolute;bottom:12px;right:34px;font-size:10px;color:#444;">株式会社関根商店</div></div>';
   return { page, docNo, date, ver, y, title };
 }
-async function keepAnalysis(){ const y = document.getElementById("rFy").value, v = document.getElementById("rAnalysis").value; if ((repText[y] || "") === v) return; repText[y] = v; try { await db.collection("isoSettings").doc("volReport").set({ [y]: v }, { merge:true }); } catch(e){} }
+async function keepAnalysis(){ const y = document.getElementById("rFy").value, v = document.getElementById("rAnalysis").value, r = document.getElementById("rReflect").value;
+  if ((repText[y] || "") === v && (repText["reflect_" + y] || "") === r) return; repText[y] = v; repText["reflect_" + y] = r;
+  try { await db.collection("isoSettings").doc("volReport").set({ [y]: v, ["reflect_" + y]: r }, { merge: true }); } catch (e) { console.error(e); } }
 function previewReport(){
   keepAnalysis(); const { page, docNo } = reportPages(); const w = window.open("", "_blank"); if (!w){ toast("ポップアップを許可してください"); return; }
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+esc(docNo)+'</title><style>@page{size:A4 portrait;margin:0;} body{margin:0;background:#888;} .fp{margin:10px auto;} @media print{body{background:#fff;} .fp{margin:0;}}</style></head><body>'+page+'</body></html>'); w.document.close();
