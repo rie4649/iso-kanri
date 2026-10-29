@@ -27,7 +27,7 @@ async function mrCollect(fy){
   const plog = L.phoneRequestLog.filter(x => { const m = msYm(x.createdMs || 0); return m >= R.fromM && m <= R.toM; });
   const late = plog.filter(x => x.respondedMs && x.createdMs && x.respondedMs - x.createdMs > 24*3600*1000).length;
   // クリーン度
-  const cl = fyOf(L.cleanlinessChecks, "date"), clAvg = cl.length ? (cl.reduce((a, x) => a + (Number(x.avgScore) || 0), 0) / cl.length) : 0;
+  const cl = fyOf(L.cleanlinessChecks, "date"), clAvg = cl.length ? (cl.reduce((a, x) => a + (x.avgPct != null ? Number(x.avgPct) : (Number(x.avgScore) || 0) * 20), 0) / cl.length) : 0;   // 100点満点
   // 順守評価(法的要求事項特定書のチェックシート)
   let legal = { n:0, ok:0, na:0, ng:[] };
   try { const lr = regOf("legal"); if (lr) ycUnits(lr).forEach(u => { const c = ycOf(u, fy); legal.n++; if (!c) return; if (c.r === "順守") legal.ok++; else if (c.r === "非該当") legal.na++; else if (c.r === "要改善") legal.ng.push((u.rows[0].no ? "No."+u.rows[0].no+" " : "")+(u.rows[0].name || "")+(c.memo ? "("+c.memo+")" : "")); }); } catch(e){}
@@ -38,7 +38,7 @@ async function mrCollect(fy){
     const t = String(k || "");
     if (/軽油|CO|省エネ|燃料|温暖化/.test(t)) return dsl.length ? "軽油 "+Math.round(liters).toLocaleString()+" L(前年度 "+(litersP ? Math.round(litersP).toLocaleString()+" L、"+(liters <= litersP ? "" : "+")+(litersP ? ((liters - litersP) / litersP * 100).toFixed(1) : "-")+"%" : "記録なし")+")" : "";
     if (/顧客/.test(t)) return plog.length ? "電話依頼 "+plog.length+"件・対応完了 "+plog.filter(x => x.respondedMs).length+"件・24時間以上 "+late+"件" : "";
-    if (/クリーン|5S|清掃/.test(t)) return cl.length ? "クリーン度チェック "+cl.length+"回・平均 "+clAvg.toFixed(1)+"点" : "";
+    if (/クリーン|5S|清掃/.test(t)) return cl.length ? "クリーン度チェック "+cl.length+"回・平均 "+clAvg.toFixed(1)+"点（100点満点）" : "";
     if (/金属|拾/.test(t)) { const m = fyOf(L.metalRecords, "date"); return m.length ? "金属拾い上げ "+m.length+"回・"+Math.round(m.reduce((a, x) => a + (Number(x.total) || 0), 0)).toLocaleString()+"円" : ""; }
     return "";
   };
@@ -107,7 +107,7 @@ function mrPages(d, meta){
     ["フロン簡易点検", d.freon.length ? d.freon.length+"回・異常あり "+d.freonNg+"件" : "記録なし"],
     ["軽油使用量・CO₂", d.dsl ? Math.round(d.liters).toLocaleString()+" L(約 "+(d.liters * MR_CO2_DIESEL / 1000).toFixed(1)+" t-CO₂)"+(d.litersP ? "　前年度 "+Math.round(d.litersP).toLocaleString()+" L" : "") : "記録なし"],
     ["ライフライン(電気・ガス・水道)", d.life ? d.life+"か月分の記録" : "記録なし"],
-    ["クリーン度チェック", d.cl ? d.cl+"回・平均 "+d.clAvg.toFixed(1)+"点" : "記録なし"],
+    ["クリーン度チェック", d.cl ? d.cl+"回・平均 "+d.clAvg.toFixed(1)+"点（100点満点）" : "記録なし"],
     ["安全衛生パトロール", d.patrol ? d.patrol+"回" : "記録なし"]
   ]));
   blocks.push(H(8, "リスクと機会(6.1.4)・取引先(6.1.5)") + P("優先度「高」のリスク："+(d.risksHigh.length ? "" : "なし")) + (d.risksHigh.length ? tbl([["リスク","50%"],["活動計画","50%"]], d.risksHigh.map(r => [(r.issue ? r.issue+"：" : "")+(r.risk || r.content || ""), r.action || ""])) : "") +
