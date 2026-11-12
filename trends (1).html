@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>毎月の記録の年間まとめ</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  .fyBar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:8px 0; }
+  .fyBar button.on { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .toc { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 10px; }
+  .toc a { text-decoration:none; font-size:13px; font-weight:700; color:var(--navy); background:#fff; border:1px solid var(--line); border-radius:999px; padding:5px 12px; }
+  .blk { background:#fff; border:1px solid var(--line); border-radius:12px; margin:14px 0; overflow:hidden; scroll-margin-top:70px; }
+  .blk > .bh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; color:#fff; font-weight:800; font-size:17px; }
+  .blk > .bh .go { margin-left:auto; font-size:12px; font-weight:700; background:#fff; color:var(--navy); border:none; border-radius:8px; padding:4px 10px; cursor:pointer; }
+  .blk .bb { padding:10px 14px 14px; }
+  .st { font-weight:800; color:var(--navy); font-size:14px; margin:10px 0 4px; }
+  table.mt { border-collapse:collapse; width:100%; font-size:12.5px; }
+  table.mt th, table.mt td { border:1px solid #e2e8f0; padding:5px 6px; text-align:right; white-space:nowrap; }
+  table.mt th { background:#f1f5f9; font-size:12px; text-align:center; }
+  table.mt td.l, table.mt th.l { text-align:left; }
+  table.mt td.fut { color:#cbd5e1; background:#fafafa; }
+  table.mt td.miss { color:#d97706; font-size:11px; text-align:center; }
+  table.mt td.tot { background:#fefce8; font-weight:800; }
+  table.mt tr.cur td { background:#fefce8; }
+  .up { color:#b91c1c; font-weight:700; } .dn { color:#15803d; font-weight:700; } .eq { color:#64748b; }
+  .auto { font-size:13px; color:#0f766e; line-height:1.7; margin:6px 0; }
+  .note2 { white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; min-height:40px; font-size:13.5px; line-height:1.7; outline:none; background:#fff; }
+  .note2:empty:before { content:"＋ 考察を書く（押して書く・ほかを押すと保存）"; color:#cbd5e1; }
+  .note2:focus { background:#fef9c3; }
+  .sub2 { font-size:11px; color:#94a3b8; }
+  @media print { header, .noPrint, details.help { display:none !important; } body { background:#fff; } .blk { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>毎月の記録の年間まとめ<span style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/12-2</span></h1>
+  <div class="sub">毎月入れている記録を、年度（8月〜翌7月）ごとに12か月の表にまとめ、年度別の推移と傾向を出します（9.1 監視・測定・分析・評価）</div></div>
+</header>
+<div class="wrap">
+  <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方（ここを押すと開きます）<span class="cl">9.1 監視・測定</span></summary>
+    <div style="margin-top:6px;line-height:1.8;">
+    ・ここで入力するものはありません。いつもの画面で入れた記録を、自動で集めて表にします。<br>
+    ・<b>12か月の表</b>：その年度の月ごとの数字。入っていない月は「未」と出ます。<br>
+    ・<b>年度別の推移</b>：年度ごとの数字と、前の年度とくらべた↑↓。今年度（途中）は、入っている月だけを前年の同じ月とくらべます。<br>
+    ・<b>傾向</b>：緑の字は数字から自動で出しています。その下の枠に、考察を自由に書けます（年度ごとに残ります）。<br>
+    ・「📄 PDF」で印刷用、「📊 Excel」で表計算用に出せます。</div></details>
+  <div class="fyBar noPrint" id="fyBar"></div>
+  <div class="toc noPrint" id="toc"></div>
+  <div id="body"><div class="empty">読み込み中…</div></div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="history.js"></script>
+<script src="trends-core.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+/* 読むもの(ここでは書かない)：cleanlinessChecks・safetyPatrols・dieselRecords・noiseChecks・compressorInspections・
+   isoRegisters(reg=vehRepair)・freonRecords・freonEquipments・lifelineRecords・lifelineTypes・isoLifelineYearly
+   書くもの：isoTrendNotes/{記録の種類} { notes:{ "2026-2027": "考察" } } */
+let toastTimer;
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600); }
+const { esc, pad2, fyOfYm, monthsOf, prevFy, curYm, curFy, fmt, KINDS, allFys, monthVals, arrow, analyze } = TrendsCore;
+let notes = {}, fy = curFy;
+async function load(){
+  try {
+    await TrendsCore.loadAll();
+    const ns = await db.collection("isoTrendNotes").get().catch(() => ({ docs:[] })); ns.docs.forEach(d => notes[d.id] = d.data().notes || {});
+  } catch(e){ document.getElementById("body").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; return; }
+  render();
+}
+function render(){
+  const fys = allFys(); if (!fys.includes(fy)) fy = curFy;
+  document.getElementById("fyBar").innerHTML = fys.slice().reverse().map(f => '<button class="btn sm'+(f === fy ? ' on' : '')+'" onclick="fy=\''+f+'\';render()">'+f+'年度</button>').join("")+
+    '<span style="flex:1"></span><button class="btn sm" onclick="makePdf()">📄 PDF</button><button class="btn sm" onclick="makeXlsx()">📊 Excel</button>';
+  document.getElementById("toc").innerHTML = KINDS.map(k => '<a href="#b-'+k.key+'">'+k.icon+' '+esc(k.name.replace(/（.*）/, ""))+'</a>').join("");
+  const ms = monthsOf(fy);
+  let h = '<h2 style="font-size:18px;color:var(--navy);margin:4px 0;">'+fy+'年度（'+fy.split("-")[0]+'年8月〜'+fy.split("-")[1]+'年7月）毎月の記録の年間まとめ</h2>';
+  KINDS.forEach(k => {
+    const M = monthVals(k, fy);
+    // 12か月の表
+    let t = '<table class="mt"><tr><th class="l">項目</th>'+ms.map(m => '<th>'+Number(m.slice(5))+'月</th>').join("")+'<th>年度</th></tr>';
+    k.rows.forEach(([lab, get, d, how]) => {
+      const vals = M.map(v => v == null ? v : get(v)), have = vals.filter(v => v != null && !isNaN(v));
+      const tot = !have.length ? null : how === "sum" ? have.reduce((a, b) => a + b, 0) : how === "avg" ? have.reduce((a, b) => a + b, 0) / have.length : Math.max(...have);
+      t += '<tr><td class="l"><b>'+esc(lab)+'</b></td>'+M.map((v, i) => v === undefined ? '<td class="fut"></td>' : v === null ? (k.quarterly ? '<td class="fut">－</td>' : '<td class="miss">未</td>') : '<td>'+fmt(vals[i], d)+'</td>').join("")+'<td class="tot">'+fmt(tot, d)+'</td></tr>';
+    });
+    t += '</table>';
+    // 年度別の推移と傾向(計算は trends-core.js)
+    const A = analyze(k, fy), rowsY = A.rowsY, autos = A.autos;
+    let y = '<table class="mt"><tr><th class="l">年度</th><th>'+esc(k.main.label)+'</th><th>前の年度とくらべて</th><th>入っている月</th></tr>';
+    rowsY.forEach(r => { const isCur = r.f === curFy;
+      const cmp = isCur ? (r.prev != null ? '前年同期 '+fmt(r.prev, k.main.d)+r.arrowHtml : '') : !r.ok ? '<span class="sub2">12か月そろっていないので、くらべません</span>' : r.prev != null ? fmt(r.prev, k.main.d)+' →'+r.arrowHtml : '';
+      y += '<tr class="'+(r.f === fy ? 'cur' : '')+'"><td class="l"><b>'+r.f+'</b>'+(isCur ? ' <span class="sub2">途中</span>' : '')+'</td><td>'+(r.v == null ? '<span class="sub2">記録なし</span>' : '<b>'+fmt(r.v, k.main.d)+'</b> '+esc(k.main.unit))+'</td><td>'+cmp+'</td><td>'+r.n+'か月</td></tr>'; });
+    y += '</table>';
+    h += '<div class="blk" id="b-'+k.key+'"><div class="bh" style="background:'+k.color+';">'+k.icon+' '+esc(k.name)+' <span style="font-size:12px;font-weight:600;opacity:.85;">'+esc(k.freq)+'</span><button class="go noPrint" onclick="go(\''+k.sec+'\')">記録を開く ›</button></div><div class="bb">'+
+      '<div class="st">12か月の表（'+fy+'年度）</div><div style="overflow-x:auto;">'+t+'</div>'+
+      '<div class="st">年度別の推移</div><div style="overflow-x:auto;">'+y+'</div>'+
+      '<div class="st">傾向</div><div class="auto">'+autos.map(x => '・'+esc(x)).join("<br>")+'</div>'+
+      '<div class="note2" contenteditable="plaintext-only" onblur="saveNote(\''+k.key+'\',this.textContent)">'+esc((notes[k.key] || {})[fy] || "")+'</div></div></div>';
+  });
+  document.getElementById("body").innerHTML = h;
+  // ISO管理の「さがす」から #b-clean のように来たときは、その記録まで動かす(最初の1回だけ)
+  if (!window._jumped && /^#b-\w+$/.test(location.hash)){ window._jumped = true; const el = document.querySelector(location.hash); if (el) setTimeout(() => el.scrollIntoView({ block:"start" }), 50); }
+}
+function go(sec){ location.href = sec.startsWith("plan:") ? "plan.html#" + sec.slice(5) : "index.html#sec=" + encodeURIComponent(sec); }
+async function saveNote(key, t){
+  t = String(t || "").trim(); if (((notes[key] || {})[fy] || "") === t) return;
+  try { await db.collection("isoTrendNotes").doc(key).set({ notes:{ [fy]: t } }, { merge:true }); (notes[key] = notes[key] || {})[fy] = t; toast("保存しました"); }
+  catch(e){ toast("保存できませんでした: " + e.message); }
+}
+function lib(src, name){ return window[name] ? Promise.resolve() : new Promise((ok, ng) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => ng(new Error("部品を読み込めませんでした")); document.head.appendChild(s); }); }
+/* PDF：A4縦。記録の種類ごとの枠を、切れないように順番にページへ詰める */
+async function makePdf(){
+  toast("📄 PDFを作っています…");
+  try {
+    await lib("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", "jspdf");
+    const pdf = new window.jspdf.jsPDF({ orientation:"portrait", unit:"mm", format:"a4" }), m = 8, W = 210 - m*2, H = 297 - m*2;
+    let yy = m, first = true;
+    const put = async (el, extra) => {
+      const c = el.cloneNode(true); c.style.cssText = "position:fixed;left:-30000px;top:0;width:900px;background:#fff;margin:0;"; c.querySelectorAll(".noPrint").forEach(x => x.remove());
+      c.querySelectorAll("[contenteditable]").forEach(x => { x.removeAttribute("contenteditable"); if (!x.textContent.trim()) x.remove(); });
+      if (extra) c.insertAdjacentHTML("afterbegin", extra);
+      document.body.appendChild(c); const cv = await html2canvas(c, { scale:2, backgroundColor:"#ffffff" }); c.remove();
+      let w = W, hgt = cv.height * W / cv.width; if (hgt > H){ const k = H / hgt; w *= k; hgt = H; }
+      if (!first && yy + hgt > m + H){ pdf.addPage(); yy = m; }
+      pdf.addImage(cv.toDataURL("image/jpeg", 0.9), "JPEG", m, yy, w, hgt); yy += hgt + 4; first = false;
+    };
+    const head = document.createElement("div"); head.innerHTML = '<div style="padding:4px 2px;"><div style="text-align:right;font-size:13px;color:#64748b;">株式会社関根商店　'+new Date().toLocaleDateString("ja-JP")+' 作成</div><div style="font-size:22px;font-weight:800;color:#1e3a5f;">'+fy+'年度　毎月の記録の年間まとめ</div></div>';
+    await put(head);
+    for (const el of document.querySelectorAll("#body .blk")) await put(el);
+    pdf.save("毎月の記録の年間まとめ_"+fy+"年度.pdf"); toast("📄 PDFを保存しました");
+  } catch(e){ console.error(e); toast("PDFを作れませんでした: " + e.message); }
+}
+/* Excel：1つ目に一覧、そのあと記録の種類ごとに1シート(12か月・年度別) */
+async function makeXlsx(){
+  try {
+    await lib("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", "XLSX");
+    const wb = XLSX.utils.book_new(), ms = monthsOf(fy), fys = allFys(), num = (v, d) => v == null || isNaN(v) ? "" : Math.round(v * Math.pow(10, d ?? 1)) / Math.pow(10, d ?? 1);
+    const sum = [[fy+"年度 毎月の記録の年間まとめ"], ["記録", "くらべる数", "単位"].concat(fys)];
+    KINDS.forEach(k => sum.push([k.name, k.main.label, k.main.unit].concat(fys.map(f => num(k.main.get(monthVals(k, f)), k.main.d)))));
+    const ws0 = XLSX.utils.aoa_to_sheet(sum); ws0["!cols"] = [{ wch:30 }, { wch:16 }, { wch:6 }].concat(fys.map(() => ({ wch:12 }))); XLSX.utils.book_append_sheet(wb, ws0, "一覧");
+    KINDS.forEach(k => {
+      const M = monthVals(k, fy), a = [[k.name+"（"+fy+"年度）"], ["項目"].concat(ms.map(m => m)).concat(["年度"])];
+      k.rows.forEach(([lab, get, d, how]) => { const vals = M.map(v => v == null ? null : get(v)), have = vals.filter(v => v != null && !isNaN(v));
+        const tot = !have.length ? null : how === "sum" ? have.reduce((p, q) => p + q, 0) : how === "avg" ? have.reduce((p, q) => p + q, 0) / have.length : Math.max(...have);
+        a.push([lab].concat(vals.map(v => num(v, d))).concat([num(tot, d)])); });
+      a.push([], ["年度別の推移"], ["年度", k.main.label+"("+k.main.unit+")", "入っている月"]);
+      fys.forEach(f => { const MV = monthVals(k, f); a.push([f, num(k.main.get(MV), k.main.d), MV.filter(v => v != null).length]); });
+      const n = (notes[k.key] || {})[fy]; if (n) a.push([], ["考察"], [n]);
+      const ws = XLSX.utils.aoa_to_sheet(a); ws["!cols"] = [{ wch:22 }].concat(ms.map(() => ({ wch:10 }))).concat([{ wch:10 }]);
+      XLSX.utils.book_append_sheet(wb, ws, k.name.replace(/[（）・₂\/\\?*\[\]:]/g, "").slice(0, 28));
+    });
+    XLSX.writeFile(wb, "毎月の記録の年間まとめ_"+fy+"年度.xlsx");
+  } catch(e){ console.error(e); toast("Excelを作れませんでした: " + e.message); }
+}
+load();
+</script>
+<script src="help-toggle.js"></script>
+</body>
+</html>
