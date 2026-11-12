@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顧客対応の進捗記録</title>
+<link rel="stylesheet" href="biz.css">
+<style>
+  table.ct { border-collapse:collapse; width:100%; font-size:13px; background:#fff; }
+  table.ct th, table.ct td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
+  table.ct th { background:#eef2f7; white-space:nowrap; font-size:12px; }
+  table.ct td.n { text-align:right; white-space:nowrap; }
+  table.ct td.c { text-align:center; white-space:nowrap; }
+  table.ct tr.fut td { color:#94a3b8; background:#f8fafc; }
+  .ok { color:#15803d; font-weight:700; } .ng { color:#b91c1c; font-weight:700; }
+  .memo { min-height:20px; outline:none; white-space:pre-wrap; } .memo:empty:before { content:"＋ 気づき・原因・対策"; color:#cbd5e1; }
+  .memo:focus { background:#fef9c3; }
+  .man { width:56px; font-size:12px; padding:2px 4px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin:8px 0; }
+  .kpi { background:#fff; border:1px solid var(--line); border-left:4px solid var(--navy); border-radius:8px; padding:8px 12px; } .kpi .k { font-size:12px; color:var(--muted); } .kpi .v { font-size:22px; font-weight:700; color:var(--navy); }
+  tr.pick { cursor:pointer; } tr.pick:hover td { background:#f8fafc; } tr.sel td { background:#eff6ff !important; } tr.sel td:first-child { box-shadow:inset 4px 0 0 #1e3a5f; }
+  .chip { display:inline-block; color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 8px; vertical-align:middle; }
+  .rv { margin-top:18px; border:2px solid #1e3a5f; border-radius:12px; background:#fff; overflow:hidden; }
+  .rvHd { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; background:#1e3a5f; color:#fff; font-weight:700; font-size:17px; padding:10px 14px; }
+  .rvSec { padding:12px 14px; border-top:1px solid #e2e8f0; } .rvHd + .rvSec { border-top:none; }
+  .rvT { font-weight:700; color:#1e3a5f; font-size:15px; margin-bottom:6px; }
+  table.lt td { vertical-align:middle; } .nw { white-space:nowrap; }
+  select.cz { font-size:13px; font-weight:700; border:2px solid; border-radius:8px; padding:4px 6px; background:#fff; width:auto; }
+  .auto { font-size:10px; color:#64748b; background:#f1f5f9; border-radius:6px; padding:1px 5px; margin-left:4px; }
+  .bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:13px; } .bar .bl { width:150px; flex:0 0 auto; }
+  .bar .bb { flex:1; max-width:420px; height:16px; background:#f1f5f9; border-radius:8px; overflow:hidden; } .bar .bb span { display:block; height:100%; border-radius:8px; }
+  input.act { width:100%; font-size:16px; padding:10px 12px; border:2px solid #1e3a5f; border-radius:8px; box-sizing:border-box; }
+  @media print { header, .noPrint, details.help { display:none !important; } body { background:#fff; } .wrap { padding:0; } .rv { break-before:page; } input.act { border:1px solid #000; } }
+</style>
+</head>
+<body>
+<header class="bz">
+  <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
+  <div><h1>顧客対応の進捗記録<span style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/12-1</span></h1>
+  <div class="sub">環境目標「お客様のニーズ(依頼)に早く確実に応える」の月ごとの記録(進捗記録兼評価表)。電話依頼アプリ・委託先調査票から自動で数えます</div></div>
+</header>
+<div class="wrap">
+  <details class="help"><summary class="ttl" style="cursor:pointer;">📘 使い方（ここを押すと開きます）<span class="cl">6.2 環境目標・7.4.3 顧客対応</span></summary>
+    <div style="margin-top:6px;line-height:1.8;">
+    <b>■ 何を数えているか</b>：電話依頼アプリで受けたお客様の依頼(引取・見積・現場確認など)を、受けた月ごとに数えます。<br>
+    ・<b>完了率</b>＝対応済み ÷ 受けた件数(目標 100%)　・<b>24時間以上</b>＝受けてから「対応済み」まで24時間以上かかった件数(目標 0件)<br>
+    ・<b>調査票・現地確認</b>＝委託先調査票アプリで「提出したことを記録」した件数(期限内回答100%が目標)<br>
+    <b>■ 自動でやってくれること</b>：件数・完了率・評価(○達成/×未達)。24時間以上かかった依頼のうち、<b>土日祝をはさんだもの・引取日がお客様の指定で後の日のもの</b>は、原因を先に選んでおきます。<br>
+    <b>■ 人がやること（月に1回）</b>：表の先月の行を押す →「ふりかえり」で ①24時間以上かかった依頼の原因を選ぶ → ②いちばん多い原因を見る → ③来月やる対策を1行書く → ④先月の対策が効いたかを押す(環境マニュアル6.2：未達成のときは原因と翌月以降の対応策を記入)。書いていないと、ISO管理のホームに赤で出ます。<br>
+    <b>■ 記録が始まった日</b>：電話依頼アプリは、対応済みの依頼を2日後に自動で消すので、<b>この記録を始める前の月の数字は残っていません</b>。分かる月は「手入力」の欄に数字を入れると、そちらを使います。<br>
+    <b>■ 印刷</b>：「印刷」で、この年度の進捗記録兼評価表として印刷・PDFにできます。</div></details>
+  <div class="bar noPrint" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0;" id="fyTabs"></div>
+  <div id="body"><div class="empty">読み込み中…</div></div>
+</div>
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="history.js"></script>
+<script src="recby.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+  authDomain: "sekine-store.firebaseapp.com",
+  projectId: "sekine-store",
+  storageBucket: "sekine-store.firebasestorage.app",
+  messagingSenderId: "781856496751",
+  appId: "1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+// 記録者(管理者)と記録日を残す(recby.js)
+if (window.RecBy) RecBy.install(db, [ { modal:".wrap", before:"#body", cols:["isoCustMonthly"] } ]);
+/* 保存場所
+   phoneRequests   … 電話依頼アプリの依頼(今あるもの。対応済みは2日後に消える)
+   phoneRequestLog … 電話依頼アプリが「対応済み」にしたとき・消す前に残す控え(この記録のもと)
+   isoSurveySubmits… 委託先調査票の提出の記録
+   isoCustMonthly/{YYYY-MM} … 月ごとの原因・対策、手入力の数字 */
+let toastTimer;
+function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600); }
+function esc(t){ return String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+const ms = v => !v ? 0 : typeof v.toMillis === "function" ? v.toMillis() : typeof v === "number" ? v : (Date.parse(v) || 0);
+const ymOf = t => { const d = new Date(t); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); };
+const fyNow = (() => { const d = new Date(); return d.getMonth()+1 >= 8 ? d.getFullYear() : d.getFullYear() - 1; })();
+let fy = fyNow, reqs = [], subs = [], monthly = {}, firstLog = 0;
+
+async function load(){
+  try {
+    const [live, log, sb, mo] = await Promise.all([db.collection("phoneRequests").get(), db.collection("phoneRequestLog").get().catch(() => ({ docs:[] })), db.collection("isoSurveySubmits").get().catch(() => ({ docs:[] })), db.collection("isoCustMonthly").get().catch(() => ({ docs:[] }))]);
+    const by = {};
+    const info = x => ({ client:(x.client || "").trim(), contents:x.contents || [], free:x.contentsFree || "", resp:[x.responseText, x.doneMemo].filter(Boolean).join("／"), pickup:x.pickupDate || "" });
+    log.docs.forEach(d => { const x = d.data(); by[d.id] = { id:d.id, created:x.createdMs || 0, responded:x.respondedMs || 0, done:true, ...info(x) }; });
+    live.docs.forEach(d => { const x = d.data(); const created = ms(x.createdAt) || ms(x.createdAtText); const done = x.status === "対応済み";
+      by[d.id] = { id:d.id, created, responded: done ? (ms(x.respondedAt) || (by[d.id] || {}).responded || 0) : 0, done, ...info(x) }; });
+    reqs = Object.values(by).filter(r => r.created);
+    firstLog = log.docs.length ? Math.min(...log.docs.map(d => d.data().createdMs || Infinity)) : 0;
+    subs = sb.docs.map(d => d.data());
+    monthly = {}; mo.docs.forEach(d => monthly[d.id] = d.data());
+  } catch(e){ document.getElementById("body").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; return; }
+  render();
+}
+function monthsOf(y){ return Array.from({ length:12 }, (_, i) => { const m = (7 + i) % 12 + 1, yy = m >= 8 ? y : y + 1; return yy+"-"+String(m).padStart(2,"0"); }); }
+function stat(ym){
+  const l = reqs.filter(r => ymOf(r.created) === ym), man = monthly[ym] || {};
+  const auto = { n:l.length, done:l.filter(r => r.done).length, late:l.filter(r => r.done ? (r.responded - r.created) >= 86400000 : (Date.now() - r.created) >= 86400000).length,
+    pending:l.filter(r => !r.done).length, avgH: (() => { const d = l.filter(r => r.done && r.responded); return d.length ? d.reduce((a, r) => a + (r.responded - r.created), 0) / d.length / 3600000 : null; })() };
+  const useMan = man.n !== undefined && man.n !== "" && man.n !== null;
+  const n = useMan ? Number(man.n) : auto.n, done = useMan ? Number(man.done || 0) : auto.done, late = useMan ? Number(man.late || 0) : auto.late;
+  const sv = subs.filter(s => String(s.date || "").startsWith(ym)).length;
+  return { ...auto, n, done, late, useMan, sv, rate: n ? Math.round(done / n * 1000) / 10 : null, memo: man.memo || "" };
+}
+/* 自動の気づき: 同じ会社から何度も/見積が多い/24時間以上かかった、をその月の記録から書き出す */
+function insights(ym){
+  const l = reqs.filter(r => ymOf(r.created) === ym), out = [];
+  const co = {}; l.forEach(r => { const k = r.client || "(会社名なし)"; (co[k] = co[k] || []).push(r); });
+  Object.entries(co).sort((a, b) => b[1].length - a[1].length).forEach(([k, rs]) => {
+    const pick = rs.filter(r => r.contents.some(c => /引き?取/.test(c))).length, est = rs.filter(r => r.contents.some(c => /見積/.test(c))).length;
+    if (pick >= 3) out.push(k+"：引き取り希望が月"+pick+"回 → 定期回収の提案を検討");
+    else if (rs.length >= 3) out.push(k+"：依頼が月"+rs.length+"回 → 依頼の理由を確認し、まとめて対応できないか検討");
+    if (est >= 2) out.push(k+"：見積依頼が月"+est+"回 → 単価表を先にお渡しできないか検討");
+  });
+  l.filter(r => r.done ? r.responded - r.created >= 86400000 : Date.now() - r.created >= 86400000).forEach(r => {
+    const h = Math.round(((r.done ? r.responded : Date.now()) - r.created) / 3600000);
+    out.push((r.client || "(会社名なし)")+"："+(r.done ? "対応まで約"+h+"時間" : "受けてから約"+h+"時間、まだ未対応")+" → 原因を確認");
+  });
+  return out;
+}
+/* ===== 2026/11/12 見やすく・活用できる形に =====
+   上の表：1か月1行(数字・評価・今月の対策)。行を押すと、下の「ふりかえり」がその月になる
+   ふりかえり：24時間以上かかった依頼に原因をつける(土日祝・日にち指定は自動で先に選ぶ) → 原因別の件数 → 今月の対策を1行 → 先月の対策の効きめ
+   保存：isoCustMonthly/{YYYY-MM} に causes{依頼ID:原因}・action(今月の対策)・effect(その対策が効いたか)。前の memo もそのまま残す */
+const CAUSES = [["holiday","土日祝をはさんだ","#64748b"],["date","お客様の日にち指定","#0e7490"],["staff","車・人がそろわない","#b45309"],["miss","入れ忘れ・連絡もれ","#b91c1c"],["other","その他","#7c3aed"]];
+const causeName = k => (CAUSES.find(c => c[0] === k) || [k, k])[1];
+const EFFECTS = [["good","効いた","#15803d"],["some","少し","#b45309"],["bad","効かなかった","#b91c1c"]];
+const DAY = 86400000;
+const pad2 = n => String(n).padStart(2, "0");
+const ymdOf = t => { const d = new Date(t); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); };
+const holCache = {};
+function nthWd(y, m, wd, n){ const f = new Date(y, m-1, 1).getDay(); return 1 + ((wd - f + 7) % 7) + (n-1) * 7; }
+function holidaysOf(y){   // 祝日(電話依頼のカレンダーと同じ計算)
+  if (holCache[y]) return holCache[y];
+  const h = {}, add = (m, d) => { h[y+"-"+pad2(m)+"-"+pad2(d)] = 1; }, k = y - 1980;
+  [[1,1],[2,11],[2,23],[4,29],[5,3],[5,4],[5,5],[8,11],[11,3],[11,23]].forEach(([m, d]) => add(m, d));
+  add(1, nthWd(y,1,1,2)); add(7, nthWd(y,7,1,3)); add(9, nthWd(y,9,1,3)); add(10, nthWd(y,10,1,2));
+  add(3, Math.floor(20.8431 + 0.242194*k - Math.floor(k/4))); add(9, Math.floor(23.2488 + 0.242194*k - Math.floor(k/4)));
+  const nx = (ds, n) => { const [a,b,c] = ds.split("-").map(Number); return ymdOf(new Date(a, b-1, c+n)); };
+  Object.keys(h).forEach(ds => { const mid = nx(ds,1); if (h[nx(ds,2)] && !h[mid] && new Date(mid.replace(/-/g,"/")).getDay() !== 0) h[mid] = 1; });
+  Object.keys(h).sort().forEach(ds => { if (new Date(ds.replace(/-/g,"/")).getDay() === 0){ let t = nx(ds,1); while (h[t]) t = nx(t,1); h[t] = 1; } });
+  return holCache[y] = h;
+}
+const offDay = t => { const d = new Date(t), w = d.getDay(); return w === 0 || w === 6 || !!holidaysOf(d.getFullYear())[ymdOf(t)]; };
+const endOf = r => r.done ? r.responded : Date.now();
+const isLate = r => endOf(r) - r.created >= DAY;
+function autoCause(r){   // 先に選んでおく原因(人が押しかえられる)
+  if (r.pickup && /^\d{4}-\d\d-\d\d$/.test(r.pickup) && r.pickup > ymdOf(r.created)) return "date";
+  const d = new Date(r.created); d.setHours(0,0,0,0);
+  for (let t = d.getTime(); t <= endOf(r); t += DAY) if (offDay(t)) return "holiday";
+  return "";
+}
+function causeOf(m, r){ const c = ((monthly[m] || {}).causes || {})[r.id]; return c !== undefined ? { k:c, auto:false } : { k:autoCause(r), auto:true }; }
+const fmtH = h => h < 1 ? Math.round(h * 60)+"分" : h < 48 ? (Math.round(h * 10) / 10)+"時間" : Math.round(h / 24 * 10) / 10+"日";
+const mLabel = m => Number(m.slice(5))+"月";
+const prevYm = m => { const [y, mm] = m.split("-").map(Number); return mm === 1 ? (y-1)+"-12" : y+"-"+pad2(mm-1); };
+let pm = "", showMan = false;
+/* 自動の気づき(24時間以上の分は「ふりかえり」の一覧に出すので、ここには入れない) */
+function insights2(ym){
+  const l = reqs.filter(r => ymOf(r.created) === ym), out = [], co = {};
+  l.forEach(r => { const k = r.client || "(会社名なし)"; (co[k] = co[k] || []).push(r); });
+  Object.entries(co).sort((a, b) => b[1].length - a[1].length).forEach(([k, rs]) => {
+    const pick = rs.filter(r => r.contents.some(c => /引き?取/.test(c))).length, est = rs.filter(r => r.contents.some(c => /見積/.test(c))).length;
+    if (pick >= 3) out.push(k+"：引き取り希望が月"+pick+"回 → 定期回収の提案を検討");
+    else if (rs.length >= 3) out.push(k+"：依頼が月"+rs.length+"回 → まとめて対応できないか検討");
+    if (est >= 2) out.push(k+"：見積依頼が月"+est+"回 → 単価表を先にお渡しできないか検討");
+  });
+  return out;
+}
+function render(){
+  const cur = ymOf(Date.now());
+  document.getElementById("fyTabs").innerHTML = [fyNow - 1, fyNow].map(y => '<button class="btn sm'+(y === fy ? ' pri' : '')+'" onclick="fy='+y+';pm=\'\';render()">'+y+'年度（'+y+'年8月〜'+(y+1)+'年7月）</button>').join("")+
+    '<span style="flex:1"></span><button class="btn sm'+(showMan ? ' pri' : '')+'" onclick="showMan=!showMan;render()">✏️ 記録がない月の手入力</button><button class="btn sm" onclick="window.print()">印刷</button>';
+  const ms12 = monthsOf(fy), st = ms12.map(m => [m, stat(m)]);
+  const okMonths = ms12.filter(m => m <= cur);
+  if (!okMonths.includes(pm)){ const p = prevYm(cur); pm = okMonths.includes(p) && reqs.some(r => ymOf(r.created) === p) ? p : (okMonths.includes(cur) ? cur : okMonths[okMonths.length - 1] || cur); }
+  const past = st.filter(([m]) => m <= cur), tot = past.reduce((a, [, s]) => ({ n:a.n + s.n, done:a.done + s.done, late:a.late + s.late, sv:a.sv + s.sv }), { n:0, done:0, late:0, sv:0 });
+  const pendingNow = reqs.filter(r => !r.done).length;
+  let h = '<h2 style="font-size:17px;color:var(--navy);margin:6px 0;">進捗記録兼評価表（顧客対応）　'+fy+'年度　株式会社関根商店</h2>'+
+    '<div class="note" style="margin:0 0 6px;">環境目標：①電話依頼の対応完了率100%(24時間以上の放置ゼロ)　②調査票・現地確認の期限内回答100%</div>'+
+    '<div class="kpis"><div class="kpi"><div class="k">今年度の依頼</div><div class="v">'+tot.n+'<small>件</small></div></div>'+
+    '<div class="kpi"><div class="k">対応完了率</div><div class="v">'+(tot.n ? Math.round(tot.done / tot.n * 1000) / 10 : "-")+'<small>%</small></div></div>'+
+    '<div class="kpi"><div class="k">24時間以上かかった</div><div class="v" style="color:'+(tot.late ? '#b91c1c' : '#15803d')+'">'+tot.late+'<small>件</small></div></div>'+
+    '<div class="kpi"><div class="k">いま未対応</div><div class="v" style="color:'+(pendingNow ? '#b45309' : '#15803d')+'">'+pendingNow+'<small>件</small></div></div>'+
+    '<div class="kpi"><div class="k">調査票・現地確認の提出</div><div class="v">'+tot.sv+'<small>件</small></div></div></div>'+
+    '<div class="note noPrint" style="margin:0 0 4px;">👇 月の行を押すと、下の「ふりかえり」がその月になります</div>'+
+    '<div style="overflow-x:auto;"><table class="ct"><tr><th>月</th><th>依頼を受けた</th><th>対応済み</th><th>完了率</th><th>24時間以上</th><th>調査票・現地確認</th><th>評価</th><th style="min-width:240px;">今月の対策（ふりかえりで書く）</th>'+(showMan ? '<th class="noPrint">手入力(記録がない月)</th>' : '')+'</tr>';
+  st.forEach(([m, s]) => {
+    const fut = m > cur, noData = !fut && !s.useMan && !s.n && (!firstLog || m < ymOf(firstLog));
+    const ok = s.n ? (s.rate >= 100 && !s.late) : null, mo = monthly[m] || {};
+    const ef = EFFECTS.find(e => e[0] === mo.effect);
+    const act = mo.action ? '<b>'+esc(mo.action)+'</b>'+(ef ? ' <span class="chip" style="background:'+ef[2]+'">'+ef[1]+'</span>' : '') :
+      mo.memo ? '<span style="font-size:12px;color:#475569;white-space:pre-wrap;">'+esc(mo.memo.length > 80 ? mo.memo.slice(0, 80)+"…" : mo.memo)+'</span>' :
+      (!fut && !noData && s.n && m !== cur ? '<span class="noPrint" style="color:#b45309;font-size:12px;">まだ（押して、ふりかえる）</span>' : '');
+    h += '<tr class="'+(fut ? 'fut' : 'pick')+(m === pm ? ' sel' : '')+'"'+(fut ? '' : ' onclick="pick(\''+m+'\')"')+'><td class="c"><b>'+mLabel(m)+'</b><div style="font-size:11px;color:#64748b;">'+m.slice(0,4)+'</div></td>'+
+      (noData ? '<td colspan="4" class="c" style="color:#94a3b8;">記録なし（この記録を始める前の月）</td>' :
+      '<td class="n">'+(fut ? '' : s.n+' 件')+(s.useMan ? '<div style="font-size:10px;color:#b45309;">手入力</div>' : '')+'</td><td class="n">'+(fut ? '' : s.done+' 件')+(s.pending && !s.useMan ? '<div style="font-size:10px;color:#b45309;">未対応 '+s.pending+'</div>' : '')+'</td>'+
+      '<td class="n">'+(s.rate == null ? (fut ? '' : '-') : s.rate+'%')+'</td><td class="n">'+(fut ? '' : '<span class="'+(s.late ? 'ng' : '')+'">'+s.late+' 件</span>')+'</td>')+
+      '<td class="n">'+(fut ? '' : s.sv+' 件')+'</td>'+
+      '<td class="c">'+(fut || ok === null ? '' : m === cur ? '<span style="color:#64748b;">今月(集計中)</span>' : ok ? '<span class="ok">○ 達成</span>' : '<span class="ng">× 未達</span>')+'</td>'+
+      '<td>'+act+'</td>'+
+      (showMan ? '<td class="noPrint" style="white-space:nowrap;" onclick="event.stopPropagation()">'+(fut ? '' : '<input class="man" placeholder="件数" value="'+esc(mo.n ?? "")+'" onchange="saveMan(\''+m+'\',\'n\',this.value)"> <input class="man" placeholder="済み" value="'+esc(mo.done ?? "")+'" onchange="saveMan(\''+m+'\',\'done\',this.value)"> <input class="man" placeholder="24h超" value="'+esc(mo.late ?? "")+'" onchange="saveMan(\''+m+'\',\'late\',this.value)">')+'</td>' : '')+'</tr>';
+  });
+  h += '</table></div><div class="note" style="margin-top:6px;">集計元：電話依頼アプリ(受けた日の月で数える)、委託先調査票の提出の記録。'+(firstLog ? '自動の記録は '+new Date(firstLog).toLocaleDateString("ja-JP")+' から。' : '')+'手入力の数字があれば、そちらを使います。根拠：環境マニュアル 6.2(進捗記録兼評価表)・7.4.3(顧客対応)。</div>';
+  h += reviewHtml(pm, okMonths, cur);
+  document.getElementById("body").innerHTML = h;
+}
+function pick(m){ pm = m; render(); const el = document.getElementById("review"); if (el) el.scrollIntoView({ behavior:"smooth", block:"start" }); }
+/* 月のふりかえり */
+function reviewHtml(m, okMonths, cur){
+  const l = reqs.filter(r => ymOf(r.created) === m), late = l.filter(isLate).sort((a, b) => a.created - b.created), mo = monthly[m] || {};
+  const i = okMonths.indexOf(m), prev = prevYm(m), pmo = monthly[prev] || {};
+  const cnt = {}; late.forEach(r => { const k = causeOf(m, r).k || "none"; cnt[k] = (cnt[k] || 0) + 1; });
+  const order = CAUSES.map(c => c[0]).concat(["none"]).filter(k => cnt[k]).sort((a, b) => cnt[b] - cnt[a]);
+  const max = Math.max(1, ...Object.values(cnt)), top = order.find(k => k !== "none");
+  const d = r => { const t = new Date(r.created); return (t.getMonth()+1)+"/"+t.getDate()+"("+"日月火水木金土"[t.getDay()]+") "+pad2(t.getHours())+":"+pad2(t.getMinutes()); };
+  let h = '<div id="review" class="rv"><div class="rvHd"><span>🔍 '+m.slice(0,4)+'年'+mLabel(m)+'をふりかえる</span>'+
+    '<span class="noPrint" style="display:flex;gap:6px;">'+(i > 0 ? '<button class="btn sm" onclick="pick(\''+okMonths[i-1]+'\')">◀ 前の月</button>' : '')+(i >= 0 && i < okMonths.length - 1 ? '<button class="btn sm" onclick="pick(\''+okMonths[i+1]+'\')">次の月 ▶</button>' : '')+'</span></div>';
+  // ① 24時間以上かかった依頼
+  h += '<div class="rvSec"><div class="rvT">① 24時間以上かかった依頼　<span class="'+(late.length ? 'ng' : 'ok')+'">'+late.length+' 件</span>'+(m === cur ? '<span class="note">（今月は集計中）</span>' : '')+'</div>';
+  if (!late.length) h += '<div class="note">'+(l.length ? '🎉 この月は、24時間以上かかった依頼はありません' : 'この月の依頼の記録はありません')+'</div>';
+  else h += '<div class="note noPrint" style="margin:0 0 4px;">原因を選んでください。「自動」は、土日祝をはさんだ・引取日がお客様の指定で後の日、を先に選んだものです(ちがえば選び直す)</div>'+
+    '<div style="overflow-x:auto;"><table class="ct lt"><tr><th>受けた日時</th><th>会社</th><th>依頼の内容</th><th>かかった時間</th><th>原因</th></tr>'+
+    late.map(r => { const c = causeOf(m, r), ci = CAUSES.find(x => x[0] === c.k);
+      return '<tr><td class="nw">'+esc(d(r))+'</td><td><b>'+esc(r.client || "(会社名なし)")+'</b></td><td style="font-size:12px;">'+esc(r.contents.concat(r.free ? [r.free] : []).join("・"))+(r.pickup ? '<div class="note" style="margin:0;">引取日 '+esc(r.pickup.slice(5).replace("-","/"))+'</div>' : '')+'</td>'+
+        '<td class="n">'+(r.done ? fmtH((r.responded - r.created) / 3600000) : '<span class="ng">未対応 '+fmtH((Date.now() - r.created) / 3600000)+'</span>')+'</td>'+
+        '<td class="nw"><select class="cz" style="border-color:'+(ci ? ci[2] : '#f59e0b')+';color:'+(ci ? ci[2] : '#b45309')+';" onchange="saveCause(\''+m+'\',\''+r.id+'\',this.value)">'+
+        '<option value=""'+(c.k ? '' : ' selected')+'>（えらぶ）</option>'+CAUSES.map(x => '<option value="'+x[0]+'"'+(x[0] === c.k ? ' selected' : '')+'>'+x[1]+'</option>').join("")+'</select>'+(c.auto && c.k ? '<span class="auto">自動</span>' : '')+'</td></tr>'; }).join("")+'</table></div>';
+  h += '</div>';
+  // ② 原因別の件数
+  if (late.length) h += '<div class="rvSec"><div class="rvT">② 原因別の件数</div>'+order.map(k => { const ci = CAUSES.find(x => x[0] === k) || ["none","まだ選んでいない","#cbd5e1"];
+      return '<div class="bar"><span class="bl">'+ci[1]+'</span><span class="bb"><span style="width:'+(cnt[k] / max * 100)+'%;background:'+ci[2]+';"></span></span><b>'+cnt[k]+'件</b>'+(k === top ? ' <span class="chip" style="background:#1e3a5f">いちばん多い</span>' : '')+'</div>'; }).join("")+'</div>';
+  // ③ 今月の対策
+  h += '<div class="rvSec"><div class="rvT">③ '+mLabel(m)+'の対策（来月やることを1つ）</div>'+
+    (top ? '<div class="note" style="margin:0 0 4px;">いちばん多い原因は「<b>'+causeName(top)+'</b>」。これを減らすために、来月やることを1行で書きます。</div>' : '')+
+    '<input class="act" placeholder="例：受けたその日に、日程だけでも先に連絡する" value="'+esc(mo.action || "")+'" onchange="saveField(\''+m+'\',\'action\',this.value.trim())">'+
+    (mo.memo ? '<details style="margin-top:6px;"><summary class="note" style="cursor:pointer;">前に書いたメモ（気づき・原因・対策）</summary><div class="memo" contenteditable="plaintext-only" onblur="saveField(\''+m+'\',\'memo\',this.textContent.trim())">'+esc(mo.memo)+'</div></details>' : '')+'</div>';
+  // ④ 先月の対策の効きめ
+  if (pmo.action) h += '<div class="rvSec"><div class="rvT">④ '+mLabel(prev)+'に決めた対策は効いた？</div><div style="margin:0 0 6px;">「<b>'+esc(pmo.action)+'</b>」</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+EFFECTS.map(e => '<button class="btn sm" style="'+(pmo.effect === e[0] ? 'background:'+e[2]+';color:#fff;border-color:'+e[2]+';' : '')+'" onclick="saveField(\''+prev+'\',\'effect\',\''+(pmo.effect === e[0] ? '' : e[0])+'\')">'+e[1]+'</button>').join("")+'</div>'+
+    '<div class="note">24時間以上の件数：'+mLabel(prev)+' '+stat(prev).late+'件 → '+mLabel(m)+' '+late.length+'件</div></div>';
+  // ⑤ 自動の気づき
+  const ins = insights2(m);
+  if (ins.length) h += '<div class="rvSec"><div class="rvT">⑤ ほかの気づき（自動）</div><div style="font-size:13px;color:#0f766e;line-height:1.7;">'+ins.map(x => '・'+esc(x)).join("<br>")+'</div></div>';
+  // 会社ごと
+  const co = {};
+  l.forEach(r => { const k = r.client || "(会社名なし)"; const o = co[k] = co[k] || { n:0, kinds:{}, resp:[] }; o.n++; r.contents.concat(r.free ? [r.free] : []).forEach(c => o.kinds[c] = (o.kinds[c] || 0) + 1);
+    o.resp.push((new Date(r.created).getMonth()+1)+"/"+new Date(r.created).getDate()+" "+(r.done ? (r.resp || "対応済み") : "未対応")); });
+  const rows = Object.entries(co).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0], "ja"));
+  h += '<details class="rvSec noPrint"><summary class="rvT" style="cursor:pointer;">📋 会社ごとの件数と対応内容（'+rows.length+'社・押すと開く）</summary>'+
+    (rows.length ? '<div style="overflow-x:auto;"><table class="ct"><tr><th>会社</th><th>件数</th><th>依頼の内容</th><th>受けた日と対応内容</th></tr>'+rows.map(([k, o]) =>
+      '<tr><td><b>'+esc(k)+'</b></td><td class="n">'+o.n+' 件</td><td style="font-size:12px;">'+Object.keys(o.kinds).map(x => esc(x)+(o.kinds[x] > 1 ? "×"+o.kinds[x] : "")).join("・")+'</td><td style="font-size:12px;white-space:pre-wrap;">'+o.resp.map(esc).join("\n")+'</td></tr>').join("")+'</table></div>'
+      : '<div class="empty">この月の依頼の記録はありません</div>')+'</details>';
+  return h + '</div>';
+}
+async function saveCause(m, id, v){
+  try { await db.collection("isoCustMonthly").doc(m).set({ causes:{ [id]: v } }, { merge:true });
+    const o = monthly[m] = monthly[m] || {}; (o.causes = o.causes || {})[id] = v; render(); toast("保存しました"); }
+  catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function saveField(m, k, v){
+  if (((monthly[m] || {})[k] || "") === v) return;
+  try { await db.collection("isoCustMonthly").doc(m).set({ [k]: v === "" ? firebase.firestore.FieldValue.delete() : v }, { merge:true });
+    const o = monthly[m] = monthly[m] || {}; if (v === "") delete o[k]; else o[k] = v; render(); toast("保存しました"); }
+  catch(e){ toast("保存できませんでした: "+e.message); }
+}
+async function saveMan(m, k, v){ v = String(v).trim(); try { await db.collection("isoCustMonthly").doc(m).set({ [k]: v === "" ? firebase.firestore.FieldValue.delete() : Number(v) }, { merge:true }); const o = monthly[m] = monthly[m] || {}; if (v === "") delete o[k]; else o[k] = Number(v); render(); toast("保存しました"); } catch(e){ toast("保存できませんでした: "+e.message); } }
+load();
+</script>
+<script src="help-toggle.js"></script>
+</body>
+</html>

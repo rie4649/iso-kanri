@@ -66,7 +66,7 @@ const COLNAME = { isoRegisters:"ISOの計画・記録の表", isoEvents:"カレ�
   trainingRecords:"教育訓練", isoCorrectives:"是正処置", isoAudits:"内部監査", isoMgmtReviews:"マネジメントレビュー", isoHoreiEval:"順守評価", isoPhotos:"写真の記録", isoPermitScopes:"許可の内容",
   isoSurveyAnswers:"委託先調査票の回答", isoSurvey:"委託先調査票(Astemo)", emsDocs:"EMS文書", emsDocFiles:"EMS文書の版", emsDocReviews:"文書の見直し", isoSettings:"設定", companyInfo:"会社情報",
   isoVolumes:"取扱量", isoReports:"届出・報告の期限", isoNewHire:"新入社員研修の記録", isoKyokaDocs:"許可一覧", envManuals:"環境手順書", sdgsGoals:"SDGs目標", sdgsProgress:"SDGs進捗",
-  isoCustMonthly:"顧客対応の月ごと", isoShokakiDocs:"消火器・防火", eventMarks:"カレンダーのマーク", activityTypes:"活動の種類", isoPhotoSettings:"写真の設定" };
+  isoCustMonthly:"顧客対応の月ごと", isoLifelineYearly:"ライフラインの年度別", isoShokakiDocs:"消火器・防火", eventMarks:"カレンダーのマーク", activityTypes:"活動の種類", isoPhotoSettings:"写真の設定" };
 const cn = c => COLNAME[c] || c;
 const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 function toast(m){ const t = document.getElementById("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(window._tt); window._tt = setTimeout(() => t.style.display = "none", 2600); }
