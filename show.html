@@ -505,7 +505,7 @@ async function renderCover(p){
     tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+cp.indexOf(x)+'.</div><div class="nm">'+esc(x.name)+'</div></div>'; });
   return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境への取り組み</h1><span class="iso">環境マネジメントシステム '+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+(pf.certBody ? '　'+esc(pf.certBody) : '')+'</div>' : '')+
-    '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ<span style="font-size:11px;opacity:.6;margin-left:8px;">版 11/12-1</span></div></div>'+
+    '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ<span style="font-size:11px;opacity:.6;margin-left:8px;">版 11/15-1</span></div></div>'+
     '<div class="tiles">'+tiles+'</div>'+
     '<div class="note" style="text-align:center;margin-top:18px;">◀ ▶ ボタン・キーボードの ← → ・スワイプで次のページへ進めます</div>';
 }
@@ -2037,6 +2037,7 @@ async function show(i){
     (p.key !== "cover" ? '<div class="noPrintBar" style="text-align:center;margin:14px 0 30px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'+
       (backStack.length ? '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="goBackPage()">← 戻る</button>' : '')+
       '<button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="go(0)">目次へ</button><button class="openBtn" style="font-size:16px;padding:10px 22px;" onclick="printCurrent()">このページを印刷</button></div>' : '');
+  stkShowReport(p);
 }
 function go(i){ show(i); window.scrollTo({ top:0 }); }
 /* スライドショー(slideshow.html)の中で見せるときは、上の操作バーを出さない */
@@ -2051,6 +2052,33 @@ function refreshData(){ Object.keys(cache).forEach(k => delete cache[k]); purpos
 // 別のタブ(ISO管理など)に行って30秒以上たってから戻ったときだけ読み直す(押した瞬間に描き直されてボタンがずれないように)
 document.addEventListener("visibilitychange", () => { if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30000){ hiddenAt = 0; refreshData(); } });
 function step(d){ go(cur + d); }
+/* ===== スタック連動（版 11/15-1）=====
+   ロボット「スタック」が「◯◯を開いて」「次」と言うと、このページが切り替わり、表示した中身の文字をスタックに渡す。
+   この画面では何も操作しない（見るだけのまま）。連動させる端末だけ、アドレスの最後に ?stack=1 を付けて1回開く（その端末は以後ずっと連動）。
+   やめるときは ?stack=0 を付けて開く。
+   Firestore: stackLink/show_cmd … スタックからの合図 { cmd:open|next|prev|again, key, ms }
+              stackLink/show_state … 今のページ { key, name, page, total, text, cmdMs, ms } */
+const STKS = { on:false, ready:false, lastMs:0, cmdMs:0 };
+(function(){ const m = location.search.match(/[?&]stack=([01])/);
+  try { if (m) localStorage.setItem("isoShowStack", m[1]); STKS.on = localStorage.getItem("isoShowStack") === "1"; } catch(e){ STKS.on = !!(m && m[1] === "1"); }
+  if (!STKS.on) return;
+  db.collection("stackLink").doc("show_cmd").onSnapshot(d => { const c = d.exists ? d.data() : null;
+    if (!STKS.ready){ STKS.ready = true; STKS.lastMs = (c && c.ms) || 0; return; }   // 開いた時に残っている合図は動かさない
+    if (!c || !c.ms || c.ms <= STKS.lastMs) return; STKS.lastMs = c.ms; STKS.cmdMs = c.ms;
+    if (document.getElementById("fileViewer")) { try { document.getElementById("fileViewer").remove(); } catch(e){} }
+    if (c.cmd === "open"){
+      const cp = coursePages(), k = String(c.key || "");
+      let p = cp.find(x => x.key === k) || cp.find(x => x.name === k) || cp.find(x => k && (x.name.includes(k) || k.includes(x.name)));
+      if (!p){ stkShowSend({ key:"", name:"", page:0, total:cp.length, text:"「" + k + "」というページは見つかりませんでした。ページの名前：" + cp.map(x => x.name).join("、") }); return; }
+      goKey(p.key); return; }
+    if (c.cmd === "next") step(1); else if (c.cmd === "prev") step(-1); else show(cur);
+  }, e => console.error(e));
+})();
+function stkShowSend(o){ try { db.collection("stackLink").doc("show_state").set(Object.assign({ cmdMs:STKS.cmdMs, ms:Date.now() }, o)).catch(e => console.error(e)); } catch(e){ console.error(e); } }
+function stkShowReport(p){ if (!STKS.on || !p) return;
+  const sl = document.querySelector("#stage .slide");
+  const txt = sl ? sl.innerText.replace(/[ \t　]+/g, " ").replace(/\n\s*\n+/g, "\n").trim() : "";
+  stkShowSend({ key:p.key, name:p.name, page:cur + 1, total:coursePages().length, text:txt.slice(0, 3500) }); }
 document.addEventListener("keydown", e => {
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (document.getElementById("fileViewer")) return;   // 資料を開いている間はページを送らない
