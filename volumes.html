@@ -28,7 +28,7 @@
 <body>
 <header class="bz">
   <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
-  <div><h1>環境側面調査記録（取扱量・インプット） <span style="font-size:13px;font-weight:normal;opacity:.8;">EMS-A-17</span><span style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/12-1</span></h1>
+  <div><h1>環境側面調査記録（取扱量・インプット） <span style="font-size:13px;font-weight:normal;opacity:.8;">EMS-A-17</span><span style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/16-1</span></h1>
   <div class="sub">年度（8月〜翌7月）ごとに受け入れた量の推移です。前年度比と傾向（↑↓）は自動で出ます。考察を書いて、毎年8月の環境側面の見直しに使います</div></div>
 </header>
 <div class="wrap">
@@ -180,7 +180,15 @@ async function seedOnce(){
   const b = db.batch(); VOL_SEED.forEach(r => b.set(db.collection(COL).doc(), { ...r, memo:{}, createdMs:Date.now(), recBy:"Excelから取り込み", recDate:today() }));
   await b.commit(); toast("環境側面調査記録(Excel)の数字 "+VOL_SEED.length+"品目を入れました");
 }
-seedOnce().catch(e => console.error(e)).finally(() => {
+/* 2026/11/16 1回だけ: Excelの打ちまちがい(センダライ粉 2024年度 10,344,140 → Wordの報告書の 1,034,140)を直す */
+async function fixOnce(){
+  const fr = db.collection("isoSettings").doc("seeds"), f = await fr.get();
+  if (f.exists && f.data().volFix1) return;
+  const q = await db.collection(COL).where("item", "==", "センダライ粉").get();
+  for (const d of q.docs){ const y = (d.data().y || {}); if (Number(y["2024"]) === 10344140) await d.ref.update({ y: { ...y, "2024": 1034140 }, recBy:"打ちまちがいを直した(Wordの報告書 1,034,140)", recDate:today() }); }
+  await fr.set({ volFix1:true }, { merge:true });
+}
+seedOnce().then(fixOnce).catch(e => console.error(e)).finally(() => {
   db.collection(COL).onSnapshot(s => { items = s.docs.map(d => ({ id:d.id, ...d.data() })); render(); }, e => { document.getElementById("body").innerHTML = '<div class="empty">読み込めませんでした: '+esc(e.message)+'</div>'; });
 });
 if (typeof EMS !== "undefined") EMS.subscribe(() => {});

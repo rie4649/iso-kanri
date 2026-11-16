@@ -481,7 +481,7 @@
 
 <header>
   <div class="header-top">
-    <h1>ISO管理 <span style="font-size:12px;font-weight:normal;opacity:.8;margin-left:6px;">ISO14001 運用記録</span><span id="appVer" style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/15-1</span></h1>
+    <h1>ISO管理 <span style="font-size:12px;font-weight:normal;opacity:.8;margin-left:6px;">ISO14001 運用記録</span><span id="appVer" style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/16-1</span></h1>
     <button class="install-btn" id="installBtn" style="display:none;">📲 アプリを追加</button>
   </div>
   <div class="section-header-bar" id="sectionHeaderBar" style="display:none;">
@@ -3500,6 +3500,16 @@ lifelineFormEl.addEventListener("submit", async (e) => {
 
 function lifelineTypeInfo(name) { return allLifelineTypes.find(t => t.name === name); }
 
+/* 2026/11/16 入力の見直し：同じ月に同じ種別が2回・中身が空の記録を、記録の画面の上で知らせる(押すと確認の画面) */
+function lifelineCheckHtml(){
+  const cnt = {}, empty = allLifelineRecords.filter(r => !(r.types || []).length);
+  allLifelineRecords.forEach(r => (r.types || []).forEach(t => { const k = r.yearMonth + "|" + t.name; cnt[k] = (cnt[k] || 0) + 1; }));
+  const dup = Object.entries(cnt).filter(([, n]) => n > 1).map(([k, n]) => { const [m, name] = k.split("|"); return { m, name, n }; }).sort((a, b) => b.m.localeCompare(a.m));
+  if (!dup.length && !empty.length) return "";
+  return '<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px;line-height:1.7;"><b>⚠ 入力を確かめてください</b><br>'+
+    dup.map(d => '<a href="javascript:void(0)" style="color:#9a3412;font-weight:700;" onclick="llShowCell(\''+d.m+'\',\''+d.name.replace(/'/g, "")+'\')">'+Number(d.m.slice(5))+'月（'+d.m.slice(0,4)+'）の'+escapeHtml(d.name)+'が '+d.n+'回</a> 入っています（押して確認）').join("<br>")+
+    (empty.length ? (dup.length ? '<br>' : '')+'中身が空の記録が '+empty.length+'件あります（'+empty.map(r => escapeHtml(r.yearMonth || "月なし")).join("・")+'）→ 下の一覧で「削除」できます' : '')+'</div>';
+}
 function renderLifelineList() {
   const container = document.getElementById("lifelineListContainer");
   let filtered = allLifelineRecords;
@@ -3535,7 +3545,7 @@ function renderLifelineList() {
     return (parts.length === 2 && parts[0]) ? `${parts[0]-1}-${parts[1]-1}` : "";
   };
 
-  container.innerHTML = years.map(y => {
+  container.innerHTML = lifelineCheckHtml() + years.map(y => {
     const records = groups[y].sort((a,b) => (b.yearMonth||"").localeCompare(a.yearMonth||""));
 
     // 種別ごとの年度使用量・CO2集計＋前年比
