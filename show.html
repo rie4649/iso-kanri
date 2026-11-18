@@ -1469,7 +1469,7 @@ function hkOpen(i){ hkIdx = (i + HK_IMGS.length) % HK_IMGS.length; const x = HK_
 /* ---------- 会社案内（トラック管理アプリの「社内案内」を開く。中身はトラック管理だけで持つので、ここは入口だけ） ---------- */
 const ANNAI_URL = "https://rie4649.github.io/truck-kanri/#annai";
 async function renderAnnai(p){
-  const ch = [["👋","こんにちは","会社の外観・会社概要・あゆみ","hello"],["💪","強み","機械作業・金属回収・収集運搬をまるごと","strength"],["🏗","機械作業","25tセルフ・セルフ","kikai"],["🔩","金属・レアメタル","鉄のリサイクルのしくみ","metal"],["♻️","資源のゆくえ","取扱量・圧縮梱包機","flow"],["🚶","社内案内（3D）","会社の中を歩いて案内","tour"],["🚛","車両と設備","","equip"],["📜","許可・資格・表彰","","permit"],["📋","管理","毎日・毎月・毎年の点検","kanri"],["🌱","環境・安全・災害","手順書どおりの備えと避難","env"],["🤝","地域といっしょに","","town"],["📞","おわりに","","end"]];
+  const ch = [["👋","こんにちは","会社の外観・会社概要・数字・あゆみ・許可・設備・表彰","hello"],["💪","強み","機械作業・金属回収・収集運搬をまるごと","strength"],["🏗","機械作業","25tセルフ・セルフ","kikai"],["🔩","金属・レアメタル","鉄のリサイクルのしくみ","metal"],["♻️","資源のゆくえ","取扱量・圧縮梱包機","flow"],["🚶","社内案内（3D）","会社の中を歩いて案内","tour"],["🚛","車両と設備","","equip"],["📜","許可・資格・表彰","","permit"],["📋","管理","毎日・毎月・毎年の点検","kanri"],["🌱","環境・安全・災害","手順書どおりの備えと避難","env"],["🤝","地域といっしょに","","town"],["📞","おわりに","","end"]];
   return await head(p, "トラック管理アプリの会社案内を開きます") +
     '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;"><div style="flex:1;min-width:240px;">'+
     '<div class="tkg">'+ch.map(x => '<a class="tkc" href="'+ANNAI_URL+'-'+x[3]+'" target="_blank" rel="noopener" title="この章から見る" style="cursor:pointer;padding:8px;text-decoration:none;color:inherit;display:block;"><div style="font-size:24px;">'+x[0]+'</div><b>'+esc(x[1])+' ▶</b>'+(x[2] ? '<div style="font-size:12px;color:#64748b;">'+esc(x[2])+'</div>' : '')+'</a>').join("")+'</div>'+
