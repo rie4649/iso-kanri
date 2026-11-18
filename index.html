@@ -21,6 +21,7 @@
 <script src="phone-complaint.js"></script>
 <script src="permit-sync.js"></script>
 <script src="tenken-stats.js"></script>
+<script src="diesel-2025.js"></script>
 <script>
 /* ===== Firebase読み取り節約(通信の自動休止・再開) 2026-10 =====
    ・画面が見えていない(別タブ・最小化・スマホのスリープ)状態が5分続いたら、リアルタイム監視を止めます
@@ -2935,7 +2936,7 @@ async function maybeImportDiesel2024() {
   if (dieselImport2024Attempted) return;
   dieselImport2024Attempted = true;
   const existing = new Set(allDieselRecords.map(r => r.yearMonth));
-  const targets = DIESEL_IMPORT_2024.filter(m => !existing.has(m.yearMonth));
+  const targets = DIESEL_IMPORT_2024.concat(typeof DIESEL_IMPORT_2025 !== "undefined" ? DIESEL_IMPORT_2025 : []).filter(m => !existing.has(m.yearMonth));
   if (!targets.length) return;
   try {
     for (const m of targets) {
