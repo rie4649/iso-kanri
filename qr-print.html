@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点検ラクラク QRコード印刷</title>
+<style>
+body{font-family:sans-serif;background:#f3f6fa;margin:0;padding:20px}
+h1{text-align:center;font-size:36px}
+p{text-align:center;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1000px;margin:20px auto}
+.card{background:white;border:2px solid #ddd;border-radius:14px;padding:16px;text-align:center;page-break-inside:avoid}
+.name{font-size:28px;font-weight:bold;margin-bottom:10px}
+.qr img{width:180px;height:180px}
+.url{font-size:11px;word-break:break-all;color:#555}
+.btn{display:block;margin:20px auto;padding:16px 30px;font-size:22px;border:none;border-radius:12px;background:#1976d2;color:white;font-weight:bold}
+@media print{
+.btn{display:none}
+ body{background:white}
+.card{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<h1>🚛 点検ラクラク QRコード一覧</h1>
+<p>各車両に貼るQRコードです</p>
+<button class="btn" onclick="window.print()">印刷する</button>
+<button class="btn" style="background:#555;margin-top:0;" onclick="location.href='index.html'">← 一覧へ戻る</button>
+<div id="qrList" class="grid">読み込み中...</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-auth-compat.js"></script>
+<script src="auth-gate.js?v=2"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyA1GSV7KX6qMbIFIFz2ZhPNBVksiGxanKA",
+authDomain:"tenken-rakuraku.firebaseapp.com",
+databaseURL:"https://tenken-rakuraku-default-rtdb.firebaseio.com",
+projectId:"tenken-rakuraku",
+storageBucket:"tenken-rakuraku.firebasestorage.app",
+messagingSenderId:"546571524606",
+appId:"1:546571524606:web:dbe38f12c4b6ab4ad148af"
+};
+
+if(!firebase.apps.length){firebase.initializeApp(firebaseConfig);}
+const db=firebase.database();
+
+const defaultVehicles=[
+"340","567","アームロール","いすゞ25t","265","25tセルフ",
+"6ヒアロング","5t","3tワイド","576","440","青パッカー",
+"5ヒア","620","ヒノ8t","ツートン","3tパッカー","白パッカー",
+"3ヒア","640","950","2.9","ヒノ","10t①",
+"230","8t","セルフ","3t","新10t","三菱ワイド","軽トラ"
+];
+
+const base="https://rie4649.github.io/tenken-rakuraku/qr.html?vehicle=";
+const list=document.getElementById("qrList");
+
+function renderQrList(vehicles){
+ list.innerHTML="";
+ vehicles.forEach(function(v){
+  const url=base+encodeURIComponent(v);
+  const qr="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+encodeURIComponent(url);
+  const card=document.createElement("div");
+  card.className="card";
+  card.innerHTML=
+    "<div class='name'>"+v+"</div>"+
+    "<div class='qr'><img src='"+qr+"'></div>"+
+    "<div class='url'>"+url+"</div>";
+  list.appendChild(card);
+ });
+}
+
+// 車両はマスタ管理(sekine-store)を大元として読む
+const sekineConfig={
+ apiKey:"AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+ authDomain:"sekine-store.firebaseapp.com",
+ projectId:"sekine-store",
+ storageBucket:"sekine-store.firebasestorage.app",
+ messagingSenderId:"781856496751",
+ appId:"1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+let sekineApp=null;
+try{sekineApp=firebase.app("sekine");}catch(e){
+ try{sekineApp=firebase.initializeApp(sekineConfig,"sekine");}catch(e2){sekineApp=null;}
+}
+function loadMasterVehicleNames(){
+ if(!sekineApp||!firebase.firestore)return Promise.reject(new Error("firestore未読込"));
+ return sekineApp.firestore().collection("master_vehicles").get().then(function(snap){
+  const names=[];
+  snap.forEach(function(d){
+   const v=d.data();
+   const disp=(v.nickname||"").trim()||(v.number||"").trim();
+   if(disp)names.push(disp);
+  });
+  names.sort(function(a,b){return a.localeCompare(b,"ja");});
+  if(!names.length)throw new Error("マスタに車両なし");
+  return names;
+ });
+}
+loadMasterVehicleNames().then(function(vehicles){
+ renderQrList(vehicles);
+}).catch(function(){
+ // マスタが読めないときは従来データで表示
+ return db.ref("settings/vehicles").once("value").then(function(snap){
+  const vehicles=snap.val()||defaultVehicles;
+  renderQrList(vehicles);
+}).catch(function(){
+ list.innerHTML="<p style='color:red;'>車両リストの読み込みに失敗しました。通信を確認してください。</p>";
+ });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月間点検表（印刷用）</title>
+<style>
+body{font-family:Arial,"Hiragino Sans",sans-serif;margin:0;background:#eef3f8;color:#222}
+.wrap{max-width:1000px;margin:auto;padding:20px}
+.controls{text-align:center;margin-bottom:20px}
+button{padding:14px 28px;font-size:20px;border:none;border-radius:12px;background:#1976d2;color:white;font-weight:bold;margin:0 6px}
+.vehicleBlock{background:white;padding:16px;margin-bottom:26px;border-radius:14px;page-break-inside:avoid;page-break-after:always}
+.vehicleBlock:last-child{page-break-after:auto}
+h1{text-align:center;font-size:26px}
+h2{font-size:22px;background:#1976d2;color:white;padding:10px;border-radius:10px;margin-top:0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #999;padding:5px;text-align:center}
+th{background:#e3ecf9}
+.bad{color:#d60000;font-weight:bold}
+.memoLine{font-size:11px;color:#555;text-align:left}
+@media print{
+body{background:white}
+.controls{display:none}
+.wrap{max-width:none;padding:6mm}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="controls">
+<button onclick="window.print()">印刷 / PDF保存</button>
+</div>
+<h1 id="title">読み込み中...</h1>
+<div id="content"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-auth-compat.js"></script>
+<script src="auth-gate.js?v=2"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyA1GSV7KX6qMbIFIFz2ZhPNBVksiGxanKA",
+authDomain:"tenken-rakuraku.firebaseapp.com",
+databaseURL:"https://tenken-rakuraku-default-rtdb.firebaseio.com",
+projectId:"tenken-rakuraku",
+storageBucket:"tenken-rakuraku.firebasestorage.app",
+messagingSenderId:"546571524606",
+appId:"1:546571524606:web:dbe38f12c4b6ab4ad148af"
+};
+if(!firebase.apps.length){firebase.initializeApp(firebaseConfig);}
+const db=firebase.database();
+
+// 車両はマスタ管理(sekine-store)を大元として読む（読めないときは今までのリスト）
+const sekineConfig={
+apiKey:"AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+authDomain:"sekine-store.firebaseapp.com",
+projectId:"sekine-store",
+storageBucket:"sekine-store.firebasestorage.app",
+messagingSenderId:"781856496751",
+appId:"1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+let sekineApp=null;
+try{sekineApp=firebase.app("sekine");}catch(e){
+ try{sekineApp=firebase.initializeApp(sekineConfig,"sekine");}catch(e2){sekineApp=null;}
+}
+function loadMasterVehicleNames(){
+ if(!sekineApp||!firebase.firestore)return Promise.reject(new Error("firestore未読込"));
+ return sekineApp.firestore().collection("master_vehicles").get().then(function(snap){
+  const names=[];
+  snap.forEach(function(d){
+   const v=d.data();
+   const disp=(v.nickname||"").trim()||(v.number||"").trim();
+   if(disp)names.push(disp);
+  });
+  names.sort(function(a,b){return a.localeCompare(b,"ja");});
+  if(!names.length)throw new Error("マスタに車両なし");
+  return names;
+ });
+}
+function loadVehicleNames(){
+ return loadMasterVehicleNames().catch(function(){
+  return db.ref("settings/vehicles").once("value").then(function(s){return s.val()||defaultVehicles;}).catch(function(){return defaultVehicles;});
+ });
+}
+// 記録はあるのに一覧にない車両（名前を変えた・手放した車など）も後ろに足す
+function mergeVehicles(list,dayObjs){
+ const res=list.slice();
+ const extra=[];
+ dayObjs.forEach(function(day){
+  Object.keys(day||{}).forEach(function(v){
+   if(res.indexOf(v)<0&&extra.indexOf(v)<0)extra.push(v);
+  });
+ });
+ extra.sort(function(a,b){return a.localeCompare(b,"ja");});
+ return res.concat(extra);
+}
+
+const defaultVehicles=[
+"340","567","アームロール","いすゞ25t","265","25tセルフ",
+"6ヒアロング","5t","3tワイド","576","440","青パッカー",
+"5ヒア","620","ヒノ8t","ツートン","3tパッカー","白パッカー",
+"3ヒア","640","950","2.9","ヒノ","10t①",
+"230","8t","セルフ","3t","新10t","三菱ワイド","軽トラ"
+];
+
+function getParams(){
+const p=new URLSearchParams(location.search);
+const now=new Date();
+return{
+year:Number(p.get("year"))||now.getFullYear(),
+month:Number(p.get("month"))||(now.getMonth()+1)
+};
+}
+
+function daysInMonth(y,m){return new Date(y,m,0).getDate();}
+function key(y,m,d){return "tenken_"+y+"_"+m+"_"+d;}
+
+function cell(done,time,staff){
+if(!done)return "<span class='bad'>未</span>";
+return "済<br>"+(time||"-")+"<br>"+(staff||"-");
+}
+
+function render(vehicles,allData){
+const {year,month}=getParams();
+const totalDays=daysInMonth(year,month);
+
+document.getElementById("title").textContent="🚛 "+year+"年"+month+"月 点検表（全車両）";
+
+const content=document.getElementById("content");
+content.innerHTML="";
+
+vehicles.forEach(function(vehicle){
+const block=document.createElement("div");
+block.className="vehicleBlock";
+
+let rows="";
+for(let day=1;day<=totalDays;day++){
+const data=allData[key(year,month,day)]||{};
+const r=data[vehicle]||{};
+
+let dailyCell="";
+if(r.dailyDone||r.dailyCheck){
+dailyCell="実施済";
+if(r.dailyCheck&&r.dailyCheck.badItems&&r.dailyCheck.badItems.length){
+dailyCell+="<br><span class='bad'>否:"+r.dailyCheck.badItems.map(function(b){return b.no;}).join(",")+"</span>";
+}
+if(r.dailyCheck&&r.dailyCheck.memo){
+dailyCell+="<div class='memoLine'>📝"+r.dailyCheck.memo+"</div>";
+}
+}
+
+rows+="<tr><td>"+day+"</td>"+
+"<td>"+cell(r.morning,r.morningTime,r.morningStaff)+"</td>"+
+"<td>"+cell(r.afternoon,r.afternoonTime,r.afternoonStaff)+"</td>"+
+"<td>"+dailyCell+"</td></tr>";
+}
+
+block.innerHTML=
+"<h2>車両："+vehicle+"（"+year+"年"+month+"月）</h2>"+
+"<table><thead><tr><th>日</th><th>午前</th><th>午後</th><th>日常点検内容</th></tr></thead>"+
+"<tbody>"+rows+"</tbody></table>";
+
+content.appendChild(block);
+});
+}
+
+(function(){
+const {year,month}=getParams();
+const prefix="tenken_"+year+"_"+month+"_";
+Promise.all([
+loadVehicleNames(),
+db.ref("tenkenData").orderByKey().startAt(prefix).endAt(prefix+"\uf8ff").once("value")
+]).then(function(results){
+const allData=results[1].val()||{};
+const vehicles=mergeVehicles(results[0],Object.keys(allData).map(function(k){return allData[k];}));
+render(vehicles,allData);
+}).catch(function(){
+alert("データの読み込みに失敗しました。通信を確認して開き直してください。");
+});
+})();
+</script>
+</body>
+</html>

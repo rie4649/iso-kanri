@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点検ラクラク QR点検</title>
+<link rel="stylesheet" href="style.css?v=113">
+<style>
+body{background:#eef3f8;padding-bottom:120px}
+.card{background:white;margin:18px auto;padding:22px;border-radius:18px;max-width:560px;text-align:center}
+.vehicle{font-size:52px;font-weight:bold;margin:20px 0 8px}
+.date{font-size:24px;color:#555;margin-bottom:20px}
+.qrBtn{width:92%;max-width:560px;padding:26px;margin:16px auto;display:block;border:none;border-radius:18px;font-size:30px;font-weight:bold;color:white}
+.morning{background:#2196f3}
+.afternoon{background:#7e57c2}
+.daily{background:#ff9800}
+.emergency{background:#d32f2f}
+.manuals{background:#00796b}
+.clients{background:#1565c0}
+.mnSearch{width:100%;font-size:17px;padding:12px;border:1px solid #bbb;border-radius:12px;box-sizing:border-box;margin-bottom:8px}
+.mnGroup{font-size:16px;font-weight:bold;color:#555;margin:14px 0 4px;text-align:left}
+.mnItem{border-bottom:1px solid #eee;padding:10px 0;text-align:left}
+.mnNo{font-size:13px;color:#888;font-weight:bold}
+.mnName{font-size:17px;font-weight:bold;color:#333;margin-top:2px}
+.mnFile{display:inline-block;margin:6px 6px 0 0;padding:9px 14px;border-radius:10px;background:#e0f5f3;color:#00695c;font-size:15px;font-weight:bold;text-decoration:none;border:1px solid #80cbc4}
+.mnNone{font-size:13px;color:#bbb;margin-top:4px}
+.back{background:#555}
+.ecList{text-align:left}
+.ecItem{border-bottom:1px solid #eee;padding:12px 0}
+.ecLabel{font-size:18px;font-weight:bold;color:#333}
+.ecName{font-size:14px;color:#666;margin-top:2px}
+.ecTel{display:block;margin-top:8px;padding:12px;border-radius:12px;background:#2e9d45;color:white;font-size:22px;font-weight:bold;text-align:center;text-decoration:none}
+.history{text-align:left;font-size:24px;line-height:1.9}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;padding:18px}
+.modalBox{background:white;width:100%;max-width:520px;border-radius:18px;padding:24px;text-align:center}
+select{width:100%;padding:18px;font-size:24px;border-radius:14px;border:2px solid #1976d2;margin:18px 0}
+.confirmBtn{width:100%;padding:20px;border:none;border-radius:14px;background:#2e9d45;color:white;font-size:26px;font-weight:bold}
+.cancelBtn{width:100%;padding:18px;border:none;border-radius:14px;background:#555;color:white;font-size:22px;font-weight:bold;margin-top:12px}
+</style>
+</head>
+
+<body>
+<header>
+<h1>🚛 点検ラクラク</h1>
+<p>車両専用 点検ページ</p>
+</header>
+
+<main>
+<div class="card">
+  <div id="vehicleText" class="vehicle">---</div>
+  <div id="dateText" class="date">---</div>
+</div>
+
+<button class="qrBtn morning" onclick="openStaffModal('morning')">午前点検確認</button>
+<button class="qrBtn afternoon" onclick="openStaffModal('afternoon')">午後点検確認</button>
+<button class="qrBtn daily" onclick="openStaffModal('daily')">📋 日常点検確認</button>
+
+<div class="card">
+  <h2>▼ 今日の履歴</h2>
+  <div id="history" class="history">読み込み中...</div>
+</div>
+
+<button class="qrBtn emergency" onclick="toggleEmergency()">📞 緊急連絡先</button>
+<div id="ecCard" class="card" style="display:none;">
+  <h2>📞 緊急連絡先</h2>
+  <p style="font-size:16px;color:#666;margin:4px 0 12px;">番号をタップすると電話がかかります</p>
+  <div id="ecList" class="ecList">読み込み中...</div>
+</div>
+
+<button class="qrBtn manuals" onclick="toggleManuals()">📖 環境手順書</button>
+<div id="manualCard" class="card" style="display:none;">
+  <h2>📖 環境手順書</h2>
+  <p style="font-size:16px;color:#666;margin:4px 0 8px;">ファイル名をタップすると開きます</p>
+  <input type="text" id="manualSearchBox" class="mnSearch" placeholder="🔍 番号・名前で検索" oninput="drawManualList()">
+  <div id="manualList">読み込み中...</div>
+</div>
+
+<button class="qrBtn clients" onclick="location.href='clients.html?v=2'">🏢 取引先</button>
+
+<button class="qrBtn back" onclick="location.href='index.html?v=113'">一覧へ戻る</button>
+</main>
+
+<div id="staffModal" class="modal">
+  <div class="modalBox">
+    <h2 id="modalTitle">点検確認</h2>
+    <p>担当者を選んでください</p>
+    <select id="staffSelect"></select>
+    <button class="confirmBtn" onclick="confirmStaff()">確認する</button>
+    <button class="cancelBtn" onclick="closeStaffModal()">キャンセル</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-auth-compat.js"></script>
+<script src="auth-gate.js?v=2"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyA1GSV7KX6qMbIFIFz2ZhPNBVksiGxanKA",
+authDomain:"tenken-rakuraku.firebaseapp.com",
+databaseURL:"https://tenken-rakuraku-default-rtdb.firebaseio.com",
+projectId:"tenken-rakuraku",
+storageBucket:"tenken-rakuraku.firebasestorage.app",
+messagingSenderId:"546571524606",
+appId:"1:546571524606:web:dbe38f12c4b6ab4ad148af"
+};
+
+if(!firebase.apps.length){firebase.initializeApp(firebaseConfig);}
+const db=firebase.database();
+
+// ISO管理アプリ(sekine-store)のFirestoreに接続して環境手順書を読む
+const sekineConfig={
+apiKey:"AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",
+authDomain:"sekine-store.firebaseapp.com",
+projectId:"sekine-store",
+storageBucket:"sekine-store.firebasestorage.app",
+messagingSenderId:"781856496751",
+appId:"1:781856496751:web:e2e1e5de4cd803415a819a"
+};
+let sekineApp;
+try{sekineApp=firebase.app("sekine");}catch(e){sekineApp=firebase.initializeApp(sekineConfig,"sekine");}
+const fsdb=sekineApp.firestore();
+
+const defaultStaff=["未選択","社長","常務","細田典良","春原誠","高橋由幸","西澤文彦","五十嵐雅文","赤池秀幸","金子政司","大日方広義","金井正美","清水広之","桑野恵","上野雅宏","中村雅志","深澤卓也","仙石寛崇","上野雅也","塩川公明","松下伊織","水野浩","伊部豊","山田由一","池田袈裟人","菊池茂義"];
+
+let currentType="";
+let todayData={};
+
+const defaultContacts=[
+{label:"国道18号",name:"国土交通省長野国道事務所",tel:"026-264-7003"},
+{label:"道路交通情報",name:"日本道路交通情報センター",tel:"050-3369-6666"},
+{label:"高速道路情報",name:"日本道路交通情報センター",tel:"050-3369-6700"},
+{label:"道路交通情報サイト（一般道・全国）",name:"JARTIC 日本道路交通情報センター",url:"https://www.jartic.or.jp/"},
+{label:"高速道路の渋滞・規制情報サイト",name:"ドラとら（NEXCO東日本）",url:"https://www.drivetraffic.jp/"},
+{label:"上田林道",name:"森林整備課",tel:"0268-23-5124"},
+{label:"長野県建設部",name:"道路管理課",tel:"026-235-7301"},
+{label:"上田市農道",name:"土地改良課",tel:"0268-23-5123"},
+{label:"三才山・新和田トンネル",name:"長野県道路公社",tel:"026-234-6883"},
+{label:"国道18号以外の国道・県道（上田地区）",name:"上田建設事務所",tel:"0268-23-1260"},
+{label:"国道18号以外の国道・県道（佐久北部）",name:"佐久建設事務所",tel:"0267-63-3111"},
+{label:"国道18号以外の国道・県道（佐久南部）",name:"佐久建設事務所",tel:"0267-82-3101"},
+{label:"国道18号以外の国道・県道（諏訪地区）",name:"諏訪建設事務所",tel:"0266-53-6000"},
+{label:"国道18号以外の国道・県道（松本地区）",name:"松本建設事務所",tel:"0263-40-1963"},
+{label:"国道18号以外の国道・県道（安曇野地区）",name:"安曇野建設事務所",tel:"0263-72-8880"},
+{label:"国道18号以外の国道・県道（長野地区）",name:"長野建設事務所",tel:"026-234-9539"},
+{label:"国道18号以外の国道・県道（千曲地区）",name:"千曲建設事務所",tel:"026-273-5940"},
+{label:"国道18号以外の国道・県道（須坂地区）",name:"須坂建設事務所",tel:"026-245-1670"},
+{label:"国道18号以外の国道・県道（北信地区）",name:"北信建設事務所",tel:"0269-23-0791"},
+{label:"山梨県道路規制情報",name:"中北建設事務所",tel:"055-224-1667"},
+{label:"群馬県道路規制情報",name:"県土整備部道路管理課",tel:"027-226-3595"},
+{label:"埼玉県道路規制情報",name:"県土整備部道路管理課",tel:"048-830-5095"}
+];
+
+function renderContacts(list){
+const box=document.getElementById("ecList");
+box.innerHTML="";
+if(!list||!list.length){box.innerHTML="連絡先が登録されていません";return;}
+list.forEach(function(c){
+const item=document.createElement("div");
+item.className="ecItem";
+let btns="";
+if(c.tel)btns+="<a class='ecTel' href='tel:"+c.tel+"'>📞 "+c.tel+"</a>";
+if(c.url)btns+="<a class='ecTel' style='background:#1976d2;' href='"+c.url+"' target='_blank' rel='noopener'>🌐 サイトを開く</a>";
+item.innerHTML="<div class='ecLabel'>"+c.label+"</div>"+
+(c.name?"<div class='ecName'>"+c.name+"</div>":"")+btns;
+box.appendChild(item);
+});
+}
+
+function loadContacts(){
+db.ref("settings/emergencyContacts").once("value").then(function(snap){
+const list=snap.val()||JSON.parse(localStorage.getItem("tenken_contacts")||"null")||defaultContacts;
+localStorage.setItem("tenken_contacts",JSON.stringify(list));
+renderContacts(list);
+}).catch(function(){
+renderContacts(JSON.parse(localStorage.getItem("tenken_contacts")||"null")||defaultContacts);
+});
+}
+
+function toggleEmergency(){
+const card=document.getElementById("ecCard");
+card.style.display=(card.style.display==="none")?"block":"none";
+}
+
+let manualsLoaded=false;
+function toggleManuals(){
+const card=document.getElementById("manualCard");
+const show=(card.style.display==="none");
+card.style.display=show?"block":"none";
+if(show&&!manualsLoaded){loadManuals();}
+}
+function manualSortKey(m){
+const n=parseInt(String(m.no).replace(/[^0-9]/g,""),10);
+return ((m.category==="emergency")?1000:0)+(isNaN(n)?999:n);
+}
+let manualListData=[];
+function loadManuals(){
+fsdb.collection("envManuals").get().then(function(snap){
+manualsLoaded=true;
+manualListData=snap.docs.map(function(d){const o=d.data();o.id=d.id;return o;});
+manualListData.sort(function(a,b){return manualSortKey(a)-manualSortKey(b);});
+drawManualList();
+}).catch(function(e){
+document.getElementById("manualList").innerHTML="読み込みに失敗しました。電波の良い場所でもう一度お試しください";
+});
+}
+function drawManualList(){
+const q=(document.getElementById("manualSearchBox").value||"").trim();
+const list=q?manualListData.filter(function(m){return String(m.no).includes(q)||(m.name||"").includes(q);}):manualListData;
+renderManuals(list);
+}
+function renderManuals(list){
+const box=document.getElementById("manualList");
+if(!list.length){box.innerHTML="該当する手順書がありません";return;}
+const groups=[
+{cat:"emergency",title:"🚨 緊急時対応"},
+{cat:"normal",title:"📘 通常の手順書"}
+];
+box.innerHTML="";
+groups.forEach(function(g){
+const items=list.filter(function(m){return (m.category||"normal")===g.cat;});
+if(!items.length)return;
+const head=document.createElement("div");
+head.className="mnGroup";
+head.textContent=g.title;
+box.appendChild(head);
+items.forEach(function(m){
+const item=document.createElement("div");
+item.className="mnItem";
+let files="";
+(m.attachments||[]).forEach(function(a,i){
+if(a.fileId){files+="<a class='mnFile' href='#' onclick=\"openManualFile('"+a.fileId+"');return false;\">📄 "+escapeText(a.name)+"</a>";}
+else if(a.url){files+="<a class='mnFile' href='"+a.url+"' target='_blank' rel='noopener'>📄 "+escapeText(a.name)+"</a>";}
+});
+item.innerHTML="<div class='mnNo'>"+escapeText(String(m.no))+"　"+escapeText(m.version||"")+"</div>"+
+"<div class='mnName'>"+escapeText(m.name||"")+"</div>"+
+(files?"<div>"+files+"</div>":"<div class='mnNone'>PDF未登録</div>");
+box.appendChild(item);
+});
+});
+}
+function escapeText(s){
+return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function openManualFile(fileId){
+const w=window.open("","_blank");
+fsdb.collection("envManualFiles").doc(fileId).get().then(function(d){
+if(!d.exists)throw new Error("ファイルが見つかりません");
+const f=d.data();
+const bin=atob(f.data);
+const arr=new Uint8Array(bin.length);
+for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+const url=URL.createObjectURL(new Blob([arr],{type:f.type||"application/octet-stream"}));
+if(w)w.location.href=url;else window.open(url,"_blank");
+}).catch(function(e){
+if(w)w.close();
+alert("開けませんでした: "+e.message);
+});
+}
+
+function getVehicle(){
+ const p=new URLSearchParams(location.search);
+ return p.get("vehicle")||"車両未指定";
+}
+function y(){return new Date().getFullYear();}
+function m(){return new Date().getMonth()+1;}
+function d(){return new Date().getDate();}
+function key(){return "tenken_"+y()+"_"+m()+"_"+d();}
+function nowTime(){
+ const x=new Date();
+ return String(x.getHours()).padStart(2,"0")+":"+String(x.getMinutes()).padStart(2,"0");
+}
+
+function loadMasterStaff(){
+ // 担当者はマスタ管理(sekine-store)の従業員を大元として読む
+ if(!sekineApp||!firebase.firestore)return Promise.reject(new Error("firestore未読込"));
+ return sekineApp.firestore().collection("employees").get().then(function(snap){
+  const arr=[];
+  snap.forEach(function(d){
+   const v=d.data();
+   if(v.name)arr.push({name:v.name,order:(v.order!==undefined&&v.order!==null)?v.order:9999});
+  });
+  arr.sort(function(a,b){return a.order-b.order;});
+  const names=arr.map(function(x){return x.name;});
+  if(!names.length)throw new Error("マスタに従業員なし");
+  if(names[0]!=="未選択")names.unshift("未選択");
+  return names;
+ });
+}
+// マスタが読めないときは今までの担当者リストで動かす
+function loadStaffList(){
+ return loadMasterStaff().catch(function(){
+  return db.ref("settings/staff").once("value").then(function(snap){return snap.val()||defaultStaff;}).catch(function(){return defaultStaff;});
+ });
+}
+function loadStaff(){
+ loadStaffList().then(function(list){
+  const sel=document.getElementById("staffSelect");
+  sel.innerHTML="";
+  list.forEach(function(name){
+   const op=document.createElement("option");
+   op.value=name;
+   op.textContent=name;
+   sel.appendChild(op);
+  });
+ });
+}
+
+let dataKey="";
+function loadData(){
+ const k=key();
+ if(k===dataKey)return;
+ if(dataKey)db.ref("tenkenData/"+dataKey).off("value");
+ dataKey=k;
+ todayData={};
+ db.ref("tenkenData/"+k).on("value",function(snap){
+  todayData=snap.val()||{};
+  renderHistory();
+ });
+ document.getElementById("dateText").textContent=y()+"年"+m()+"月"+d()+"日";
+}
+// 開いたまま日付が変わったら、新しい日の履歴に切り替える
+setInterval(loadData,60000);
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")loadData();});
+
+function renderHistory(){
+ const vehicle=getVehicle();
+ const r=todayData[vehicle]||{};
+ let html="";
+ html+="🟦 午前　"+(r.morning?"✅ "+(r.morningStaff||"-")+"　"+(r.morningTime||"-"):"未確認")+"<br>";
+ html+="🟪 午後　"+(r.afternoon?"✅ "+(r.afternoonStaff||"-")+"　"+(r.afternoonTime||"-"):"未確認")+"<br>";
+ html+="🟧 日常　"+(r.dailyDone?"✅ "+(r.dailyStaff||"-")+"　"+(r.dailyTime||"-"):"未確認");
+ document.getElementById("history").innerHTML=html;
+}
+
+function openStaffModal(type){
+ currentType=type;
+const vehicle=getVehicle();
+const r=todayData[vehicle]||{};
+
+if((type==="morning" || type==="afternoon") && (r.dailyDone || r.dailyCheck)){
+  alert("日常点検済みです。午前・午後点検は不要よ。");
+  return;
+}
+ const title={morning:"午前点検確認",afternoon:"午後点検確認",daily:"日常点検確認"};
+ document.getElementById("modalTitle").textContent=title[type];
+ document.getElementById("staffModal").style.display="flex";
+}
+
+function closeStaffModal(){
+ document.getElementById("staffModal").style.display="none";
+}
+
+function confirmStaff(){
+ const staff=document.getElementById("staffSelect").value;
+ if(!staff||staff==="未選択"){alert("担当者を選んでください");return;}
+
+ if(currentType==="daily"){
+  location.href="daily.html?vehicle="+encodeURIComponent(getVehicle())+"&staff="+encodeURIComponent(staff)+"&v=113";
+  return;
+ }
+ saveSimpleCheck(currentType,staff);
+}
+
+function saveSimpleCheck(type,staff){
+ const vehicle=getVehicle();
+ // この車両の、この項目だけを保存（ほかの車両の記録には一切さわらない）
+ const fields={};
+ fields[type]=true;
+ fields[type+"Time"]=nowTime();
+ fields[type+"Staff"]=staff;
+
+ db.ref("tenkenData/"+key()+"/"+vehicle).update(fields).then(function(){
+  closeStaffModal();
+  alert("保存しました");
+ }).catch(function(){
+  alert("保存に失敗しました。電波のよい場所でもう一度押してください。");
+ });
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+ document.getElementById("vehicleText").textContent=getVehicle();
+ document.getElementById("dateText").textContent=y()+"年"+m()+"月"+d()+"日";
+ loadStaff();
+ loadData();
+ loadContacts();
+});
+</script>
+</body>
+</html>

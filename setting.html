@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>点検ラクラク 設定</title>
+<link rel="stylesheet" href="style.css?v=40"> <style> body{padding-bottom:140px} .box{background:white;margin:18px auto;padding:18px;border-radius:16px;max-width:780px}
+.row{display:grid;grid-template-columns:1fr 46px 46px 62px 62px;gap:8px;align-items:center;border-bottom:1px solid #ddd;padding:14px 0;font-size:22px} .moveBtn{font-size:18px;padding:12px 4px;border:none;border-radius:12px;background:#607d8b;color:white} input{width:100%;font-size:22px;padding:14px;border-radius:12px;border:1px solid #aaa;box-sizing:border-box}
+button{cursor:pointer}
+.addBtn,.backBtn{width:90%;max-width:760px;margin:14px auto;padding:18px;border:none;border-radius:16px;font-size:24px;font-weight:bold;color:white;display:block}
+.addBtn{background:#1976d2}
+.backBtn{background:#555}
+.editBtn,.delBtn{font-size:22px;padding:12px;border:none;border-radius:12px;color:white}
+.editBtn{background:#1976d2}
+.delBtn{background:#d32f2f}
+</style>
+</head>
+<body>
+<header>
+<h1>⚙ 点検ラクラク設定</h1>
+<p>車両・担当者・緊急連絡先の編集</p>
+</header>
+<main>
+<button id="backBtn" class="backBtn">戻る</button>
+<div class="box">
+<h2>🚚 登録車両</h2>
+<div id="vehicleList"></div>
+</div>
+
+<div class="box">
+<h2>👤 担当者</h2>
+<div id="staffList"></div>
+</div>
+
+<div class="box">
+<h2>📞 緊急連絡先</h2>
+<p style="font-size:15px;color:#666;">トップの「緊急連絡先」ページと、QR読み取りページの下部に表示されます。</p>
+<input id="ecLabel" placeholder="項目名（例：国道18号）">
+<input id="ecName" placeholder="連絡先名（例：長野国道事務所）※省略可" style="margin-top:8px;">
+<input id="ecTel" placeholder="電話番号（例：026-264-7003）" style="margin-top:8px;">
+<input id="ecUrl" placeholder="WEBサイトURL（例：https://…）※電話かURLどちらかでOK" style="margin-top:8px;">
+<button id="addEcBtn" class="addBtn">連絡先追加</button>
+<div id="ecList"></div>
+</div>
+
+<div class="box" id="bk" style="border:3px solid #86efac;">
+<h2>💾 バックアップ・復元</h2>
+<div style="font-size:15px;color:#444;line-height:1.8;">
+・「まるごとバックアップ」を押すと、<b>点検ラクラクの全部のデータ</b>(毎日の点検の記録・不具合報告・緊急連絡先などの設定)が、1つのファイル(tenken-backup_日付.json)で保存されます。<br>
+・保存したファイルは、<b>Googleドライブのバックアップ用フォルダ</b>に入れておいてください(iPhoneは「ファイル」アプリの「ダウンロード」に入ります)。<br>
+・<b>月末に1回</b>と、<b>アプリを差し替える前</b>に取るのがおすすめです。前回から30日たつと、ホーム画面にお知らせが出ます。<br>
+・困ったときは「バックアップから復元」でそのファイルを選ぶと、その時点の状態に戻ります(戻す前に、今の状態も自動でファイルに保存されます)。
+</div>
+<div id="bkInfo" style="font-size:17px;margin:12px 0;"></div>
+<button id="bkBtn" class="addBtn" style="width:100%;background:#16a34a;">💾 まるごとバックアップ(ファイルに保存)</button>
+<button id="bkRestoreBtn" class="addBtn" style="width:100%;background:#92400e;">♻️ バックアップから復元</button>
+<input type="file" id="bkFile" accept=".json,application/json" style="display:none">
+<div id="bkStatus" style="font-size:16px;color:#333;"></div>
+</div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-auth-compat.js"></script>
+<script src="auth-gate.js?v=2"></script>
+<script>
+const firebaseConfig={
+apiKey:"AIzaSyA1GSV7KX6qMbIFIFz2ZhPNBVksiGxanKA",
+authDomain:"tenken-rakuraku.firebaseapp.com",
+databaseURL:"https://tenken-rakuraku-default-rtdb.firebaseio.com",
+projectId:"tenken-rakuraku",
+storageBucket:"tenken-rakuraku.firebasestorage.app",
+messagingSenderId:"546571524606",
+appId:"1:546571524606:web:dbe38f12c4b6ab4ad148af"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+const defaultVehicles=["340","567","アームロール","いすゞ25t","265","25tセルフ","6ヒアロング","5t","3tワイド","576","440","青パッカー","5ヒア","620","ヒノ8t","ツートン","3tパッカー","白パッカー","3ヒア","640","950","2.9","ヒノ","10t①","230","8t","セルフ","3t","10t②","三菱ワイド","軽トラ"];
+const defaultStaff=["未選択","社長","常務","細田典良","春原誠","高橋由幸","西澤文彦","五十嵐雅文","赤池秀幸","金子政司","大日方広義","金井正美","清水広之","桑野恵","上野雅宏","中村雅志","深澤卓也","仙石寛崇","上野雅也","塩川公明","松下伊織","水野浩","伊部豊","山田由一","池田袈裟人","菊池茂義"];
+
+let vehicles=[];
+let staff=[];
+let contacts=[];
+
+const defaultContacts=[
+{label:"国道18号",name:"国土交通省長野国道事務所",tel:"026-264-7003"},
+{label:"道路交通情報",name:"日本道路交通情報センター",tel:"050-3369-6666"},
+{label:"高速道路情報",name:"日本道路交通情報センター",tel:"050-3369-6700"},
+{label:"道路交通情報サイト（一般道・全国）",name:"JARTIC 日本道路交通情報センター",url:"https://www.jartic.or.jp/"},
+{label:"高速道路の渋滞・規制情報サイト",name:"ドラとら（NEXCO東日本）",url:"https://www.drivetraffic.jp/"},
+{label:"上田林道",name:"森林整備課",tel:"0268-23-5124"},
+{label:"長野県建設部",name:"道路管理課",tel:"026-235-7301"},
+{label:"上田市農道",name:"土地改良課",tel:"0268-23-5123"},
+{label:"三才山・新和田トンネル",name:"長野県道路公社",tel:"026-234-6883"},
+{label:"国道18号以外の国道・県道（上田地区）",name:"上田建設事務所",tel:"0268-23-1260"},
+{label:"国道18号以外の国道・県道（佐久北部）",name:"佐久建設事務所",tel:"0267-63-3111"},
+{label:"国道18号以外の国道・県道（佐久南部）",name:"佐久建設事務所",tel:"0267-82-3101"},
+{label:"国道18号以外の国道・県道（諏訪地区）",name:"諏訪建設事務所",tel:"0266-53-6000"},
+{label:"国道18号以外の国道・県道（松本地区）",name:"松本建設事務所",tel:"0263-40-1963"},
+{label:"国道18号以外の国道・県道（安曇野地区）",name:"安曇野建設事務所",tel:"0263-72-8880"},
+{label:"国道18号以外の国道・県道（長野地区）",name:"長野建設事務所",tel:"026-234-9539"},
+{label:"国道18号以外の国道・県道（千曲地区）",name:"千曲建設事務所",tel:"026-273-5940"},
+{label:"国道18号以外の国道・県道（須坂地区）",name:"須坂建設事務所",tel:"026-245-1670"},
+{label:"国道18号以外の国道・県道（北信地区）",name:"北信建設事務所",tel:"0269-23-0791"},
+{label:"山梨県道路規制情報",name:"中北建設事務所",tel:"055-224-1667"},
+{label:"群馬県道路規制情報",name:"県土整備部道路管理課",tel:"027-226-3595"},
+{label:"埼玉県道路規制情報",name:"県土整備部道路管理課",tel:"048-830-5095"}
+];
+
+function saveContacts(){
+localStorage.setItem("tenken_contacts",JSON.stringify(contacts));
+db.ref("settings/emergencyContacts").set(contacts).catch(function(){
+alert("緊急連絡先の保存に失敗しました。通信を確認してください。");
+});
+renderContacts();
+}
+
+function renderContacts(){
+const box=document.getElementById("ecList");
+box.innerHTML="";
+contacts.forEach(function(c,i){
+const row=document.createElement("div");
+row.className="row";
+
+const text=document.createElement("div");
+const info=[];
+if(c.tel)info.push("📞 "+c.tel);
+if(c.url)info.push("🌐 サイト");
+text.innerHTML="<div style='font-size:18px;font-weight:bold;'>"+(i+1)+". "+c.label+"</div>"+
+"<div style='font-size:14px;color:#666;'>"+(c.name||"")+"　"+info.join("　")+"</div>";
+
+const edit=document.createElement("button");
+edit.className="editBtn";
+edit.textContent="✏️";
+edit.onclick=function(){
+const l=prompt("項目名",contacts[i].label);
+if(l===null)return;
+const n=prompt("連絡先名（不要なら空欄）",contacts[i].name||"");
+if(n===null)return;
+const t=prompt("電話番号（不要なら空欄）",contacts[i].tel||"");
+if(t===null)return;
+const u=prompt("WEBサイトURL（不要なら空欄）",contacts[i].url||"");
+if(u===null)return;
+if(!l.trim()||(!t.trim()&&!u.trim())){alert("項目名と、電話番号かURLのどちらかは必須です");return;}
+const c={label:l.trim(),name:n.trim()};
+if(t.trim())c.tel=t.trim();
+if(u.trim())c.url=u.trim();
+contacts[i]=c;
+saveContacts();
+};
+
+const del=document.createElement("button");
+del.className="delBtn";
+del.textContent="🗑";
+del.onclick=function(){
+if(!confirm(contacts[i].label+" を削除しますか？"))return;
+contacts.splice(i,1);
+saveContacts();
+};
+
+const up=document.createElement("button");
+up.className="moveBtn";
+up.textContent="↑";
+up.onclick=function(){moveItem(contacts,i,-1,saveContacts);};
+const down=document.createElement("button");
+down.className="moveBtn";
+down.textContent="↓";
+down.onclick=function(){moveItem(contacts,i,1,saveContacts);};
+
+row.appendChild(text);
+row.appendChild(up);
+row.appendChild(down);
+row.appendChild(edit);
+row.appendChild(del);
+box.appendChild(row);
+});
+}
+
+function moveItem(arr,i,dir,saveFn){
+const j=i+dir;
+if(j<0||j>=arr.length)return;
+const t=arr[i];arr[i]=arr[j];arr[j]=t;
+saveFn();
+}
+
+function saveVehicles(){
+localStorage.setItem("tenken_vehicles",JSON.stringify(vehicles));
+db.ref("settings/vehicles").set(vehicles).catch(function(){
+alert("保存に失敗しました。通信を確認してください。");
+});
+renderVehicles();
+}
+
+function saveStaff(){
+localStorage.setItem("tenken_staff",JSON.stringify(staff));
+db.ref("settings/staff").set(staff).then(function(){
+renderStaff();
+}).catch(function(){
+alert("保存に失敗しました。通信を確認してください。");
+});
+}
+
+function renderVehicles(){
+const box=document.getElementById("vehicleList");
+box.innerHTML='<div style="background:#eef3fb;border-radius:10px;padding:12px;font-size:14px;line-height:1.7;">🚚 車両は<b>マスタ管理アプリ</b>で管理する方式になりました。<br>マスタ管理の車両に<b>「呼び名」</b>を登録すると、点検ラクラクにその名前で表示されます。<br>(車検日もマスタ管理の日付が使われます)</div>';
+return;
+vehicles.forEach(function(name,i){
+const row=document.createElement("div");
+row.className="row";
+
+const text=document.createElement("div");
+text.textContent=(i+1)+". "+name;
+
+const edit=document.createElement("button");
+edit.className="editBtn";
+edit.textContent="✏️";
+edit.onclick=function(){
+const n=prompt("新しい車両名",vehicles[i]);
+if(!n||!n.trim())return;
+vehicles[i]=n.trim();
+saveVehicles(); };
+
+const del=document.createElement("button");
+del.className="delBtn";
+del.textContent="🗑";
+del.onclick=function(){
+if(!confirm(vehicles[i]+" を削除しますか？"))return;
+vehicles.splice(i,1);
+saveVehicles();
+};
+
+const up=document.createElement("button");
+up.className="moveBtn";
+up.textContent="↑";
+up.onclick=function(){moveItem(vehicles,i,-1,saveVehicles);};
+const down=document.createElement("button");
+down.className="moveBtn";
+down.textContent="↓";
+down.onclick=function(){moveItem(vehicles,i,1,saveVehicles);};
+
+row.appendChild(text);
+row.appendChild(up);
+row.appendChild(down);
+row.appendChild(edit);
+row.appendChild(del);
+box.appendChild(row);
+});
+}
+
+function renderStaff(){
+const box=document.getElementById("staffList");
+box.innerHTML='<div style="background:#eef3fb;border-radius:10px;padding:12px;font-size:14px;line-height:1.7;">👤 担当者は<b>マスタ管理アプリ</b>の従業員タブで管理する方式になりました。<br>そちらで追加・並べ替えすると、点検ラクラクにも反映されます。</div>';
+return;
+staff.forEach(function(name,i){
+const row=document.createElement("div");
+row.className="row";
+
+const text=document.createElement("div");
+text.textContent=(i+1)+". "+name;
+
+const edit=document.createElement("button");
+edit.className="editBtn";
+edit.textContent="✏️";
+edit.onclick=function(){
+if(staff[i]==="未選択"){alert("未選択は変更できません");return;}
+const n=prompt("新しい担当者名",staff[i]);
+if(!n||!n.trim())return;
+staff[i]=n.trim();
+saveStaff();
+};
+
+const del=document.createElement("button");
+del.className="delBtn";
+del.textContent="🗑";
+del.onclick=function(){
+if(staff[i]==="未選択"){alert("未選択は削除できません");return;}
+if(!confirm(staff[i]+" を削除しますか？"))return;
+staff.splice(i,1);
+saveStaff();
+};
+
+const up=document.createElement("button");
+up.className="moveBtn";
+up.textContent="↑";
+up.onclick=function(){moveItem(staff,i,-1,saveStaff);};
+const down=document.createElement("button");
+down.className="moveBtn";
+down.textContent="↓";
+down.onclick=function(){moveItem(staff,i,1,saveStaff);};
+
+row.appendChild(text);
+row.appendChild(up);
+row.appendChild(down);
+row.appendChild(edit);
+row.appendChild(del);
+box.appendChild(row);
+});
+}
+
+/* ================================================================
+   💾 まるごとバックアップ・復元(2026-11)
+   ・バックアップ: 点検ラクラクのデータベースを全部、1つのJSONファイルにして端末に保存する
+   ・復元: そのファイルの中身にまるごと戻す(ファイルにない記録は消える)。戻す前に今の状態を自動で保存する
+   ・前回のバックアップ日時は settings/lastBackupAt に残す(みんなで共通。30日たつとホームにお知らせ)
+   ================================================================ */
+function bkPad(n){return String(n).padStart(2,"0");}
+function bkStamp(d){return d.getFullYear()+bkPad(d.getMonth()+1)+bkPad(d.getDate())+"_"+bkPad(d.getHours())+bkPad(d.getMinutes());}
+function bkFmt(ts){const d=new Date(ts);return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate()+" "+bkPad(d.getHours())+":"+bkPad(d.getMinutes());}
+function bkCount(all){
+const t=all&&all.tenkenData?Object.keys(all.tenkenData).length:0;
+const r=all&&all.reports?Object.keys(all.reports).length:0;
+return "点検の記録 "+t+"日分・不具合報告 "+r+"件";
+}
+function bkDownload(obj,name){
+const blob=new Blob([JSON.stringify(obj)],{type:"application/json"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);a.download=name;
+document.body.appendChild(a);a.click();
+setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},2000);
+}
+function bkShowInfo(){
+db.ref("settings/lastBackupAt").once("value").then(function(s){
+const ts=Number(s.val())||0, el=document.getElementById("bkInfo");
+if(!ts){el.innerHTML='<b style="color:#b91c1c;">まだ一度もバックアップを取っていません</b>';return;}
+const days=Math.floor((Date.now()-ts)/86400000);
+el.innerHTML='前回のバックアップ:<b>'+bkFmt(ts)+'</b>('+(days===0?'今日':days+'日前')+')'+(days>=30?'<br><b style="color:#b91c1c;">30日以上たっています。今日取っておきましょう</b>':'');
+}).catch(function(){});
+}
+async function bkTake(label){
+const snap=await db.ref("/").once("value");
+const all=snap.val()||{};
+const now=new Date();
+bkDownload({app:"点検ラクラク",kind:"tenken-rakuraku-backup",version:1,createdAt:now.toISOString(),label:label||"",data:all},
+"tenken-backup_"+bkStamp(now)+(label?"_"+label:"")+".json");
+return all;
+}
+document.getElementById("bkBtn").onclick=async function(){
+const st=document.getElementById("bkStatus"),b=this;
+b.disabled=true;st.textContent="⏳ データを読み込んでいます…";
+try{
+const all=await bkTake("");
+await db.ref("settings/lastBackupAt").set(Date.now());
+st.innerHTML="✅ 保存しました("+bkCount(all)+")。ファイルをGoogleドライブのバックアップ用フォルダに入れてください。";
+bkShowInfo();
+}catch(e){console.error(e);st.textContent="⚠️ バックアップできませんでした。通信を確認して、もう一度押してください。";}
+b.disabled=false;
+};
+document.getElementById("bkRestoreBtn").onclick=function(){document.getElementById("bkFile").click();};
+document.getElementById("bkFile").onchange=function(ev){
+const f=ev.target.files[0];ev.target.value="";
+if(!f)return;
+const rd=new FileReader();
+rd.onload=async function(){
+const st=document.getElementById("bkStatus");
+let bk;
+try{bk=JSON.parse(rd.result);}catch(e){alert("このファイルは読めませんでした。点検ラクラクのバックアップファイル(tenken-backup_….json)を選んでください。");return;}
+if(!bk||bk.kind!=="tenken-rakuraku-backup"||!bk.data){alert("点検ラクラクのバックアップファイルではありません。");return;}
+const when=bk.createdAt?bkFmt(Date.parse(bk.createdAt)):"(日時不明)";
+if(!confirm("このバックアップの状態に戻します。\n\n作った日時:"+when+"\n中身:"+bkCount(bk.data)+"\n\nそのあとに入れた点検の記録・不具合報告は消えます。\n(戻す前に、今の状態を自動でファイルに保存します)\n\n戻しますか?"))return;
+if(!confirm("本当に戻しますか?(最後の確認です)"))return;
+try{
+st.textContent="⏳ 今の状態を保存しています…";
+await bkTake("復元前");
+st.textContent="⏳ 戻しています…";
+const data=JSON.parse(JSON.stringify(bk.data));
+data.settings=data.settings||{};
+data.settings.lastBackupAt=Date.now();
+await db.ref("/").set(data);
+st.innerHTML="✅ "+when+" の状態に戻しました("+bkCount(bk.data)+")。";
+localStorage.removeItem("tenken_contacts");
+bkShowInfo();
+alert("戻しました。画面を開き直します。");
+location.reload();
+}catch(e){console.error(e);st.textContent="⚠️ 戻せませんでした。通信を確認してください。(「復元前」のファイルが保存されていれば、それで元に戻せます)";}
+};
+rd.readAsText(f);
+};
+bkShowInfo();
+
+document.getElementById("backBtn").onclick=function(){
+location.href="index.html?v=40";
+};
+
+
+
+document.getElementById("addEcBtn").onclick=function(){
+const label=document.getElementById("ecLabel").value.trim();
+const name=document.getElementById("ecName").value.trim();
+const tel=document.getElementById("ecTel").value.trim();
+const url=document.getElementById("ecUrl").value.trim();
+if(!label||(!tel&&!url)){alert("項目名と、電話番号かURLのどちらかを入力してください");return;}
+const c={label:label,name:name};
+if(tel)c.tel=tel;
+if(url)c.url=url;
+contacts.push(c);
+document.getElementById("ecLabel").value="";
+document.getElementById("ecName").value="";
+document.getElementById("ecTel").value="";
+document.getElementById("ecUrl").value="";
+saveContacts();
+};
+
+Promise.all([
+db.ref("settings/vehicles").once("value"),
+db.ref("settings/staff").once("value"),
+db.ref("settings/emergencyContacts").once("value"),
+db.ref("settings/emergencyLinksAdded").once("value")
+]).then(function(result){
+vehicles = result[0].val() ||
+JSON.parse(localStorage.getItem("tenken_vehicles") || JSON.stringify(defaultVehicles)); staff = result[1].val() ||
+JSON.parse(localStorage.getItem("tenken_staff") || JSON.stringify(defaultStaff));
+contacts = result[2].val() ||
+JSON.parse(localStorage.getItem("tenken_contacts") || "null") || defaultContacts;
+
+// WEBリンクがまだ無い保存済みリストには、道路情報サイト2件を一度だけ追加する
+// （一度追加したら印を付け、あとで消しても復活させない）
+const linksAdded=!!result[3].val();
+if(!linksAdded&&contacts.some(function(c){return c.url;})){
+db.ref("settings/emergencyLinksAdded").set(true).catch(function(){});
+}
+if(!linksAdded&&!contacts.some(function(c){return c.url;})){
+let pos=contacts.findIndex(function(c){return (c.label||"").indexOf("高速道路情報")>=0;});
+pos=(pos>=0)?pos+1:Math.min(3,contacts.length);
+contacts.splice(pos,0,
+{label:"道路交通情報サイト（一般道・全国）",name:"JARTIC 日本道路交通情報センター",url:"https://www.jartic.or.jp/"},
+{label:"高速道路の渋滞・規制情報サイト",name:"ドラとら（NEXCO東日本）",url:"https://www.drivetraffic.jp/"});
+localStorage.setItem("tenken_contacts",JSON.stringify(contacts));
+db.ref("settings/emergencyContacts").set(contacts).catch(function(){});
+db.ref("settings/emergencyLinksAdded").set(true).catch(function(){});
+}
+
+localStorage.setItem("tenken_vehicles", JSON.stringify(vehicles)); localStorage.setItem("tenken_staff", JSON.stringify(staff));localStorage.setItem("tenken_contacts", JSON.stringify(contacts));
+
+renderVehicles();
+renderStaff();
+renderContacts();
+}).catch(function(){
+alert("設定の読み込みに失敗しました。通信を確認して開き直してください。");
+});
+</script>
+</body>
+</html>
