@@ -16,15 +16,25 @@
     storageBucket: "tenken-rakuraku.firebasestorage.app", messagingSenderId: "546571524606", appId: "1:546571524606:web:dbe38f12c4b6ab4ad148af" };
   const URL = "https://rie4649.github.io/tenken-rakuraku/";
   let dbp = null;
+  // 2026/11/19：点検ラクラクのデータベースに鍵(ルール「ログインした人だけ」)をかけるため、読む前に「匿名ログイン」をする
+  //   部品(database・auth)は、このページのFirebaseと同じ版で読み込む。匿名ログインができないときは今までどおり読みにいく
+  function loadPart(name){ return new Promise((ok, ng) => { const s = document.createElement("script");
+    s.src = "https://www.gstatic.com/firebasejs/" + (firebase.SDK_VERSION || "10.12.2") + "/firebase-" + name + "-compat.js";
+    s.onload = ok; s.onerror = () => ng(new Error("点検ラクラクにつながりません")); document.head.appendChild(s); }); }
   function rtdb(){
     if (dbp) return dbp;
-    dbp = new Promise((res, rej) => {
-      const ready = () => { try { let a; try { a = firebase.app("tenken"); } catch(e){ a = firebase.initializeApp(CFG, "tenken"); } res(a.database()); } catch(e){ rej(e); } };
-      if (firebase.database) return ready();
-      const s = document.createElement("script");   // Realtime Database の部品を、このページのFirebaseと同じ版で読み込む
-      s.src = "https://www.gstatic.com/firebasejs/" + (firebase.SDK_VERSION || "10.12.2") + "/firebase-database-compat.js";
-      s.onload = ready; s.onerror = () => rej(new Error("点検ラクラクにつながりません")); document.head.appendChild(s);
-    });
+    dbp = (async () => {
+      if (!firebase.database) await loadPart("database");
+      if (!firebase.auth) await loadPart("auth").catch(() => {});
+      let a; try { a = firebase.app("tenken"); } catch(e){ a = firebase.initializeApp(CFG, "tenken"); }
+      try {
+        const au = a.auth();
+        if (!au.currentUser) await Promise.race([
+          new Promise(r => { const un = au.onAuthStateChanged(u => { un(); r(u); }); }).then(u => u || au.signInAnonymously()),
+          new Promise(r => setTimeout(r, 8000)) ]);
+      } catch(e){ console.warn("点検ラクラクの匿名ログインができませんでした", e && e.code); }
+      return a.database();
+    })();
     dbp.catch(() => { dbp = null; });
     return dbp;
   }
