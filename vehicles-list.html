@@ -43,7 +43,7 @@
 <body>
 <header class="bz noPrint">
   <button class="back" onclick="try{sessionStorage.setItem('isoRestore','1')}catch(e){};location.href='index.html'">← ISO管理に戻る</button>
-  <div><h1>🚛 車両の愛称と車番の一覧（新入社員用）<span class="appVer" style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/12-1</span></h1>
+  <div><h1>🚛 車両の愛称と車番の一覧（新入社員用）<span class="appVer" style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/19-2</span></h1>
   <div class="sub">マスタ管理の車両から自動で作ります。車両が増えたり変わったりしたら、マスタ管理を直すだけでこの表も変わります</div></div>
 </header>
 <div class="wrap">
@@ -65,6 +65,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://rie4649.github.io/sekine-store/sekine-auth.js?v=1"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD99Mx0MnGpLSQjV7830bS7-gdCBSM9DGY",

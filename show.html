@@ -283,6 +283,7 @@ table.t tr.sigRow td { background:#fff1f2 !important; }
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://rie4649.github.io/sekine-store/sekine-auth.js?v=1"></script>
 <script src="history.js"></script>
 <script src="pdf-view.js"></script>
 <script src="library.js"></script>
@@ -505,7 +506,7 @@ async function renderCover(p){
     tiles += '<div class="tile" onclick="go('+cp.indexOf(x)+')"><div class="ic">'+cp.indexOf(x)+'.</div><div class="nm">'+esc(x.name)+'</div></div>'; });
   return '<div class="cover"><div class="co">'+esc(pf.company || COMPANY)+'</div><h1>環境への取り組み</h1><span class="iso">環境マネジメントシステム '+esc(pf.standard || "ISO 14001")+'</span>'+
     (pf.certNo ? '<div class="dt">登録番号 '+esc(pf.certNo)+(pf.certBody ? '　'+esc(pf.certBody) : '')+'</div>' : '')+
-    '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ<span style="font-size:11px;opacity:.6;margin-left:8px;">版 11/15-1</span></div></div>'+
+    '<div class="dt">'+t.getFullYear()+'年'+(t.getMonth()+1)+'月'+t.getDate()+'日 現在のデータ<span style="font-size:11px;opacity:.6;margin-left:8px;">版 11/19-2</span></div></div>'+
     '<div class="tiles">'+tiles+'</div>'+
     '<div class="note" style="text-align:center;margin-top:18px;">◀ ▶ ボタン・キーボードの ← → ・スワイプで次のページへ進めます</div>';
 }

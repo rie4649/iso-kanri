@@ -34,7 +34,7 @@
 <body>
 <header class="bz">
   <button class="back" onclick="goBack()">← ISO管理に戻る</button>
-  <div><h1>委託先調査票の回答<span class="appVer" style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/12-1</span></h1>
+  <div><h1>委託先調査票の回答<span class="appVer" style="font-size:11px;font-weight:normal;opacity:.65;margin-left:8px;">版 11/19-2</span></h1>
   <div class="sub">取引先(排出事業者さま)ごとの調査票・現地確認チェックシートへの当社の回答(社内の控え。環境への取り組みには表示しません)</div></div>
 </header>
 <div class="wrap">
@@ -108,6 +108,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://rie4649.github.io/sekine-store/sekine-auth.js?v=1"></script>
 <script src="history.js"></script>
 <script src="survey-templates.js?v=1013b"></script>
 <script>if (typeof SURVEY_TEMPLATES === "undefined") window.addEventListener("DOMContentLoaded", () => { const m = '<div class="empty" style="color:#b91c1c;line-height:1.8;">会社ごとの調査票のファイル(survey-templates.js)が見つかりません。<br>GitHubの iso-kanri に survey-templates.js をアップロードしてください。<br>(アップロード直後なら、1〜2分待ってから再読み込みしてください)</div>'; const l = document.getElementById("list"); if (l) l.innerHTML = m; });</script>
